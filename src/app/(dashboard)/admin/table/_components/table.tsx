@@ -9,7 +9,7 @@ import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Table } from "@/validations/table-validation";
@@ -17,6 +17,8 @@ import { HEADER_TABLE_TABLE } from "@/constants/table-constant";
 import DialogCreateTable from "./dialog-create-table";
 import DialogUpdateTable from "./dialog-update-table";
 import DialogDeleteTable from "./dialog-delete-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TableMap from "./table-map";
 
 export default function TableManagement() {
   const supabase = createClient();
@@ -128,45 +130,89 @@ export default function TableManagement() {
       : 0;
   }, [tables]);
 
+  const { data: allTables, refetch: refetchTables } = useQuery({
+    queryKey: ["all-tables"],
+    queryFn: async () => {
+      const result = await supabase.from("tables").select("*");
+
+      return result.data;
+    },
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("change-table")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tables",
+        },
+        () => {
+          refetch();
+          refetchTables();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  });
+
   return (
     <div className="w-full">
-      <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">Table Management</h1>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search..."
-            onChange={(e) => handleChangeSearch(e.target.value)}
-          />
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline">Create</Button>
-            </DialogTrigger>
-            <DialogCreateTable refetch={refetch} />
-          </Dialog>
+      <Tabs defaultValue="list">
+        <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
+          <h1 className="text-2xl font-bold">Table Management</h1>
+          <TabsList>
+            <TabsTrigger value="list">Table List</TabsTrigger>
+            <TabsTrigger value="map">Table Map</TabsTrigger>
+          </TabsList>
         </div>
-      </div>
-      <DataTable
-        header={HEADER_TABLE_TABLE}
-        data={filteredData}
-        isLoading={isLoading}
-        totalPages={totalPages}
-        currentPage={currentPage}
-        currentLimit={currentLimit}
-        onChangePage={handleChangePage}
-        onChangeLimit={handleChangeLimit}
-      />
-      <DialogUpdateTable
-        open={selectedAction !== null && selectedAction.type === "update"}
-        refetch={refetch}
-        currentData={selectedAction?.data}
-        handleChangeAction={handleChangeAction}
-      />
-      <DialogDeleteTable
-        open={selectedAction !== null && selectedAction.type === "delete"}
-        refetch={refetch}
-        currentData={selectedAction?.data}
-        handleChangeAction={handleChangeAction}
-      />
+
+        <TabsContent value="list">
+          <div className="flex gap-2 justify-between mb-4">
+            <Input
+              placeholder="Search..."
+              className="max-w-64"
+              onChange={(e) => handleChangeSearch(e.target.value)}
+            />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">Create</Button>
+              </DialogTrigger>
+              <DialogCreateTable refetch={refetch} />
+            </Dialog>
+          </div>
+          <DataTable
+            header={HEADER_TABLE_TABLE}
+            data={filteredData}
+            isLoading={isLoading}
+            totalPages={totalPages}
+            currentPage={currentPage}
+            currentLimit={currentLimit}
+            onChangePage={handleChangePage}
+            onChangeLimit={handleChangeLimit}
+          />
+          <DialogUpdateTable
+            open={selectedAction !== null && selectedAction.type === "update"}
+            refetch={refetch}
+            currentData={selectedAction?.data}
+            handleChangeAction={handleChangeAction}
+          />
+          <DialogDeleteTable
+            open={selectedAction !== null && selectedAction.type === "delete"}
+            refetch={refetch}
+            currentData={selectedAction?.data}
+            handleChangeAction={handleChangeAction}
+          />
+        </TabsContent>
+        <TabsContent value="map">
+          <TableMap tables={allTables ?? []} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
