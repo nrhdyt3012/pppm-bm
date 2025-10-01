@@ -53,7 +53,10 @@ export default function CartSection({
             <div className="space-y-2">
               <Label>Table</Label>
               <Input
-                value={(order?.tables as unknown as { name: string })?.name}
+                value={
+                  (order?.tables as unknown as { name: string })?.name ||
+                  "Takeaway"
+                }
                 disabled
               />
             </div>
@@ -77,11 +80,11 @@ export default function CartSection({
                     <div>
                       <p className="text-sm">{item.menu.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {convertIDR(item.total / item.quantity)}
+                        {convertIDR(item.nominal / item.quantity)}
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm">{convertIDR(item.total)}</p>
+                  <p className="text-sm">{convertIDR(item.nominal)}</p>
                 </div>
                 <div className="flex items-center gap-4 w-full">
                   <Input

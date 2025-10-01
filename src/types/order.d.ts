@@ -13,7 +13,7 @@ export type OrderFormState = {
 export type Cart = {
   menu_id: string;
   quantity: number;
-  total: number;
+  nominal: number;
   notes: string;
   menu: Menu;
   order_id?: string;
