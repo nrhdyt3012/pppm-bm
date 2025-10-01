@@ -1,3 +1,5 @@
+import { INITIAL_STATE_ACTION } from "./general-constant";
+
 export const HEADER_TABLE_ORDER = [
   "No",
   "Order ID",
@@ -33,3 +35,41 @@ export const STATUS_CREATE_ORDER = [
     label: "Process",
   },
 ];
+
+export const HEADER_TABLE_DETAIL_ORDER = [
+  "No",
+  "Menu",
+  "Total",
+  "Status",
+  "Action",
+];
+
+export const FILTER_MENU = [
+  {
+    value: "",
+    label: "All",
+  },
+  {
+    value: "mains",
+    label: "Mains",
+  },
+  {
+    value: "sides",
+    label: "Sides",
+  },
+  {
+    value: "desserts",
+    label: "Desserts",
+  },
+  {
+    value: "beverages",
+    label: "Beverages",
+  },
+];
+
+export const INITIAL_STATE_GENERATE_PAYMENT = {
+  ...INITIAL_STATE_ACTION,
+  data: {
+    payment_token: "",
+  },
+};
