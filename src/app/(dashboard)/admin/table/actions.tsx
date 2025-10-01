@@ -8,7 +8,7 @@ export async function createTable(
   prevState: TableFormState,
   formData: FormData
 ) {
-  let validatedFields = tableSchema.safeParse({
+  const validatedFields = tableSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description"),
     capacity: parseInt(formData.get("capacity") as string),
@@ -53,7 +53,7 @@ export async function updateTable(
   prevState: TableFormState,
   formData: FormData
 ) {
-  let validatedFields = tableSchema.safeParse({
+  const validatedFields = tableSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description"),
     capacity: parseInt(formData.get("capacity") as string),
