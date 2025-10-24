@@ -16,7 +16,7 @@ import {
 } from "@/constants/auth-constant";
 import { LoginForm, loginSchemaForm } from "@/validations/auth-validation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { login } from "../actions";
 import { Loader2 } from "lucide-react";
@@ -33,22 +33,6 @@ export default function Login() {
     login,
     INITIAL_STATE_LOGIN_FORM
   );
-
-  // 🖼️ Gambar-gambar slideshow
-  const images = [
-    "/images/illustrations/ppm_1.jpg",
-    "/images/illustrations/ppm_2.jpg",
-  ];
-
-  const [currentImage, setCurrentImage] = useState(0);
-
-  // 🔄 Ganti gambar tiap 2 detik
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % images.length);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [images.length]);
 
   const onSubmit = form.handleSubmit(async (data) => {
     const formData = new FormData();
@@ -73,35 +57,44 @@ export default function Login() {
   }, [loginState]);
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col lg:flex-row items-center justify-center gap-10 lg:gap-20 p-6 lg:py-0">
-      {/* === 🔘 Tombol Dark Mode di pojok kanan atas === */}
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
+      {/* Dark Mode Toggle */}
       <div className="absolute top-4 right-4 z-50">
         <DarkmodeToggle />
       </div>
 
-      {/* === BAGIAN KIRI (dengan slideshow animasi) === */}
-      <div className="relative flex w-full lg:w-1/3 flex-col items-center justify-center gap-10">
-        <div className="relative w-2/3 lg:w-full aspect-square">
-          {images.map((src, index) => (
-            <Image
-              key={src}
-              src={src}
-              alt={`illustration-${index}`}
-              fill
-              priority={index === currentImage}
-              className={`object-contain transition-opacity duration-1000 ease-in-out ${
-                index === currentImage ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          ))}
-        </div>
+      {/* Logo */}
+      <div className="mb-8">
+        <Image
+          src="/logo_ppm.svg"
+          alt="Logo PPPM Baitul Makmur"
+          width={120}
+          height={120}
+          className="rounded-full shadow-lg"
+          priority
+        />
       </div>
 
-      {/* === BAGIAN KANAN (form login) === */}
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Welcome</CardTitle>
-          <CardDescription>Login to access all features</CardDescription>
+      {/* Welcome Text */}
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+          Selamat Datang
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300 max-w-md">
+          Sistem Informasi Pondok Pesantren Baitul Makmur
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+          Portal untuk Wali Santri dan Administrator
+        </p>
+      </div>
+
+      {/* Login Card */}
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="text-center space-y-2">
+          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardDescription>
+            Masukkan kredensial Anda untuk mengakses sistem
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -110,7 +103,7 @@ export default function Login() {
                 form={form}
                 name="email"
                 label="Email"
-                placeholder="Insert email here"
+                placeholder="Masukkan email Anda"
                 type="email"
               />
               <FormInput
@@ -120,7 +113,10 @@ export default function Login() {
                 placeholder="******"
                 type="password"
               />
-              <Button type="submit" className="w-full">
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
                 {isPendingLogin ? (
                   <Loader2 className="animate-spin" />
                 ) : (
@@ -131,6 +127,12 @@ export default function Login() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Footer */}
+      <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p>© 2024 Pondok Pesantren Baitul Makmur</p>
+        <p className="mt-1">Semua hak cipta dilindungi</p>
+      </div>
     </div>
   );
 }
