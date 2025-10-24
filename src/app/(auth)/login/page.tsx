@@ -1,7 +1,10 @@
 import Login from "../login/_components/login";
 
 export const metadata = {
-  title: "WPU Cafe | Login",
+  title: "PPPM BM | Login",
+  icons: {
+    icon: "/logo_ppm.svg",
+  },
 };
 
 export default function LoginPage() {

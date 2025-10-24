@@ -145,10 +145,10 @@ export default function MenuManagement() {
   return (
     <div className="w-full">
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">Menu Management</h1>
+        <h1 className="text-2xl font-bold">Kelola Tagihan</h1>
         <div className="flex gap-2">
           <Input
-            placeholder="Search by name or category"
+            placeholder="Search..."
             onChange={(e) => handleChangeSearch(e.target.value)}
           />
           <Dialog>

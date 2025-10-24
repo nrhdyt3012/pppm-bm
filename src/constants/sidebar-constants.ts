@@ -1,7 +1,9 @@
 import {
   Album,
   Armchair,
+  FileText,
   LayoutDashboard,
+  Receipt,
   SquareMenu,
   Users,
 } from "lucide-react";
@@ -14,22 +16,22 @@ export const SIDEBAR_MENU_LIST = {
       icon: LayoutDashboard,
     },
     {
-      title: "Order",
+      title: "Tagihan Santri",
       url: "/order",
-      icon: Album,
+      icon: Receipt,
     },
     {
-      title: "Menu",
+      title: "Buat Tagihan",
       url: "/admin/menu",
-      icon: SquareMenu,
+      icon: FileText,
     },
+    // {
+    //   title: "Table",
+    //   url: "/admin/table",
+    //   icon: Armchair,
+    // },
     {
-      title: "Table",
-      url: "/admin/table",
-      icon: Armchair,
-    },
-    {
-      title: "User",
+      title: "Data Santri",
       url: "/admin/user",
       icon: Users,
     },

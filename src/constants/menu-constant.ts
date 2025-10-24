@@ -1,6 +1,6 @@
 export const HEADER_TABLE_MENU = [
   "No",
-  "Name",
+  "Periode",
   "Category",
   "Price",
   "Available",
@@ -30,6 +30,14 @@ export const INITIAL_MENU = {
   category: "",
   image_url: "",
   is_available: "",
+  periode: "",
+  uang_makan: "",
+  uang_asrama: "",
+  kas_pondok: "",
+  shoaqoh_sukkarela: "",
+  jariyah_sb: "",
+  uang_tahunan: "",
+  iuran_kampung: "",
 };
 
 export const INITIAL_STATE_MENU = {
@@ -43,6 +51,14 @@ export const INITIAL_STATE_MENU = {
     category: [],
     image_url: [],
     is_available: [],
+    periode: [],
+    uang_makan: [],
+    uang_asrama: [],
+    kas_pondok: [],
+    shoaqoh_sukkarela: [],
+    jariyah_sb: [],
+    uang_tahunan: [],
+    iuran_kampung: [],
     _form: [],
   },
 };

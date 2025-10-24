@@ -1,1 +1,16 @@
-export const HEADER_TABLE_USER = ["No", "ID", "Name", "Role", "Action"];
+export const HEADER_TABLE_USER = [
+  "No",
+  "ID",
+  "Name",
+  "Jenis Kelamin",
+  "Tempat Lahir",
+  "Tanggal Lahir",
+  "Jurusan",
+  "Universitas / Sekolah",
+  "Nama Ayah",
+  "Pekerjaan Ayah",
+  "Nama Ibu",
+  "Pekerjaan Ibu",
+  "Role",
+  "Action",
+];

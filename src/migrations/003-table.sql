@@ -11,3 +11,4 @@ create table public.tables (
 );
 
 alter table public.tables enable row level
+security;

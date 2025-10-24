@@ -1,7 +1,10 @@
 import Dashboard from "./_components/dashboard";
 
 export const metadata = {
-  title: "WPU Cafe | Dashboard",
+  title: "PPPM BM | Dashboard",
+  icons: {
+    icon: "logo_ppm.svg",
+  },
 };
 
 export default function DashboardPage() {

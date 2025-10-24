@@ -65,6 +65,15 @@ export default function UserManagement() {
         currentLimit * (currentPage - 1) + index + 1,
         user.id,
         user.name,
+        user.jenis_kelamin,
+        user.tempat_lahir,
+        user.tanggal_lahir,
+        user.jurusan,
+        user.universitas,
+        user.nama_ayah,
+        user.pekerjaan_ayah,
+        user.nama_ibu,
+        user.pekerjaan_ibu,
         user.role,
         <DropdownAction
           menu={[
@@ -112,7 +121,7 @@ export default function UserManagement() {
   return (
     <div className="w-full">
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <h1 className="text-2xl font-bold">Data Santri</h1>
         <div className="flex gap-2">
           <Input
             placeholder="Search by name"

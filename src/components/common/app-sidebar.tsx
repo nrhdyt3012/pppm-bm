@@ -1,6 +1,6 @@
 "use client";
 
-import { Coffee, EllipsisVertical, LogOut } from "lucide-react";
+import { Coffee, EllipsisVertical, LogOut, School2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -44,9 +44,9 @@ export default function AppSidebar() {
             <SidebarMenuButton size="lg" asChild>
               <div className="font-semibold">
                 <div className="bg-teal-500 flex p-2 items-center justify-center rounded-md">
-                  <Coffee className="size-4" />
+                  <School2 className="size-4" />
                 </div>
-                WPU Cafe
+                PPPM BAITUL MAKMUR
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -9,6 +9,6 @@ export default async function AddOrderItemPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params; // harus await
+  const { id } = await params;
   return <AddOrderItem id={id} />;
 }
