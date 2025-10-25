@@ -15,5 +15,5 @@ export async function signOut() {
   } catch (error) {
     console.error("Error signing out:", error);
   }
-  redirect("/login");
+  redirect("/beranda");
 }
