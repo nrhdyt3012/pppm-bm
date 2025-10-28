@@ -381,7 +381,7 @@ export default function Homepage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-center text-gray-600 dark:text-gray-300 italic">
-                    "{testimonial.quote}"
+                    &quot;{testimonial.quote}&quot;
                   </p>
                 </CardContent>
               </Card>
