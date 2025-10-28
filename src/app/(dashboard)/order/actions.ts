@@ -3,154 +3,124 @@
 import { createClient } from "@/lib/supabase/server";
 import { formState } from "@/types/general";
 import { Cart, OrderFormState } from "@/types/order";
-import {
-  orderFormSchema,
-  orderTakeawayFormSchema,
-} from "@/validations/order-validation";
 import { redirect } from "next/navigation";
 import midtrans from "midtrans-client";
 import { environment } from "@/configs/environtment";
 
-export async function createOrder(
-  prevState: OrderFormState,
-  formData: FormData
-) {
-  const validatedFields = orderFormSchema.safeParse({
-    customer_name: formData.get("customer_name"),
-    table_id: formData.get("table_id"),
-    status: formData.get("status"),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
-    };
-  }
-
-  const supabase = await createClient();
-
-  const orderId = `WPUCAFE-${Date.now()}`;
-
-  const [orderResult, tableResult] = await Promise.all([
-    supabase.from("orders").insert({
-      order_id: orderId,
-      customer_name: validatedFields.data.customer_name,
-      table_id: validatedFields.data.table_id,
-      status: validatedFields.data.status,
-    }),
-    supabase
-      .from("tables")
-      .update({
-        status:
-          validatedFields.data.status === "reserved"
-            ? "reserved"
-            : "unavailable",
-      })
-      .eq("id", validatedFields.data.table_id),
-  ]);
-
-  const orderError = orderResult.error;
-  const tableError = tableResult.error;
-
-  if (orderError || tableError) {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [
-          ...(orderError ? [orderError.message] : []),
-          ...(tableError ? [tableError.message] : []),
-        ],
-      },
-    };
-  }
-
-  return {
-    status: "success",
-  };
-}
-
-export async function createOrderTakeaway(
-  prevState: OrderFormState,
-  formData: FormData
-) {
-  const validatedFields = orderTakeawayFormSchema.safeParse({
-    customer_name: formData.get("customer_name"),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
-    };
-  }
-
-  const supabase = await createClient();
-
-  const orderId = `WPUCAFE-${Date.now()}`;
-
-  const { error } = await supabase.from("orders").insert({
-    order_id: orderId,
-    customer_name: validatedFields.data.customer_name,
-    status: "process",
-  });
-
-  if (error) {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [error.message],
-      },
-    };
-  }
-
-  return {
-    status: "success",
-  };
-}
-
-export async function updateReservation(
+export async function createOrderBatch(
   prevState: formState,
   formData: FormData
 ) {
-  const supabase = await createClient();
+  const santriIds = JSON.parse(
+    formData.get("santri_ids") as string
+  ) as string[];
+  const menuId = formData.get("menu_id") as string;
 
-  const [orderResult, tableResult] = await Promise.all([
-    supabase
-      .from("orders")
-      .update({
-        status: formData.get("status"),
-      })
-      .eq("id", formData.get("id")),
-    supabase
-      .from("tables")
-      .update({
-        status:
-          formData.get("status") === "process" ? "unavailable" : "available",
-      })
-      .eq("id", formData.get("table_id")),
-  ]);
-
-  const orderError = orderResult.error;
-  const tableError = tableResult.error;
-
-  if (orderError || tableError) {
+  if (!santriIds || santriIds.length === 0) {
     return {
       status: "error",
       errors: {
-        ...prevState.errors,
-        _form: [
-          ...(orderError ? [orderError.message] : []),
-          ...(tableError ? [tableError.message] : []),
-        ],
+        _form: ["Pilih minimal 1 santri"],
+      },
+    };
+  }
+
+  if (!menuId) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Pilih jenis tagihan"],
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  // Ambil data menu/tagihan
+  const { data: menu, error: menuError } = await supabase
+    .from("menus")
+    .select("*")
+    .eq("id", menuId)
+    .single();
+
+  if (menuError || !menu) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Data tagihan tidak ditemukan"],
+      },
+    };
+  }
+
+  // Hitung total nominal
+  const totalNominal =
+    (menu.uang_makan || 0) +
+    (menu.asrama || 0) +
+    (menu.kas_pondok || 0) +
+    (menu.shodaqoh_sukarela || 0) +
+    (menu.jariyah_sb || 0) +
+    (menu.uang_tahunan || 0) +
+    (menu.iuran_kampung || 0);
+
+  // Ambil data santri
+  const { data: santriList, error: santriError } = await supabase
+    .from("profiles")
+    .select("*")
+    .in("id", santriIds);
+
+  if (santriError || !santriList) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal memuat data santri"],
+      },
+    };
+  }
+
+  // Buat order untuk setiap santri
+  const ordersToInsert = santriList.map((santri) => {
+    const orderId = `PPPMBM-${Date.now()}-${santri.id.substring(0, 8)}`;
+    return {
+      order_id: orderId,
+      customer_name: santri.name,
+      status: "process",
+      table_id: null, // Tidak pakai table lagi
+    };
+  });
+
+  const { data: createdOrders, error: orderError } = await supabase
+    .from("orders")
+    .insert(ordersToInsert)
+    .select();
+
+  if (orderError || !createdOrders) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal membuat tagihan: " + orderError?.message],
+      },
+    };
+  }
+
+  // Buat order_menus untuk setiap order
+  const orderMenusToInsert = createdOrders.map((order) => ({
+    order_id: order.id,
+    menu_id: parseInt(menuId),
+    quantity: 1,
+    nominal: totalNominal,
+    status: "pending",
+    notes: menu.name, // Simpan nama periode sebagai notes
+  }));
+
+  const { error: orderMenuError } = await supabase
+    .from("orders_menus")
+    .insert(orderMenusToInsert);
+
+  if (orderMenuError) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal membuat detail tagihan: " + orderMenuError.message],
       },
     };
   }
@@ -204,6 +174,127 @@ export async function updateStatusOrderitem(
       errors: {
         ...prevState,
         _form: [error.message],
+      },
+    };
+  }
+
+  return {
+    status: "success",
+  };
+}
+
+export async function updateOrderCustomer(
+  prevState: formState,
+  formData: FormData
+) {
+  const orderId = formData.get("order_id") as string;
+  const santriId = formData.get("santri_id") as string;
+
+  if (!orderId || !santriId) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Data tidak lengkap"],
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  // Ambil data santri
+  const { data: santri, error: santriError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", santriId)
+    .single();
+
+  if (santriError || !santri) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Data santri tidak ditemukan"],
+      },
+    };
+  }
+
+  // Update order
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      customer_name: santri.name,
+    })
+    .eq("order_id", orderId);
+
+  if (error) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal mengubah tagihan: " + error.message],
+      },
+    };
+  }
+
+  return {
+    status: "success",
+  };
+}
+
+export async function deleteOrder(prevState: formState, formData: FormData) {
+  const orderId = formData.get("order_id") as string;
+
+  if (!orderId) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Order ID tidak valid"],
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  // Ambil data order untuk mendapatkan ID internal
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("order_id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Tagihan tidak ditemukan"],
+      },
+    };
+  }
+
+  // Hapus order_menus terlebih dahulu (foreign key constraint)
+  const { error: deleteMenusError } = await supabase
+    .from("orders_menus")
+    .delete()
+    .eq("order_id", order.id);
+
+  if (deleteMenusError) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal menghapus detail tagihan: " + deleteMenusError.message],
+      },
+    };
+  }
+
+  // Hapus order
+  const { error: deleteOrderError } = await supabase
+    .from("orders")
+    .delete()
+    .eq("order_id", orderId);
+
+  if (deleteOrderError) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal menghapus tagihan: " + deleteOrderError.message],
       },
     };
   }

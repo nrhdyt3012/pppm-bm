@@ -1,7 +1,10 @@
 import OrderManagement from "./_components/order";
 
 export const metadata = {
-  title: "WPU Cafe | Order Management",
+  title: "PPPM BM | Tagihan Santri",
+  icons: {
+    icon: "/logo_ppm.svg",
+  },
 };
 
 export default function OrderManagementPage() {

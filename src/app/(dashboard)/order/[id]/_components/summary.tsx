@@ -20,7 +20,6 @@ export default function Summary({
 }: {
   order: {
     customer_name: string;
-    tables: { name: string }[];
     status: string;
     payment_token: string;
   };
@@ -67,41 +66,32 @@ export default function Summary({
       window.snap.pay(generatePaymentState.data.payment_token);
     }
   }, [generatePaymentState]);
+
   return (
     <Card className="w-full shadow-sm">
       <CardContent className="space-y-4">
-        <h3 className="text-lg font-semibold">Customer Information</h3>
+        <h3 className="text-lg font-semibold">Informasi Santri</h3>
         {order && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>Nama Santri</Label>
               <Input value={order?.customer_name} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label>Table</Label>
-              <Input
-                value={
-                  (order?.tables as unknown as { name: string })?.name ||
-                  "Takeaway"
-                }
-                disabled
-              />
             </div>
           </div>
         )}
         <Separator />
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Order Summary</h3>
+          <h3 className="text-lg font-semibold">Ringkasan Tagihan</h3>
           <div className="flex justify-between items-center">
             <p className="text-sm">Subtotal</p>
             <p className="text-sm">{convertIDR(totalPrice)}</p>
           </div>
           <div className="flex justify-between items-center">
-            <p className="text-sm">Tax (12%)</p>
+            <p className="text-sm">Pajak (12%)</p>
             <p className="text-sm">{convertIDR(tax)}</p>
           </div>
           <div className="flex justify-between items-center">
-            <p className="text-sm">Service (5%)</p>
+            <p className="text-sm">Biaya Admin (5%)</p>
             <p className="text-sm">{convertIDR(service)}</p>
           </div>
           <Separator />
@@ -123,7 +113,7 @@ export default function Summary({
               {isPendingGeneratePayment ? (
                 <Loader2 className="animate-spin" />
               ) : (
-                "Pay"
+                "Bayar"
               )}
             </Button>
           )}
