@@ -1,240 +1,452 @@
 "use client";
 
-import LineCharts from "@/components/common/line-chart";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import * as XLSX from "xlsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type ViewType = "tunggakan" | "pembayaran";
 
 export default function Dashboard() {
   const supabase = createClient();
-  const lastWeek = new Date();
-  lastWeek.setDate(lastWeek.getDate() - 6);
-  lastWeek.setHours(0, 0, 0, 0);
+  const [selectedView, setSelectedView] = useState<ViewType>("tunggakan");
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  const { data: orders } = useQuery({
-    queryKey: ["orders-per-day"],
+  // Format bulan untuk query
+  const currentMonthStr = useMemo(() => {
+    return selectedMonth.toISOString().slice(0, 7); // Format: YYYY-MM
+  }, [selectedMonth]);
+
+  // Query untuk data tunggakan
+  const { data: tunggakanData, isLoading: loadingTunggakan } = useQuery({
+    queryKey: ["tunggakan-data", currentMonthStr],
     queryFn: async () => {
-      const { data } = await supabase
+      // Ambil data orders dengan status belum lunas
+      const { data: orders, error } = await supabase
         .from("orders")
-        .select("created_at")
-        .eq("status", "settled")
-        .gte("created_at", lastWeek.toISOString())
+        .select(
+          `
+          id,
+          order_id,
+          customer_name,
+          status,
+          created_at,
+          orders_menus(
+            nominal,
+            menus(name)
+          )
+        `
+        )
+        .neq("status", "settled")
+        .gte("created_at", `${currentMonthStr}-01`)
+        .lt("created_at", getNextMonth(currentMonthStr))
         .order("created_at");
 
-      const counts: Record<string, number> = {};
+      if (error) {
+        toast.error("Gagal memuat data tunggakan", {
+          description: error.message,
+        });
+        return [];
+      }
 
-      (data ?? []).forEach((order) => {
-        const date = new Date(order.created_at).toISOString().slice(0, 10);
-        counts[date] = (counts[date] || 0) + 1;
-      });
+      return orders || [];
+    },
+    enabled: selectedView === "tunggakan",
+  });
 
-      return Object.entries(counts).map(([name, total]) => ({ name, total }));
+  // Query untuk data pembayaran (lunas)
+  const { data: pembayaranData, isLoading: loadingPembayaran } = useQuery({
+    queryKey: ["pembayaran-data", currentMonthStr],
+    queryFn: async () => {
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select(
+          `
+          id,
+          order_id,
+          customer_name,
+          status,
+          created_at,
+          orders_menus(
+            nominal,
+            menus(name)
+          )
+        `
+        )
+        .eq("status", "settled")
+        .gte("created_at", `${currentMonthStr}-01`)
+        .lt("created_at", getNextMonth(currentMonthStr))
+        .order("created_at");
+
+      if (error) {
+        toast.error("Gagal memuat data pembayaran", {
+          description: error.message,
+        });
+        return [];
+      }
+
+      return orders || [];
+    },
+    enabled: selectedView === "pembayaran",
+  });
+
+  // Query untuk data grafik (6 bulan terakhir)
+  const { data: chartData } = useQuery({
+    queryKey: ["chart-data", selectedView],
+    queryFn: async () => {
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthStr = date.toISOString().slice(0, 7);
+        months.push(monthStr);
+      }
+
+      const result = await Promise.all(
+        months.map(async (month) => {
+          const { count } = await supabase
+            .from("orders")
+            .select("id", { count: "exact", head: true })
+            [selectedView === "tunggakan" ? "neq" : "eq"]("status", "settled")
+            .gte("created_at", `${month}-01`)
+            .lt("created_at", getNextMonth(month));
+
+          return {
+            name: formatMonthName(month),
+            total: count || 0,
+          };
+        })
+      );
+
+      return result;
     },
   });
 
-  const thisMonth = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1
-  ).toISOString();
+  // Data untuk tabel
+  const currentData = useMemo(() => {
+    return selectedView === "tunggakan" ? tunggakanData : pembayaranData;
+  }, [selectedView, tunggakanData, pembayaranData]);
 
-  const lastMonth = new Date(new Date().getFullYear(), 0, 1).toISOString();
-
-  const { data: revenue } = useQuery({
-    queryKey: ["revenue"],
-    queryFn: async () => {
-      const { data: dataThisMonth } = await supabase
-        .from("orders_menus")
-        .select("nominal, created_at")
-        .gte("created_at", thisMonth);
-
-      const { data: dataLastMonth } = await supabase
-        .from("orders_menus")
-        .select("nominal, created_at")
-        .gte("created_at", lastMonth)
-        .lt("created_at", thisMonth);
-
-      const totalRevenueThisMonth = (dataThisMonth ?? []).reduce(
-        (sum, item) => {
-          return sum + item.nominal;
-        },
+  // Total nominal
+  const totalNominal = useMemo(() => {
+    if (!currentData) return 0;
+    return currentData.reduce((sum, order: any) => {
+      const orderTotal = order.orders_menus.reduce(
+        (s: number, om: any) => s + om.nominal,
         0
       );
+      return sum + orderTotal;
+    }, 0);
+  }, [currentData]);
 
-      const totalRevenueLastMonth = (dataLastMonth ?? []).reduce(
-        (sum, item) => {
-          return sum + item.nominal;
-        },
+  // Handler navigasi bulan
+  const handlePrevMonth = () => {
+    setSelectedMonth((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonth((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  // Export to Excel
+  const handleExportExcel = () => {
+    if (!currentData || currentData.length === 0) {
+      toast.error("Tidak ada data untuk diekspor");
+      return;
+    }
+
+    const exportData = currentData.map((order: any, index: number) => {
+      const nominal = order.orders_menus.reduce(
+        (sum: number, om: any) => sum + om.nominal,
         0
       );
-
-      const growthRate = (
-        ((totalRevenueThisMonth - totalRevenueLastMonth) /
-          totalRevenueLastMonth) *
-        100
-      ).toFixed(2);
-
-      const daysInData = new Set(
-        (dataThisMonth ?? []).map((item) =>
-          new Date(item.created_at).toISOString().slice(0, 10)
-        )
-      ).size;
-
-      const averageRevenueThisMonth =
-        daysInData > 0 ? totalRevenueThisMonth / daysInData : 0;
+      const items = order.orders_menus
+        .map((om: any) => om.menus.name)
+        .join(", ");
 
       return {
-        totalRevenueThisMonth,
-        totalRevenueLastMonth,
-        averageRevenueThisMonth,
-        growthRate,
+        No: index + 1,
+        "Order ID": order.order_id,
+        "Nama Santri": order.customer_name,
+        "Jenis Tagihan": items,
+        Nominal: nominal,
+        Status: order.status,
+        Tanggal: new Date(order.created_at).toLocaleDateString("id-ID"),
       };
-    },
-  });
+    });
 
-  const { data: totalOrder } = useQuery({
-    queryKey: ["total-order"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("orders")
-        .select("id", { count: "exact" })
-        .eq("status", "settled")
-        .gte("created_at", thisMonth);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      wb,
+      ws,
+      selectedView === "tunggakan" ? "Tunggakan" : "Pembayaran"
+    );
 
-      return count;
-    },
-  });
+    const fileName = `${
+      selectedView === "tunggakan" ? "Tunggakan" : "Pembayaran"
+    }_${currentMonthStr}.xlsx`;
+    XLSX.writeFile(wb, fileName);
 
-  const { data: lastOrder } = useQuery({
-    queryKey: ["last-order"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("id, order_id, customer_name, status, tables(name, id)")
-        .eq("status", "process")
-        .limit(5)
-        .order("created_at", { ascending: false });
+    toast.success("Data berhasil diekspor ke Excel");
+  };
 
-      return data;
-    },
-  });
+  const isLoading = loadingTunggakan || loadingPembayaran;
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Dashboard Admin</h1>
+        <div className="flex gap-2">
+          <Button
+            variant={selectedView === "tunggakan" ? "default" : "outline"}
+            onClick={() => setSelectedView("tunggakan")}
+            className={
+              selectedView === "tunggakan"
+                ? "bg-teal-500 hover:bg-teal-600"
+                : ""
+            }
+          >
+            Rekapan Tunggakan
+          </Button>
+          <Button
+            variant={selectedView === "pembayaran" ? "default" : "outline"}
+            onClick={() => setSelectedView("pembayaran")}
+            className={
+              selectedView === "pembayaran"
+                ? "bg-teal-500 hover:bg-teal-600"
+                : ""
+            }
+          >
+            Rekapan Pembayaran
+          </Button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+
+      {/* Grafik */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Grafik{" "}
+            {selectedView === "tunggakan"
+              ? "Tunggakan SPP (6 Bulan Terakhir)"
+              : "Pembayaran SPP (6 Bulan Terakhir)"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar
+                dataKey="total"
+                fill={selectedView === "tunggakan" ? "#ef4444" : "#14b8a6"}
+                name={
+                  selectedView === "tunggakan"
+                    ? "Jumlah Tunggakan"
+                    : "Jumlah Pembayaran"
+                }
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Navigasi Bulan & Export */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="text-xl font-semibold">
+            {selectedMonth.toLocaleDateString("id-ID", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h2>
+          <Button variant="outline" size="icon" onClick={handleNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <Button
+          onClick={handleExportExcel}
+          disabled={!currentData || currentData.length === 0}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export to Excel
+        </Button>
+      </div>
+
+      {/* Summary Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardDescription>Total Revenue</CardDescription>
-            <CardTitle className="text-3xl font-bold">
-              {convertIDR(revenue?.totalRevenueThisMonth ?? 0)}
-            </CardTitle>
+            <CardTitle>Total Data</CardTitle>
           </CardHeader>
-          <CardFooter>
-            <div className="text-muted-foreground text-sm">
-              *Revenue this month
-            </div>
-          </CardFooter>
+          <CardContent>
+            <p className="text-3xl font-bold">
+              {currentData?.length || 0} Santri
+            </p>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Average Revenue</CardDescription>
-            <CardTitle className="text-3xl font-bold">
-              {convertIDR(revenue?.averageRevenueThisMonth ?? 0)}
-            </CardTitle>
+            <CardTitle>Total Nominal</CardTitle>
           </CardHeader>
-          <CardFooter>
-            <div className="text-muted-foreground text-sm">
-              *Average per day
-            </div>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Total Order</CardDescription>
-            <CardTitle className="text-3xl font-bold">
-              {totalOrder ?? 0}
-            </CardTitle>
-          </CardHeader>
-          <CardFooter>
-            <div className="text-muted-foreground text-sm">
-              *Order settled this month
-            </div>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Growth Rate</CardDescription>
-            <CardTitle className="text-3xl font-bold">
-              {revenue?.growthRate ?? 0}%
-            </CardTitle>
-          </CardHeader>
-          <CardFooter>
-            <div className="text-muted-foreground text-sm">
-              *Compared to last month
-            </div>
-          </CardFooter>
+          <CardContent>
+            <p className="text-3xl font-bold text-teal-600">
+              {convertIDR(totalNominal)}
+            </p>
+          </CardContent>
         </Card>
       </div>
-      <div className="flex flex-col lg:flex-row gap-4">
-        <Card className="w-full lg:w-2/3">
-          <CardHeader>
-            <CardTitle>Order Create Per Week</CardTitle>
-            <CardDescription>
-              Showing orders from {lastWeek.toLocaleDateString()} to{" "}
-              {new Date().toLocaleDateString()}
-            </CardDescription>
-          </CardHeader>
-          <div className="w-full h-64 p-6">
-            <LineCharts data={orders} />
-          </div>
-        </Card>
-        <Card className="w-full lg:w-1/3">
-          <CardHeader>
-            <CardTitle>Active Order</CardTitle>
-            <CardDescription>Showing last 5 active orders</CardDescription>
-          </CardHeader>
-          <div className="px-6">
-            {lastOrder ? (
-              lastOrder.map((order) => (
-                <div
-                  key={order?.id}
-                  className="flex items-center gap-4 justify-between mb-4"
-                >
-                  <div>
-                    <h3 className="font-semibold">{order?.customer_name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Table:{" "}
-                      {(order?.tables as unknown as { name: string })?.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Order ID: {order?.id}
-                    </p>
-                  </div>
-                  <Link href={`/order/${order?.order_id}`}>
-                    <Button className="mt-2" size="sm">
-                      Detail
-                    </Button>
-                  </Link>
-                </div>
-              ))
-            ) : (
-              <p>No active orders</p>
-            )}
-          </div>
-        </Card>
-      </div>
+
+      {/* Tabel Data */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Daftar{" "}
+            {selectedView === "tunggakan"
+              ? "Santri yang Belum Membayar"
+              : "Santri yang Sudah Membayar"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8">Memuat data...</div>
+          ) : !currentData || currentData.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Tidak ada data untuk bulan ini
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">No</th>
+                    <th className="text-left p-3">Order ID</th>
+                    <th className="text-left p-3">Nama Santri</th>
+                    <th className="text-left p-3">Jenis Tagihan</th>
+                    <th className="text-right p-3">Nominal</th>
+                    <th className="text-center p-3">Status</th>
+                    <th className="text-left p-3">Tanggal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentData.map((order: any, index: number) => {
+                    const nominal = order.orders_menus.reduce(
+                      (sum: number, om: any) => sum + om.nominal,
+                      0
+                    );
+                    return (
+                      <tr key={order.id} className="border-b hover:bg-muted/50">
+                        <td className="p-3">{index + 1}</td>
+                        <td className="p-3 font-mono text-sm">
+                          {order.order_id}
+                        </td>
+                        <td className="p-3 font-medium">
+                          {order.customer_name}
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground">
+                          {order.orders_menus
+                            .map((om: any) => om.menus.name)
+                            .join(", ")}
+                        </td>
+                        <td className="p-3 text-right font-semibold">
+                          {convertIDR(nominal)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              order.status === "settled"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {order.status === "settled"
+                              ? "Lunas"
+                              : "Belum Bayar"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm">
+                          {new Date(order.created_at).toLocaleDateString(
+                            "id-ID"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 font-bold">
+                    <td colSpan={4} className="p-3 text-right">
+                      Total:
+                    </td>
+                    <td className="p-3 text-right text-teal-600">
+                      {convertIDR(totalNominal)}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
+}
+
+// Helper functions
+function getNextMonth(monthStr: string): string {
+  const date = new Date(monthStr + "-01");
+  date.setMonth(date.getMonth() + 1);
+  return date.toISOString().slice(0, 7) + "-01";
+}
+
+function formatMonthName(monthStr: string): string {
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Agu",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des",
+  ];
+  const [year, month] = monthStr.split("-");
+  return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
 }
