@@ -5,6 +5,14 @@ export const HEADER_TABLE_MENU = [
   "Price",
   "Available",
   "Action",
+  "periode",
+  "uang_makan",
+  "uang_asrama",
+  "kas_pondok",
+  "shoaqoh_sukkarela",
+  "jariyah_sb",
+  "uang_tahunan",
+  "iuran_kampung",
 ];
 
 export const CATEGORY_LIST = [
