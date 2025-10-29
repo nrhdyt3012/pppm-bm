@@ -4,7 +4,6 @@ export const HEADER_TABLE_MENU = [
   "Category",
   "Price",
   "Available",
-  "Action",
   "periode",
   "uang_makan",
   "uang_asrama",
@@ -13,6 +12,7 @@ export const HEADER_TABLE_MENU = [
   "jariyah_sb",
   "uang_tahunan",
   "iuran_kampung",
+  "Action",
 ];
 
 export const CATEGORY_LIST = [
@@ -31,13 +31,6 @@ export const CATEGORY_LIST = [
 ];
 
 export const INITIAL_MENU = {
-  name: "",
-  description: "",
-  price: "",
-  discount: "",
-  category: "",
-  image_url: "",
-  is_available: "",
   periode: "",
   uang_makan: "",
   uang_asrama: "",
