@@ -21,6 +21,15 @@ export const INITIAL_STATE_PROFILE = {
 
 export const INITIAL_CREATE_USER_FORM = {
   name: "",
+  jenis_kelamin: "",
+  tempat_lahir: "",
+  tanggal_lahir: "",
+  jurusan: "",
+  universitas: "",
+  nama_ayah: "",
+  pekerjaan_ayah: "",
+  nama_ibu: "",
+  pekerjaan_ibu: "",
   role: "",
   avatar_url: "",
   email: "",
@@ -33,6 +42,15 @@ export const INITIAL_STATE_CREATE_USER = {
     email: [],
     password: [],
     name: [],
+    jenis_kelamin: [],
+    tempat_lahir: [],
+    tanggal_lahir: [],
+    jurusan: [],
+    universitas: [],
+    nama_ayah: [],
+    pekerjaan_ayah: [],
+    nama_ibu: [],
+    pekerjaan_ibu: [],
     role: [],
     avatar_url: [],
     _form: [],
@@ -43,6 +61,15 @@ export const INITIAL_STATE_UPDATE_USER = {
   status: "idle",
   errors: {
     name: [],
+    jenis_kelamin: [],
+    tempat_lahir: [],
+    tanggal_lahir: [],
+    jurusan: [],
+    universitas: [],
+    nama_ayah: [],
+    pekerjaan_ayah: [],
+    nama_ibu: [],
+    pekerjaan_ibu: [],
     role: [],
     avatar_url: [],
     _form: [],
@@ -55,22 +82,18 @@ export const ROLE_LIST = [
     label: "Admin",
   },
   {
-    value: "kitchen",
-    label: "Kitchen",
-  },
-  {
-    value: "cashier",
-    label: "Cashier",
+    value: "santri",
+    label: "Santri",
   },
 ];
 
-export const AVAILABILITY_LIST = [
+export const JENIS_KELAMIN_LIST = [
   {
-    value: "true",
-    label: "Available",
+    value: "Laki-laki",
+    label: "Laki-laki",
   },
   {
-    value: "false",
-    label: "Not Available",
+    value: "Perempuan",
+    label: "Perempuan",
   },
 ];

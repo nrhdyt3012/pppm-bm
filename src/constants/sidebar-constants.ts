@@ -1,4 +1,11 @@
-import { Album, FileText, LayoutDashboard, Receipt, Users } from "lucide-react";
+import {
+  FileText,
+  LayoutDashboard,
+  Receipt,
+  Users,
+  UserCircle,
+  History,
+} from "lucide-react";
 
 export const SIDEBAR_MENU_LIST = {
   admin: [
@@ -23,18 +30,21 @@ export const SIDEBAR_MENU_LIST = {
       icon: Users,
     },
   ],
-  cashier: [
+  santri: [
     {
-      title: "Tagihan Santri",
-      url: "/order",
-      icon: Album,
+      title: "Info Santri",
+      url: "/santri/info",
+      icon: UserCircle,
     },
-  ],
-  kitchen: [
     {
-      title: "Tagihan Santri",
-      url: "/order",
-      icon: Album,
+      title: "Tagihan SPP",
+      url: "/santri/tagihan",
+      icon: Receipt,
+    },
+    {
+      title: "Riwayat Pembayaran",
+      url: "/santri/riwayat",
+      icon: History,
     },
   ],
 };

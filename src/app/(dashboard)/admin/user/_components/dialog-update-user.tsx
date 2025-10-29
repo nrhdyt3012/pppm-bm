@@ -57,13 +57,13 @@ export default function DialogUpdateUser({
 
   useEffect(() => {
     if (updateUserState?.status === "error") {
-      toast.error("Update User Failed", {
+      toast.error("Update Santri Gagal", {
         description: updateUserState.errors?._form?.[0],
       });
     }
 
     if (updateUserState?.status === "success") {
-      toast.success("Update User Success");
+      toast.success("Data Santri Berhasil Diubah");
       form.reset();
       handleChangeAction?.(false);
       refetch();
@@ -73,6 +73,15 @@ export default function DialogUpdateUser({
   useEffect(() => {
     if (currentData) {
       form.setValue("name", currentData.name as string);
+      form.setValue("jenis_kelamin", currentData.jenis_kelamin as string);
+      form.setValue("tempat_lahir", currentData.tempat_lahir as string);
+      form.setValue("tanggal_lahir", currentData.tanggal_lahir as string);
+      form.setValue("jurusan", currentData.jurusan as string);
+      form.setValue("universitas", currentData.universitas as string);
+      form.setValue("nama_ayah", currentData.nama_ayah as string);
+      form.setValue("pekerjaan_ayah", currentData.pekerjaan_ayah as string);
+      form.setValue("nama_ibu", currentData.nama_ibu as string);
+      form.setValue("pekerjaan_ibu", currentData.pekerjaan_ibu as string);
       form.setValue("role", currentData.role as string);
       form.setValue("avatar_url", currentData.avatar_url as string);
       setPreview({

@@ -8,8 +8,8 @@ export default async function Home() {
   // Redirect berdasarkan role
   if (profile.role === "admin") {
     redirect("/admin");
-  } else if (profile.role === "kitchen" || profile.role === "cashier") {
-    redirect("/order");
+  } else if (profile.role === "santri") {
+    redirect("/santri/info");
   }
 
   // Fallback jika tidak ada role

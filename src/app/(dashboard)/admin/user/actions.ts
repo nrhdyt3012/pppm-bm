@@ -13,6 +13,15 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     email: formData.get("email"),
     password: formData.get("password"),
     name: formData.get("name"),
+    jenis_kelamin: formData.get("jenis_kelamin"),
+    tempat_lahir: formData.get("tempat_lahir"),
+    tanggal_lahir: formData.get("tanggal_lahir"),
+    jurusan: formData.get("jurusan"),
+    universitas: formData.get("universitas"),
+    nama_ayah: formData.get("nama_ayah"),
+    pekerjaan_ayah: formData.get("pekerjaan_ayah"),
+    nama_ibu: formData.get("nama_ibu"),
+    pekerjaan_ibu: formData.get("pekerjaan_ibu"),
     role: formData.get("role"),
     avatar_url: formData.get("avatar_url"),
   });
@@ -60,6 +69,15 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     options: {
       data: {
         name: validatedFields.data.name,
+        jenis_kelamin: validatedFields.data.jenis_kelamin,
+        tempat_lahir: validatedFields.data.tempat_lahir,
+        tanggal_lahir: validatedFields.data.tanggal_lahir,
+        jurusan: validatedFields.data.jurusan,
+        universitas: validatedFields.data.universitas,
+        nama_ayah: validatedFields.data.nama_ayah,
+        pekerjaan_ayah: validatedFields.data.pekerjaan_ayah,
+        nama_ibu: validatedFields.data.nama_ibu,
+        pekerjaan_ibu: validatedFields.data.pekerjaan_ibu,
         role: validatedFields.data.role,
         avatar_url: validatedFields.data.avatar_url,
       },
@@ -84,6 +102,15 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
 export async function updateUser(prevState: AuthFormState, formData: FormData) {
   let validatedFields = updateUserSchema.safeParse({
     name: formData.get("name"),
+    jenis_kelamin: formData.get("jenis_kelamin"),
+    tempat_lahir: formData.get("tempat_lahir"),
+    tanggal_lahir: formData.get("tanggal_lahir"),
+    jurusan: formData.get("jurusan"),
+    universitas: formData.get("universitas"),
+    nama_ayah: formData.get("nama_ayah"),
+    pekerjaan_ayah: formData.get("pekerjaan_ayah"),
+    nama_ibu: formData.get("nama_ibu"),
+    pekerjaan_ibu: formData.get("pekerjaan_ibu"),
     role: formData.get("role"),
     avatar_url: formData.get("avatar_url"),
   });
@@ -131,6 +158,15 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
     .from("profiles")
     .update({
       name: validatedFields.data.name,
+      jenis_kelamin: validatedFields.data.jenis_kelamin,
+      tempat_lahir: validatedFields.data.tempat_lahir,
+      tanggal_lahir: validatedFields.data.tanggal_lahir,
+      jurusan: validatedFields.data.jurusan,
+      universitas: validatedFields.data.universitas,
+      nama_ayah: validatedFields.data.nama_ayah,
+      pekerjaan_ayah: validatedFields.data.pekerjaan_ayah,
+      nama_ibu: validatedFields.data.nama_ibu,
+      pekerjaan_ibu: validatedFields.data.pekerjaan_ibu,
       role: validatedFields.data.role,
       avatar_url: validatedFields.data.avatar_url,
     })
