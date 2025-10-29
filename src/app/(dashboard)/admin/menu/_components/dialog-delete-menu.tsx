@@ -1,3 +1,4 @@
+// src/app/(dashboard)/admin/menu/_components/dialog-delete-menu.tsx
 import DialogDelete from "@/components/common/dialog-delete";
 import { startTransition, useActionState, useEffect } from "react";
 import { deleteMenu } from "../actions";
@@ -22,7 +23,6 @@ export default function DialogDeleteMenu({
   const onSubmit = () => {
     const formData = new FormData();
     formData.append("id", currentData!.id as string);
-    formData.append("image_url", currentData!.image_url as string);
     startTransition(() => {
       deleteMenuAction(formData);
     });
@@ -30,13 +30,13 @@ export default function DialogDeleteMenu({
 
   useEffect(() => {
     if (deleteMenuState?.status === "error") {
-      toast.error("Delete Menu Failed", {
+      toast.error("Gagal Menghapus Tagihan", {
         description: deleteMenuState.errors?._form?.[0],
       });
     }
 
     if (deleteMenuState?.status === "success") {
-      toast.success("Delete Menu Success");
+      toast.success("Tagihan Berhasil Dihapus");
       handleChangeAction?.(false);
       refetch();
     }
@@ -48,7 +48,7 @@ export default function DialogDeleteMenu({
       onOpenChange={handleChangeAction}
       isLoading={isPendingDeleteMenu}
       onSubmit={onSubmit}
-      title="Menu"
+      title="Tagihan"
     />
   );
 }

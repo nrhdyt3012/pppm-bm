@@ -9,7 +9,7 @@ export const SIDEBAR_MENU_LIST = {
     },
     {
       title: "Tagihan Santri",
-      url: "/order",
+      url: "/admin/order",
       icon: Receipt,
     },
     {

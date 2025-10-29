@@ -1,3 +1,4 @@
+// src/app/(dashboard)/admin/menu/_components/menu.tsx
 "use client";
 
 import DataTable from "@/components/common/data-table";
@@ -12,8 +13,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Menu } from "@/validations/menu-validation";
-import Image from "next/image";
-import { cn, convertIDR } from "@/lib/utils";
+import { convertIDR } from "@/lib/utils";
 import { HEADER_TABLE_MENU } from "@/constants/menu-constant";
 import DialogCreateMenu from "./dialog-create-menu";
 import DialogUpdateMenu from "./dialog-update-menu";
@@ -29,6 +29,7 @@ export default function MenuManagement() {
     handleChangeLimit,
     handleChangeSearch,
   } = useDataTable();
+
   const {
     data: menus,
     isLoading,
@@ -40,11 +41,11 @@ export default function MenuManagement() {
         .from("menus")
         .select("*", { count: "exact" })
         .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
-        .order("created_at");
+        .order("created_at", { ascending: false });
 
       if (currentSearch) {
         query.or(
-          `name.ilike.%${currentSearch}%,category.ilike.%${currentSearch}%`
+          `periode.ilike.%${currentSearch}%,description.ilike.%${currentSearch}%`
         );
       }
 
@@ -70,36 +71,30 @@ export default function MenuManagement() {
 
   const filteredData = useMemo(() => {
     return (menus?.data || []).map((menu: Menu, index) => {
+      const total =
+        (menu.uang_makan || 0) +
+        (menu.asrama || 0) +
+        (menu.kas_pondok || 0) +
+        (menu.shodaqoh_sukarela || 0) +
+        (menu.jariyah_sb || 0) +
+        (menu.uang_tahunan || 0) +
+        (menu.iuran_kampung || 0);
+
       return [
         currentLimit * (currentPage - 1) + index + 1,
-        <div className="flex items-center gap-2">
-          <Image
-            src={menu.image_url as string}
-            alt={menu.name}
-            width={40}
-            height={40}
-            className="rounded"
-          />
-          {menu.name}
+        <div key={`periode-${menu.id}`}>
+          <p className="font-bold">{menu.periode}</p>
+          <p className="text-xs text-muted-foreground">{menu.description}</p>
         </div>,
-        menu.category,
-        <div>
-          <p>Base: {convertIDR(menu.price)}</p>
-          <p>Discount: {menu.discount}</p>
-          <p>
-            After Discount:{" "}
-            {convertIDR(menu.price - (menu.price * menu.discount) / 100)}
-          </p>
-        </div>,
-        <div
-          className={cn(
-            "px-2 py-1 rounded-full text-white w-fit",
-            menu.is_available ? "bg-green-600" : "bg-red-500"
-          )}
-        >
-          {menu.is_available ? "Available" : "Not Available"}
-        </div>,
+        convertIDR(menu.uang_makan || 0),
+        convertIDR(menu.asrama || 0),
+        convertIDR(menu.kas_pondok || 0),
+        convertIDR(menu.shodaqoh_sukarela || 0),
+        convertIDR(menu.jariyah_sb || 0),
+        convertIDR(menu.uang_tahunan || 0),
+        convertIDR(menu.iuran_kampung || 0),
         <DropdownAction
+          key={`action-${menu.id}`}
           menu={[
             {
               label: (
@@ -148,12 +143,12 @@ export default function MenuManagement() {
         <h1 className="text-2xl font-bold">Kelola Tagihan</h1>
         <div className="flex gap-2">
           <Input
-            placeholder="Search..."
+            placeholder="Cari periode atau keterangan..."
             onChange={(e) => handleChangeSearch(e.target.value)}
           />
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline">Create</Button>
+              <Button variant="outline">Buat Tagihan</Button>
             </DialogTrigger>
             <DialogCreateMenu refetch={refetch} />
           </Dialog>

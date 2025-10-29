@@ -1,19 +1,22 @@
+// src/app/(dashboard)/admin/menu/actions.tsx
 "use server";
 
-import { deleteFile, uploadFile } from "@/actions/storage-action";
 import { createClient } from "@/lib/supabase/server";
 import { MenuFormState } from "@/types/menu";
 import { menuSchema } from "@/validations/menu-validation";
 
 export async function createMenu(prevState: MenuFormState, formData: FormData) {
-  let validatedFields = menuSchema.safeParse({
-    name: formData.get("name"),
+  const validatedFields = menuSchema.safeParse({
+    periode: formData.get("periode"),
     description: formData.get("description"),
-    price: parseFloat(formData.get("price") as string),
-    discount: parseFloat(formData.get("discount") as string),
-    category: formData.get("category"),
-    image_url: formData.get("image_url"),
-    is_available: formData.get("is_available") === "true" ? true : false,
+    uang_makan: parseFloat(formData.get("uang_makan") as string) || 0,
+    asrama: parseFloat(formData.get("asrama") as string) || 0,
+    kas_pondok: parseFloat(formData.get("kas_pondok") as string) || 0,
+    shodaqoh_sukarela:
+      parseFloat(formData.get("shodaqoh_sukarela") as string) || 0,
+    jariyah_sb: parseFloat(formData.get("jariyah_sb") as string) || 0,
+    uang_tahunan: parseFloat(formData.get("uang_tahunan") as string) || 0,
+    iuran_kampung: parseFloat(formData.get("iuran_kampung") as string) || 0,
   });
 
   if (!validatedFields.success) {
@@ -26,41 +29,18 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
     };
   }
 
-  if (validatedFields.data.image_url instanceof File) {
-    const { errors, data } = await uploadFile(
-      "images",
-      "menus",
-      validatedFields.data.image_url
-    );
-    if (errors) {
-      return {
-        status: "error",
-        errors: {
-          ...prevState.errors,
-          _form: [...errors._form],
-        },
-      };
-    }
-
-    validatedFields = {
-      ...validatedFields,
-      data: {
-        ...validatedFields.data,
-        image_url: data.url,
-      },
-    };
-  }
-
   const supabase = await createClient();
 
   const { error } = await supabase.from("menus").insert({
-    name: validatedFields.data.name,
+    periode: validatedFields.data.periode,
     description: validatedFields.data.description,
-    price: validatedFields.data.price,
-    discount: validatedFields.data.discount,
-    category: validatedFields.data.category,
-    image_url: validatedFields.data.image_url,
-    is_available: validatedFields.data.is_available,
+    uang_makan: validatedFields.data.uang_makan,
+    asrama: validatedFields.data.asrama,
+    kas_pondok: validatedFields.data.kas_pondok,
+    shodaqoh_sukarela: validatedFields.data.shodaqoh_sukarela,
+    jariyah_sb: validatedFields.data.jariyah_sb,
+    uang_tahunan: validatedFields.data.uang_tahunan,
+    iuran_kampung: validatedFields.data.iuran_kampung,
   });
 
   if (error) {
@@ -79,14 +59,17 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
 }
 
 export async function updateMenu(prevState: MenuFormState, formData: FormData) {
-  let validatedFields = menuSchema.safeParse({
-    name: formData.get("name"),
+  const validatedFields = menuSchema.safeParse({
+    periode: formData.get("periode"),
     description: formData.get("description"),
-    price: parseFloat(formData.get("price") as string),
-    discount: parseFloat(formData.get("discount") as string),
-    category: formData.get("category"),
-    image_url: formData.get("image_url"),
-    is_available: formData.get("is_available") === "true" ? true : false,
+    uang_makan: parseFloat(formData.get("uang_makan") as string) || 0,
+    asrama: parseFloat(formData.get("asrama") as string) || 0,
+    kas_pondok: parseFloat(formData.get("kas_pondok") as string) || 0,
+    shodaqoh_sukarela:
+      parseFloat(formData.get("shodaqoh_sukarela") as string) || 0,
+    jariyah_sb: parseFloat(formData.get("jariyah_sb") as string) || 0,
+    uang_tahunan: parseFloat(formData.get("uang_tahunan") as string) || 0,
+    iuran_kampung: parseFloat(formData.get("iuran_kampung") as string) || 0,
   });
 
   if (!validatedFields.success) {
@@ -99,45 +82,20 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
     };
   }
 
-  if (validatedFields.data.image_url instanceof File) {
-    const oldImageUrl = formData.get("old_image_url") as string;
-    const { errors, data } = await uploadFile(
-      "images",
-      "menus",
-      validatedFields.data.image_url,
-      oldImageUrl.split("/images/")[1]
-    );
-    if (errors) {
-      return {
-        status: "error",
-        errors: {
-          ...prevState.errors,
-          _form: [...errors._form],
-        },
-      };
-    }
-
-    validatedFields = {
-      ...validatedFields,
-      data: {
-        ...validatedFields.data,
-        image_url: data.url,
-      },
-    };
-  }
-
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("menus")
     .update({
-      name: validatedFields.data.name,
+      periode: validatedFields.data.periode,
       description: validatedFields.data.description,
-      price: validatedFields.data.price,
-      discount: validatedFields.data.discount,
-      category: validatedFields.data.category,
-      image_url: validatedFields.data.image_url,
-      is_available: validatedFields.data.is_available,
+      uang_makan: validatedFields.data.uang_makan,
+      asrama: validatedFields.data.asrama,
+      kas_pondok: validatedFields.data.kas_pondok,
+      shodaqoh_sukarela: validatedFields.data.shodaqoh_sukarela,
+      jariyah_sb: validatedFields.data.jariyah_sb,
+      uang_tahunan: validatedFields.data.uang_tahunan,
+      iuran_kampung: validatedFields.data.iuran_kampung,
     })
     .eq("id", formData.get("id"));
 
@@ -158,21 +116,6 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
 
 export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
   const supabase = await createClient();
-  const image = formData.get("image_url") as string;
-  const { status, errors } = await deleteFile(
-    "images",
-    image.split("/images/")[1]
-  );
-
-  if (status === "error") {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [errors?._form?.[0] ?? "Unknown error"],
-      },
-    };
-  }
 
   const { error } = await supabase
     .from("menus")

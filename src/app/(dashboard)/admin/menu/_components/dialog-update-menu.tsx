@@ -1,9 +1,9 @@
+// src/app/(dashboard)/admin/menu/_components/dialog-update-menu.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { updateMenu } from "../actions";
 import { toast } from "sonner";
-import { Preview } from "@/types/general";
 import FormMenu from "./form-menu";
 import { Dialog } from "@radix-ui/react-dialog";
 import { Menu, MenuForm, menuFormSchema } from "@/validations/menu-validation";
@@ -27,20 +27,11 @@ export default function DialogUpdateMenu({
   const [updateMenuState, updateMenuAction, isPendingUpdateMenu] =
     useActionState(updateMenu, INITIAL_STATE_MENU);
 
-  const [preview, setPreview] = useState<Preview | undefined>(undefined);
-
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
-    if (currentData?.image_url !== data.image_url) {
-      Object.entries(data).forEach(([key, value]) => {
-        formData.append(key, key === "image_url" ? preview!.file ?? "" : value);
-      });
-      formData.append("old_image_url", currentData?.image_url ?? "");
-    } else {
-      Object.entries(data).forEach(([Key, value]) => {
-        formData.append(Key, value);
-      });
-    }
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
     formData.append("id", currentData?.id ?? "");
 
     startTransition(() => {
@@ -50,13 +41,13 @@ export default function DialogUpdateMenu({
 
   useEffect(() => {
     if (updateMenuState?.status === "error") {
-      toast.error("Update Menu Failed", {
+      toast.error("Gagal Mengubah Tagihan", {
         description: updateMenuState.errors?._form?.[0],
       });
     }
 
     if (updateMenuState?.status === "success") {
-      toast.success("Update Menu Success");
+      toast.success("Tagihan Berhasil Diubah");
       form.reset();
       handleChangeAction?.(false);
       refetch();
@@ -65,17 +56,18 @@ export default function DialogUpdateMenu({
 
   useEffect(() => {
     if (currentData) {
-      form.setValue("name", currentData.name);
+      form.setValue("periode", currentData.periode);
       form.setValue("description", currentData.description);
-      form.setValue("price", currentData.price.toString());
-      form.setValue("discount", currentData.discount.toString());
-      form.setValue("category", currentData.category);
-      form.setValue("is_available", currentData.is_available.toString());
-      form.setValue("image_url", currentData.image_url);
-      setPreview({
-        file: new File([], currentData.image_url as string),
-        displayUrl: currentData.image_url as string,
-      });
+      form.setValue("uang_makan", currentData.uang_makan.toString());
+      form.setValue("asrama", currentData.asrama.toString());
+      form.setValue("kas_pondok", currentData.kas_pondok.toString());
+      form.setValue(
+        "shodaqoh_sukarela",
+        currentData.shodaqoh_sukarela.toString()
+      );
+      form.setValue("jariyah_sb", currentData.jariyah_sb.toString());
+      form.setValue("uang_tahunan", currentData.uang_tahunan.toString());
+      form.setValue("iuran_kampung", currentData.iuran_kampung.toString());
     }
   }, [currentData]);
 
@@ -86,8 +78,6 @@ export default function DialogUpdateMenu({
         onSubmit={onSubmit}
         isLoading={isPendingUpdateMenu}
         type="Update"
-        preview={preview}
-        setPreview={setPreview}
       />
     </Dialog>
   );

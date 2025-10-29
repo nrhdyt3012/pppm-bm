@@ -51,11 +51,7 @@ export default function CreateOrder() {
   const { data: menuList, isLoading: loadingMenu } = useQuery({
     queryKey: ["menus"],
     queryFn: async () => {
-      const result = await supabase
-        .from("menus")
-        .select("*")
-        .eq("is_available", true)
-        .order("name");
+      const result = await supabase.from("menus").select("*").order("periode");
 
       if (result.error) {
         toast.error("Gagal memuat data tagihan", {
@@ -152,7 +148,7 @@ export default function CreateOrder() {
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold">{menu.name}</h3>
+                        <h3 className="font-semibold">{menu.periode}</h3>
                         <p className="text-sm text-muted-foreground mt-1">
                           {menu.description}
                         </p>

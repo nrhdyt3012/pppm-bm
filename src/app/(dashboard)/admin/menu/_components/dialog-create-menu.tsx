@@ -1,9 +1,9 @@
+// src/app/(dashboard)/admin/menu/_components/dialog-create-menu.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { createMenu } from "../actions";
 import { toast } from "sonner";
-import { Preview } from "@/types/general";
 import { MenuForm, menuFormSchema } from "@/validations/menu-validation";
 import { INITIAL_MENU, INITIAL_STATE_MENU } from "@/constants/menu-constant";
 import FormMenu from "./form-menu";
@@ -17,12 +17,10 @@ export default function DialogCreateMenu({ refetch }: { refetch: () => void }) {
   const [createMenuState, createMenuAction, isPendingCreateMenu] =
     useActionState(createMenu, INITIAL_STATE_MENU);
 
-  const [preview, setPreview] = useState<Preview | undefined>(undefined);
-
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, key === "image_url" ? preview!.file ?? "" : value);
+      formData.append(key, value);
     });
 
     startTransition(() => {
@@ -32,15 +30,14 @@ export default function DialogCreateMenu({ refetch }: { refetch: () => void }) {
 
   useEffect(() => {
     if (createMenuState?.status === "error") {
-      toast.error("Create Menu Failed", {
+      toast.error("Gagal Membuat Tagihan", {
         description: createMenuState.errors?._form?.[0],
       });
     }
 
     if (createMenuState?.status === "success") {
-      toast.success("Create Menu Success");
+      toast.success("Tagihan Berhasil Dibuat");
       form.reset();
-      setPreview(undefined);
       document.querySelector<HTMLButtonElement>('[data-state="open"]')?.click();
       refetch();
     }
@@ -52,8 +49,6 @@ export default function DialogCreateMenu({ refetch }: { refetch: () => void }) {
       onSubmit={onSubmit}
       isLoading={isPendingCreateMenu}
       type="Create"
-      preview={preview}
-      setPreview={setPreview}
     />
   );
 }

@@ -1,6 +1,5 @@
-import FormImage from "@/components/common/form-image";
+// src/app/(dashboard)/admin/menu/_components/form-menu.tsx
 import FormInput from "@/components/common/form-input";
-import FormSelect from "@/components/common/form-select";
 import { Button } from "@/components/ui/button";
 import {
   DialogClose,
@@ -11,9 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { AVAILABILITY_LIST } from "@/constants/auth-constant";
-import { CATEGORY_LIST } from "@/constants/menu-constant";
-import { Preview } from "@/types/general";
 import { Loader2 } from "lucide-react";
 import { FormEvent } from "react";
 import { FieldValues, Path, UseFormReturn } from "react-hook-form";
@@ -23,79 +19,103 @@ export default function FormMenu<T extends FieldValues>({
   onSubmit,
   isLoading,
   type,
-  preview,
-  setPreview,
 }: {
   form: UseFormReturn<T>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
   type: "Create" | "Update";
-  preview?: Preview;
-  setPreview?: (preview: Preview) => void;
 }) {
   return (
-    <DialogContent className="sm:max-w-[425px] max-h-[90vh]">
+    <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
       <Form {...form}>
         <DialogHeader>
-          <DialogTitle>{type} Menu</DialogTitle>
+          <DialogTitle>{type} Tagihan</DialogTitle>
           <DialogDescription>
-            {type === "Create" ? "Add a new menu" : "Make changes menu here"}
+            {type === "Create"
+              ? "Tambah tagihan periode baru"
+              : "Ubah data tagihan periode"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-4 max-h-[50vh] px-1 overflow-y-auto">
+          <div className="space-y-4 max-h-[60vh] px-1 overflow-y-auto">
             <FormInput
               form={form}
-              name={"name" as Path<T>}
-              label="Name"
-              placeholder="Insert name here"
+              name={"periode" as Path<T>}
+              label="Periode"
+              placeholder="Contoh: Januari 2024"
             />
             <FormInput
               form={form}
               name={"description" as Path<T>}
-              label="Description"
-              placeholder="Insert description here"
+              label="Keterangan"
+              placeholder="Keterangan periode tagihan"
               type="textarea"
             />
-            <FormSelect
-              form={form}
-              name={"category" as Path<T>}
-              label="Category"
-              selectItem={CATEGORY_LIST}
-            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput
+                form={form}
+                name={"uang_makan" as Path<T>}
+                label="Uang Makan"
+                placeholder="0"
+                type="number"
+              />
+              <FormInput
+                form={form}
+                name={"asrama" as Path<T>}
+                label="Asrama"
+                placeholder="0"
+                type="number"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput
+                form={form}
+                name={"kas_pondok" as Path<T>}
+                label="Kas Pondok"
+                placeholder="0"
+                type="number"
+              />
+              <FormInput
+                form={form}
+                name={"shodaqoh_sukarela" as Path<T>}
+                label="Shodaqoh Sukarela"
+                placeholder="0"
+                type="number"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput
+                form={form}
+                name={"jariyah_sb" as Path<T>}
+                label="Jariyah SB"
+                placeholder="0"
+                type="number"
+              />
+              <FormInput
+                form={form}
+                name={"uang_tahunan" as Path<T>}
+                label="Uang Tahunan"
+                placeholder="0"
+                type="number"
+              />
+            </div>
+
             <FormInput
               form={form}
-              name={"price" as Path<T>}
-              label="Price"
-              placeholder="Insert price here"
+              name={"iuran_kampung" as Path<T>}
+              label="Iuran Kampung"
+              placeholder="0"
               type="number"
-            />
-            <FormInput
-              form={form}
-              name={"discount" as Path<T>}
-              label="Discount"
-              placeholder="Insert discount here"
-              type="number"
-            />
-            <FormImage
-              form={form}
-              name={"image_url" as Path<T>}
-              label="Image"
-              preview={preview}
-              setPreview={setPreview}
-            />
-            <FormSelect
-              form={form}
-              name={"is_available" as Path<T>}
-              label="Availability"
-              selectItem={AVAILABILITY_LIST}
             />
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">Batal</Button>
             </DialogClose>
-            <Button type="submit">
+            <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
               {isLoading ? <Loader2 className="animate-spin" /> : type}
             </Button>
           </DialogFooter>

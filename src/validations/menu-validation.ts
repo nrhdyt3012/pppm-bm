@@ -1,26 +1,28 @@
+// src/validations/menu-validation.ts
 import z from "zod";
 
 export const menuFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  periode: z.string().min(1, "Periode is required"),
   description: z.string().min(1, "Description is required"),
-  price: z.string().min(1, "Price is required"),
-  discount: z.string().min(1, "Discount is required"),
-  category: z.string().min(1, "Category is required"),
-  image_url: z.union([
-    z.string().min(1, "Image URL is required"),
-    z.instanceof(File),
-  ]),
-  is_available: z.string().min(1, "Availability is required"),
+  uang_makan: z.string().min(1, "Uang Makan is required"),
+  asrama: z.string().min(1, "Asrama is required"),
+  kas_pondok: z.string().min(1, "Kas Pondok is required"),
+  shodaqoh_sukarela: z.string().min(1, "Shodaqoh Sukarela is required"),
+  jariyah_sb: z.string().min(1, "Jariyah SB is required"),
+  uang_tahunan: z.string().min(1, "Uang Tahunan is required"),
+  iuran_kampung: z.string().min(1, "Iuran Kampung is required"),
 });
 
 export const menuSchema = z.object({
-  name: z.string(),
+  periode: z.string(),
   description: z.string(),
-  price: z.number(),
-  discount: z.number(),
-  category: z.string(),
-  image_url: z.union([z.string(), z.instanceof(File)]),
-  is_available: z.boolean(),
+  uang_makan: z.number(),
+  asrama: z.number(),
+  kas_pondok: z.number(),
+  shodaqoh_sukarela: z.number(),
+  jariyah_sb: z.number(),
+  uang_tahunan: z.number(),
+  iuran_kampung: z.number(),
 });
 
 export type MenuForm = z.infer<typeof menuFormSchema>;
