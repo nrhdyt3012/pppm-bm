@@ -1,6 +1,6 @@
 "use client";
 
-import { Coffee, EllipsisVertical, LogOut, School2 } from "lucide-react";
+import { School2, EllipsisVertical } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -29,13 +29,14 @@ import {
 } from "../../constants/sidebar-constants";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { signOut } from "@/actions/auth-action";
 import { useAuthStore } from "@/stores/auth-store";
+import LogoutDialog from "./logout-dialog";
 
 export default function AppSidebar() {
   const { isMobile } = useSidebar();
   const pathname = usePathname();
   const profile = useAuthStore((state) => state.profile);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -129,9 +130,8 @@ export default function AppSidebar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => signOut()}>
-                    <LogOut />
-                    Logout
+                  <DropdownMenuItem asChild>
+                    <LogoutDialog />
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
