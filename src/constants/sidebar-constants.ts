@@ -5,6 +5,8 @@ import {
   Users,
   UserCircle,
   History,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 
 export const SIDEBAR_MENU_LIST = {
@@ -13,6 +15,16 @@ export const SIDEBAR_MENU_LIST = {
       title: "Dashboard",
       url: "/admin",
       icon: LayoutDashboard,
+    },
+    {
+      title: "Rekapan Pembayaran",
+      url: "/admin/rekapan-pembayaran",
+      icon: CheckCircle,
+    },
+    {
+      title: "Rekapan Tunggakan",
+      url: "/admin/rekapan-tunggakan",
+      icon: AlertCircle,
     },
     {
       title: "Tagihan Santri",

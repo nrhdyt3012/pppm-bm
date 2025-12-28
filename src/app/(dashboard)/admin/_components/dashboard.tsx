@@ -1,452 +1,293 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Users, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import * as XLSX from "xlsx";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-type ViewType = "tunggakan" | "pembayaran";
 
 export default function Dashboard() {
   const supabase = createClient();
-  const [selectedView, setSelectedView] = useState<ViewType>("tunggakan");
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  // Format bulan untuk query
-  const currentMonthStr = useMemo(() => {
-    return selectedMonth.toISOString().slice(0, 7); // Format: YYYY-MM
-  }, [selectedMonth]);
+  // Get current month
+  const currentMonth = new Date().toISOString().slice(0, 7);
 
-  // Query untuk data tunggakan
-  const { data: tunggakanData, isLoading: loadingTunggakan } = useQuery({
-    queryKey: ["tunggakan-data", currentMonthStr],
+  // Query untuk Sensus Santri
+  const { data: santriStats } = useQuery({
+    queryKey: ["santri-stats"],
     queryFn: async () => {
-      // Ambil data orders dengan status belum lunas
-      const { data: orders, error } = await supabase
-        .from("orders")
-        .select(
-          `
-          id,
-          order_id,
-          customer_name,
-          status,
-          created_at,
-          orders_menus(
-            nominal,
-            menus(name)
-          )
-        `
-        )
-        .neq("status", "settled")
-        .gte("created_at", `${currentMonthStr}-01`)
-        .lt("created_at", getNextMonth(currentMonthStr))
-        .order("created_at");
+      // Total santri
+      const { count: totalSantri } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .neq("role", "admin");
 
-      if (error) {
-        toast.error("Gagal memuat data tunggakan", {
-          description: error.message,
-        });
-        return [];
-      }
+      // Santri laki-laki
+      const { count: santriLaki } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("jenis_kelamin", "Laki-laki")
+        .neq("role", "admin");
 
-      return orders || [];
+      // Santri perempuan
+      const { count: santriPerempuan } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("jenis_kelamin", "Perempuan")
+        .neq("role", "admin");
+
+      return {
+        total: totalSantri || 0,
+        lakiLaki: santriLaki || 0,
+        perempuan: santriPerempuan || 0,
+      };
     },
-    enabled: selectedView === "tunggakan",
   });
 
-  // Query untuk data pembayaran (lunas)
-  const { data: pembayaranData, isLoading: loadingPembayaran } = useQuery({
-    queryKey: ["pembayaran-data", currentMonthStr],
+  // Query untuk Tagihan
+  const { data: tagihanStats } = useQuery({
+    queryKey: ["tagihan-stats", currentMonth],
     queryFn: async () => {
-      const { data: orders, error } = await supabase
+      // Tagihan bulan ini
+      const { count: tagihanBulanIni } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", `${currentMonth}-01`)
+        .lt("created_at", getNextMonth(currentMonth));
+
+      // Tagihan yang sudah terbayar
+      const { count: tagihanTerbayar } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "settled")
+        .gte("created_at", `${currentMonth}-01`)
+        .lt("created_at", getNextMonth(currentMonth));
+
+      // Tagihan yang belum terbayar
+      const { count: tagihanBelumTerbayar } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .neq("status", "settled")
+        .gte("created_at", `${currentMonth}-01`)
+        .lt("created_at", getNextMonth(currentMonth));
+
+      return {
+        bulanIni: tagihanBulanIni || 0,
+        sudahTerbayar: tagihanTerbayar || 0,
+        belumTerbayar: tagihanBelumTerbayar || 0,
+      };
+    },
+  });
+
+  // Query untuk Pemasukan
+  const { data: pemasukanStats } = useQuery({
+    queryKey: ["pemasukan-stats", currentMonth],
+    queryFn: async () => {
+      // Pemasukan bulan ini
+      const { data: ordersBulanIni } = await supabase
         .from("orders")
         .select(
           `
           id,
-          order_id,
-          customer_name,
           status,
-          created_at,
-          orders_menus(
-            nominal,
-            menus(name)
-          )
+          orders_menus(nominal)
         `
         )
         .eq("status", "settled")
-        .gte("created_at", `${currentMonthStr}-01`)
-        .lt("created_at", getNextMonth(currentMonthStr))
-        .order("created_at");
+        .gte("created_at", `${currentMonth}-01`)
+        .lt("created_at", getNextMonth(currentMonth));
 
-      if (error) {
-        toast.error("Gagal memuat data pembayaran", {
-          description: error.message,
-        });
-        return [];
-      }
+      const pemasukanBulanIni =
+        ordersBulanIni?.reduce((sum, order) => {
+          const orderTotal = order.orders_menus.reduce(
+            (s: number, om: any) => s + om.nominal,
+            0
+          );
+          // Hitung dengan pajak dan admin
+          const subtotal = orderTotal;
+          const tax = Math.round(subtotal * 0.12);
+          const service = Math.round(subtotal * 0.05);
+          return sum + subtotal + tax + service;
+        }, 0) || 0;
 
-      return orders || [];
-    },
-    enabled: selectedView === "pembayaran",
-  });
+      // Pemasukan minggu ini
+      const today = new Date();
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
 
-  // Query untuk data grafik (6 bulan terakhir)
-  const { data: chartData } = useQuery({
-    queryKey: ["chart-data", selectedView],
-    queryFn: async () => {
-      const months = [];
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const monthStr = date.toISOString().slice(0, 7);
-        months.push(monthStr);
-      }
+      const { data: ordersMingguIni } = await supabase
+        .from("orders")
+        .select(
+          `
+          id,
+          status,
+          orders_menus(nominal)
+        `
+        )
+        .eq("status", "settled")
+        .gte("created_at", weekAgo.toISOString())
+        .lte("created_at", today.toISOString());
 
-      const result = await Promise.all(
-        months.map(async (month) => {
-          const { count } = await supabase
-            .from("orders")
-            .select("id", { count: "exact", head: true })
-            [selectedView === "tunggakan" ? "neq" : "eq"]("status", "settled")
-            .gte("created_at", `${month}-01`)
-            .lt("created_at", getNextMonth(month));
-
-          return {
-            name: formatMonthName(month),
-            total: count || 0,
-          };
-        })
-      );
-
-      return result;
-    },
-  });
-
-  // Data untuk tabel
-  const currentData = useMemo(() => {
-    return selectedView === "tunggakan" ? tunggakanData : pembayaranData;
-  }, [selectedView, tunggakanData, pembayaranData]);
-
-  // Total nominal
-  const totalNominal = useMemo(() => {
-    if (!currentData) return 0;
-    return currentData.reduce((sum, order: any) => {
-      const orderTotal = order.orders_menus.reduce(
-        (s: number, om: any) => s + om.nominal,
-        0
-      );
-      return sum + orderTotal;
-    }, 0);
-  }, [currentData]);
-
-  // Handler navigasi bulan
-  const handlePrevMonth = () => {
-    setSelectedMonth((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() - 1);
-      return newDate;
-    });
-  };
-
-  const handleNextMonth = () => {
-    setSelectedMonth((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() + 1);
-      return newDate;
-    });
-  };
-
-  // Export to Excel
-  const handleExportExcel = () => {
-    if (!currentData || currentData.length === 0) {
-      toast.error("Tidak ada data untuk diekspor");
-      return;
-    }
-
-    const exportData = currentData.map((order: any, index: number) => {
-      const nominal = order.orders_menus.reduce(
-        (sum: number, om: any) => sum + om.nominal,
-        0
-      );
-      const items = order.orders_menus
-        .map((om: any) => om.menus.name)
-        .join(", ");
+      const pemasukanMingguIni =
+        ordersMingguIni?.reduce((sum, order) => {
+          const orderTotal = order.orders_menus.reduce(
+            (s: number, om: any) => s + om.nominal,
+            0
+          );
+          const subtotal = orderTotal;
+          const tax = Math.round(subtotal * 0.12);
+          const service = Math.round(subtotal * 0.05);
+          return sum + subtotal + tax + service;
+        }, 0) || 0;
 
       return {
-        No: index + 1,
-        "Order ID": order.order_id,
-        "Nama Santri": order.customer_name,
-        "Jenis Tagihan": items,
-        Nominal: nominal,
-        Status: order.status,
-        Tanggal: new Date(order.created_at).toLocaleDateString("id-ID"),
+        bulanIni: pemasukanBulanIni,
+        mingguIni: pemasukanMingguIni,
       };
-    });
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(
-      wb,
-      ws,
-      selectedView === "tunggakan" ? "Tunggakan" : "Pembayaran"
-    );
-
-    const fileName = `${
-      selectedView === "tunggakan" ? "Tunggakan" : "Pembayaran"
-    }_${currentMonthStr}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    toast.success("Data berhasil diekspor ke Excel");
-  };
-
-  const isLoading = loadingTunggakan || loadingPembayaran;
+    },
+  });
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">Dashboard Admin</h1>
-        <div className="flex gap-2">
-          <Button
-            variant={selectedView === "tunggakan" ? "default" : "outline"}
-            onClick={() => setSelectedView("tunggakan")}
-            className={
-              selectedView === "tunggakan"
-                ? "bg-teal-500 hover:bg-teal-600"
-                : ""
-            }
-          >
-            Rekapan Tunggakan
-          </Button>
-          <Button
-            variant={selectedView === "pembayaran" ? "default" : "outline"}
-            onClick={() => setSelectedView("pembayaran")}
-            className={
-              selectedView === "pembayaran"
-                ? "bg-teal-500 hover:bg-teal-600"
-                : ""
-            }
-          >
-            Rekapan Pembayaran
-          </Button>
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {/* Sensus Santri */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Sensus Santri</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Santri Laki - laki
+              </CardTitle>
+              <Users className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">
+                {santriStats?.lakiLaki || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950 dark:to-pink-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Santri Perempuan
+              </CardTitle>
+              <Users className="h-4 w-4 text-pink-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-pink-600">
+                {santriStats?.perempuan || 0}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Santri
+              </CardTitle>
+              <Users className="h-4 w-4 text-teal-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-teal-600">
+                {santriStats?.total || 0}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Grafik */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Grafik{" "}
-            {selectedView === "tunggakan"
-              ? "Tunggakan SPP (6 Bulan Terakhir)"
-              : "Pembayaran SPP (6 Bulan Terakhir)"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar
-                dataKey="total"
-                fill={selectedView === "tunggakan" ? "#ef4444" : "#14b8a6"}
-                name={
-                  selectedView === "tunggakan"
-                    ? "Jumlah Tunggakan"
-                    : "Jumlah Pembayaran"
-                }
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Tagihan */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Tagihan</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Tagihan Terbit Bulan Ini
+              </CardTitle>
+              <FileText className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">
+                {tagihanStats?.bulanIni || 0} Tagihan
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Navigasi Bulan & Export */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-semibold">
-            {selectedMonth.toLocaleDateString("id-ID", {
-              month: "long",
-              year: "numeric",
-            })}
-          </h2>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Tagihan Sudah Terbayar
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">
+                {tagihanStats?.sudahTerbayar || 0} Tagihan
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Tagihan Belum Terbayar
+              </CardTitle>
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-600">
+                {tagihanStats?.belumTerbayar || 0} Tagihan
+              </div>
+            </CardContent>
+          </Card>
         </div>
-        <Button
-          onClick={handleExportExcel}
-          disabled={!currentData || currentData.length === 0}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export to Excel
-        </Button>
       </div>
 
-      {/* Summary Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">
-              {currentData?.length || 0} Santri
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Nominal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-teal-600">
-              {convertIDR(totalNominal)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Pemasukan */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Pemasukan</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pemasukan Bulan Ini
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-amber-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-amber-600">
+                {convertIDR(pemasukanStats?.bulanIni || 0)}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Tabel Data */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Daftar{" "}
-            {selectedView === "tunggakan"
-              ? "Santri yang Belum Membayar"
-              : "Santri yang Sudah Membayar"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">Memuat data...</div>
-          ) : !currentData || currentData.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Tidak ada data untuk bulan ini
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3">No</th>
-                    <th className="text-left p-3">Order ID</th>
-                    <th className="text-left p-3">Nama Santri</th>
-                    <th className="text-left p-3">Jenis Tagihan</th>
-                    <th className="text-right p-3">Nominal</th>
-                    <th className="text-center p-3">Status</th>
-                    <th className="text-left p-3">Tanggal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentData.map((order: any, index: number) => {
-                    const nominal = order.orders_menus.reduce(
-                      (sum: number, om: any) => sum + om.nominal,
-                      0
-                    );
-                    return (
-                      <tr key={order.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3">{index + 1}</td>
-                        <td className="p-3 font-mono text-sm">
-                          {order.order_id}
-                        </td>
-                        <td className="p-3 font-medium">
-                          {order.customer_name}
-                        </td>
-                        <td className="p-3 text-sm text-muted-foreground">
-                          {order.orders_menus
-                            .map((om: any) => om.menus.name)
-                            .join(", ")}
-                        </td>
-                        <td className="p-3 text-right font-semibold">
-                          {convertIDR(nominal)}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              order.status === "settled"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {order.status === "settled"
-                              ? "Lunas"
-                              : "Belum Bayar"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-sm">
-                          {new Date(order.created_at).toLocaleDateString(
-                            "id-ID"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 font-bold">
-                    <td colSpan={4} className="p-3 text-right">
-                      Total:
-                    </td>
-                    <td className="p-3 text-right text-teal-600">
-                      {convertIDR(totalNominal)}
-                    </td>
-                    <td colSpan={2}></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pemasukan Minggu Ini
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-cyan-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-cyan-600">
+                {convertIDR(pemasukanStats?.mingguIni || 0)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
-// Helper functions
+// Helper function
 function getNextMonth(monthStr: string): string {
   const date = new Date(monthStr + "-01");
   date.setMonth(date.getMonth() + 1);
   return date.toISOString().slice(0, 7) + "-01";
-}
-
-function formatMonthName(monthStr: string): string {
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mei",
-    "Jun",
-    "Jul",
-    "Agu",
-    "Sep",
-    "Okt",
-    "Nov",
-    "Des",
-  ];
-  const [year, month] = monthStr.split("-");
-  return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
 }
