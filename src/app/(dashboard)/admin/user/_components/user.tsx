@@ -27,28 +27,41 @@ export default function UserManagement() {
     handleChangeLimit,
     handleChangeSearch,
   } = useDataTable();
+
   const {
-    data: users,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["users", currentPage, currentLimit, currentSearch],
-    queryFn: async () => {
-      const result = await supabase
-        .from("profiles")
-        .select("*", { count: "exact" })
-        .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
-        .order("created_at")
-        .ilike("name", `%${currentSearch}%`);
+  data: users,
+  isLoading,
+  refetch,
+} = useQuery({
+  queryKey: ["users", currentPage, currentLimit, currentSearch],
+  queryFn: async () => {
+    const result = await supabase
+      .from("profiles")
+      .select(`
+        *,
+        santri:santri(
+          jenisKelamin,
+          tempatLahir,
+          tanggalLahir,
+          namaAyah,
+          namaIbu,
+          pekerjaanAyah,
+          pekerjaanIbu
+        )
+      `, { count: "exact" })
+      .eq("role", "santri") // 👈 Filter hanya santri
+      .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
+      .order("created_at")
+      .ilike("name", `%${currentSearch}%`);
 
-      if (result.error)
-        toast.error("Get User data failed", {
-          description: result.error.message,
-        });
+    if (result.error)
+      toast.error("Get User data failed", {
+        description: result.error.message,
+      });
 
-      return result;
-    },
-  });
+    return result;
+  },
+});
 
   const [selectedAction, setSelectedAction] = useState<{
     data: Profile;
@@ -59,58 +72,59 @@ export default function UserManagement() {
     if (!open) setSelectedAction(null);
   };
 
-  const filteredData = useMemo(() => {
-    return (users?.data || []).map((user, index) => {
-      return [
-        currentLimit * (currentPage - 1) + index + 1,
-        user.id,
-        user.name,
-        user.jenis_kelamin,
-        user.tempat_lahir,
-        user.tanggal_lahir,
-        user.jurusan,
-        user.universitas,
-        user.nama_ayah,
-        user.pekerjaan_ayah,
-        user.nama_ibu,
-        user.pekerjaan_ibu,
-        user.role,
-        <DropdownAction
-          menu={[
-            {
-              label: (
-                <span className="flex item-center gap-2">
-                  <Pencil />
-                  Edit
-                </span>
-              ),
-              action: () => {
-                setSelectedAction({
-                  data: user,
-                  type: "update",
-                });
-              },
+  // src/app/(dashboard)/admin/user/_components/user.tsx
+const filteredData = useMemo(() => {
+  return (users?.data || []).map((user, index) => {
+    const santriData = user.santri?.[0]; // Karena relasi 1-to-1
+    
+    return [
+      currentLimit * (currentPage - 1) + index + 1,
+      user.name,
+      santriData?.jenisKelamin || "-",
+      santriData?.tempatLahir || "-",
+      santriData?.tanggalLahir 
+        ? new Date(santriData.tanggalLahir).toLocaleDateString("id-ID")
+        : "-",
+      santriData?.namaAyah || "-",
+      santriData?.pekerjaanAyah || "-",
+      santriData?.namaIbu || "-",
+      santriData?.pekerjaanIbu || "-",
+      <DropdownAction
+        menu={[
+          {
+            label: (
+              <span className="flex item-center gap-2">
+                <Pencil />
+                Edit
+              </span>
+            ),
+            action: () => {
+              setSelectedAction({
+                data: { ...user, ...santriData },
+                type: "update",
+              });
             },
-            {
-              label: (
-                <span className="flex item-center gap-2">
-                  <Trash2 className="text-red-400" />
-                  Delete
-                </span>
-              ),
-              variant: "destructive",
-              action: () => {
-                setSelectedAction({
-                  data: user,
-                  type: "delete",
-                });
-              },
+          },
+          {
+            label: (
+              <span className="flex item-center gap-2">
+                <Trash2 className="text-red-400" />
+                Delete
+              </span>
+            ),
+            variant: "destructive",
+            action: () => {
+              setSelectedAction({
+                data: { ...user, ...santriData },
+                type: "delete",
+              });
             },
-          ]}
-        />,
-      ];
-    });
-  }, [users]);
+          },
+        ]}
+      />,
+    ];
+  });
+}, [users]);
 
   const totalPages = useMemo(() => {
     return users && users.count !== null

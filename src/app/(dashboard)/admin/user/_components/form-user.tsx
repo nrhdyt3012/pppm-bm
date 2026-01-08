@@ -133,12 +133,13 @@ export default function FormUser<T extends FieldValues>({
               setPreview={setPreview}
             />
 
-            <FormSelect
+            {/* <FormSelect
               form={form}
               name={"role" as Path<T>}
               label="Role"
+              type="hidden"
               selectItem={ROLE_LIST}
-            />
+            /> */}
 
             {type === "Create" && (
               <FormInput

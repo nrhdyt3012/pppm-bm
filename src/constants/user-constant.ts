@@ -1,16 +1,13 @@
+// src/constants/user-constant.ts
 export const HEADER_TABLE_USER = [
   "No",
-  "ID",
-  "Name",
+  "Nama",
   "Jenis Kelamin",
   "Tempat Lahir",
   "Tanggal Lahir",
-  "Jurusan",
-  "Universitas / Sekolah",
   "Nama Ayah",
   "Pekerjaan Ayah",
   "Nama Ibu",
   "Pekerjaan Ibu",
-  "Role",
   "Action",
 ];
