@@ -1,12 +1,12 @@
-import OrderManagement from "./_components/order";
+import TagihanList from "./_components/tagihan-list";
 
 export const metadata = {
-  title: "PPPM BM | Tagihan Santri",
+  title: "PPPM BM | Daftar Tagihan",
   icons: {
     icon: "/logo_ppm.svg",
   },
 };
 
-export default function OrderManagementPage() {
-  return <OrderManagement />;
+export default function TagihanPage() {
+  return <TagihanList />;
 }
