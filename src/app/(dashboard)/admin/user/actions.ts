@@ -53,7 +53,7 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     avatarUrl = uploadResult.data?.url || "";
   }
 
-  const supabase = await createClient();
+const supabase = await createClient({ isAdmin: true });
 
   // Siapkan metadata untuk auth.users
   const authMetadata = {
@@ -141,7 +141,7 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
     avatarUrl = uploadResult.data?.url || "";
   }
 
-  const supabase = await createClient();
+const supabase = await createClient({ isAdmin: true });
   const userId = formData.get("id") as string;
 
   console.log("=== UPDATE USER DEBUG ===");
@@ -194,8 +194,10 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
 
   // Update tabel santri
   const { data: santriData, error: santriError } = await supabase
-    .from("santri")
-    .update({
+  .from("santri")
+  .upsert(
+    {
+      id: userId,
       namaSantri: validatedFields.data.name,
       jenisKelamin: validatedFields.data.jenis_kelamin,
       tempatLahir: validatedFields.data.tempat_lahir,
@@ -206,9 +208,11 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
       pekerjaanAyah: validatedFields.data.pekerjaan_ayah,
       pekerjaanIbu: validatedFields.data.pekerjaan_ibu,
       updatedAt: new Date().toISOString(),
-    })
-    .eq("id", userId)
-    .select();
+    },
+    { onConflict: "id" }
+  )
+  .select();
+
 
   console.log("Santri update result:", santriData);
   console.log("Santri error:", santriError);
