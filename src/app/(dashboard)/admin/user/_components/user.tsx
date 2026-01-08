@@ -29,39 +29,45 @@ export default function UserManagement() {
   } = useDataTable();
 
   const {
-  data: users,
-  isLoading,
-  refetch,
-} = useQuery({
-  queryKey: ["users", currentPage, currentLimit, currentSearch],
-  queryFn: async () => {
-    const result = await supabase
-      .from("profiles")
-      .select(`
-        *,
-        santri:santri(
-          jenisKelamin,
-          tempatLahir,
-          tanggalLahir,
-          namaAyah,
-          namaIbu,
-          pekerjaanAyah,
-          pekerjaanIbu
+    data: users,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["users", currentPage, currentLimit, currentSearch],
+    queryFn: async () => {
+      const result = await supabase
+        .from("profiles")
+        .select(
+          `
+          *,
+          santri!santri_idSantri_fkey(
+            jenisKelamim,
+            tempatLahir,
+            tangggalLahir,
+            namaAyah,
+            namaIbu,
+            pekerjaanAyah,
+            pekerjaanIbu
+          )
+        `,
+          { count: "exact" }
         )
-      `, { count: "exact" })
-      .eq("role", "santri") // 👈 Filter hanya santri
-      .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
-      .order("created_at")
-      .ilike("name", `%${currentSearch}%`);
+        .eq("role", "santri")
+        .range(
+          (currentPage - 1) * currentLimit,
+          currentPage * currentLimit - 1
+        )
+        .order("created_at")
+        .ilike("name", `%${currentSearch}%`);
 
-    if (result.error)
-      toast.error("Get User data failed", {
-        description: result.error.message,
-      });
+      if (result.error)
+        toast.error("Get User data failed", {
+          description: result.error.message,
+        });
 
-    return result;
-  },
-});
+      return result;
+    },
+  });
 
   const [selectedAction, setSelectedAction] = useState<{
     data: Profile;
@@ -72,59 +78,62 @@ export default function UserManagement() {
     if (!open) setSelectedAction(null);
   };
 
-  // src/app/(dashboard)/admin/user/_components/user.tsx
-const filteredData = useMemo(() => {
-  return (users?.data || []).map((user, index) => {
-    const santriData = user.santri?.[0]; // Karena relasi 1-to-1
-    
-    return [
-      currentLimit * (currentPage - 1) + index + 1,
-      user.name,
-      santriData?.jenisKelamin || "-",
-      santriData?.tempatLahir || "-",
-      santriData?.tanggalLahir 
-        ? new Date(santriData.tanggalLahir).toLocaleDateString("id-ID")
-        : "-",
-      santriData?.namaAyah || "-",
-      santriData?.pekerjaanAyah || "-",
-      santriData?.namaIbu || "-",
-      santriData?.pekerjaanIbu || "-",
-      <DropdownAction
-        menu={[
-          {
-            label: (
-              <span className="flex item-center gap-2">
-                <Pencil />
-                Edit
-              </span>
-            ),
-            action: () => {
-              setSelectedAction({
-                data: { ...user, ...santriData },
-                type: "update",
-              });
+  const filteredData = useMemo(() => {
+    return (users?.data || []).map((user, index) => {
+      // Ambil data santri (relasi 1-to-1, jadi santri adalah array dengan 1 elemen atau null)
+      const santriData = Array.isArray(user.santri) && user.santri.length > 0 
+        ? user.santri[0] 
+        : null;
+
+      return [
+        currentLimit * (currentPage - 1) + index + 1,
+        user.name,
+        santriData?.jenisKelamim || "-",
+        santriData?.tempatLahir || "-",
+        santriData?.tangggalLahir
+          ? new Date(santriData.tangggalLahir).toLocaleDateString("id-ID")
+          : "-",
+        santriData?.namaAyah || "-",
+        santriData?.pekerjaanAyah || "-",
+        santriData?.namaIbu || "-",
+        santriData?.pekerjaanIbu || "-",
+        <DropdownAction
+          key={`action-${user.id}`}
+          menu={[
+            {
+              label: (
+                <span className="flex item-center gap-2">
+                  <Pencil />
+                  Edit
+                </span>
+              ),
+              action: () => {
+                setSelectedAction({
+                  data: { ...user, ...santriData },
+                  type: "update",
+                });
+              },
             },
-          },
-          {
-            label: (
-              <span className="flex item-center gap-2">
-                <Trash2 className="text-red-400" />
-                Delete
-              </span>
-            ),
-            variant: "destructive",
-            action: () => {
-              setSelectedAction({
-                data: { ...user, ...santriData },
-                type: "delete",
-              });
+            {
+              label: (
+                <span className="flex item-center gap-2">
+                  <Trash2 className="text-red-400" />
+                  Delete
+                </span>
+              ),
+              variant: "destructive",
+              action: () => {
+                setSelectedAction({
+                  data: { ...user, ...santriData },
+                  type: "delete",
+                });
+              },
             },
-          },
-        ]}
-      />,
-    ];
-  });
-}, [users]);
+          ]}
+        />,
+      ];
+    });
+  }, [users]);
 
   const totalPages = useMemo(() => {
     return users && users.count !== null
@@ -138,12 +147,12 @@ const filteredData = useMemo(() => {
         <h1 className="text-2xl font-bold">Data Santri</h1>
         <div className="flex gap-2">
           <Input
-            placeholder="Search by name"
+            placeholder="Cari nama santri..."
             onChange={(e) => handleChangeSearch(e.target.value)}
           />
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline">Create</Button>
+              <Button variant="outline">Tambah Santri</Button>
             </DialogTrigger>
             <DialogCreateUser refetch={refetch} />
           </Dialog>

@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { ROLE_LIST, JENIS_KELAMIN_LIST } from "@/constants/auth-constant";
+import { JENIS_KELAMIN_LIST } from "@/constants/auth-constant";
 import { Preview } from "@/types/general";
 import { Loader2 } from "lucide-react";
 import { FormEvent } from "react";
@@ -38,7 +38,9 @@ export default function FormUser<T extends FieldValues>({
         <DialogHeader>
           <DialogTitle>{type} Santri</DialogTitle>
           <DialogDescription>
-            {type === "Create" ? "Tambah data santri baru" : "Ubah data santri"}
+            {type === "Create"
+              ? "Tambah data santri baru"
+              : "Ubah data santri"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -85,20 +87,6 @@ export default function FormUser<T extends FieldValues>({
 
             <FormInput
               form={form}
-              name={"jurusan" as Path<T>}
-              label="Jurusan"
-              placeholder="Masukkan jurusan"
-            />
-
-            <FormInput
-              form={form}
-              name={"universitas" as Path<T>}
-              label="Universitas / Sekolah"
-              placeholder="Nama universitas/sekolah"
-            />
-
-            <FormInput
-              form={form}
               name={"nama_ayah" as Path<T>}
               label="Nama Ayah"
               placeholder="Nama lengkap ayah"
@@ -132,14 +120,6 @@ export default function FormUser<T extends FieldValues>({
               preview={preview}
               setPreview={setPreview}
             />
-
-            {/* <FormSelect
-              form={form}
-              name={"role" as Path<T>}
-              label="Role"
-              type="hidden"
-              selectItem={ROLE_LIST}
-            /> */}
 
             {type === "Create" && (
               <FormInput

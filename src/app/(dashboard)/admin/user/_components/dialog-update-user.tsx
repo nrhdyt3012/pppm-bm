@@ -44,8 +44,8 @@ export default function DialogUpdateUser({
       });
       formData.append("old_avatar_url", currentData?.avatar_url ?? "");
     } else {
-      Object.entries(data).forEach(([Key, value]) => {
-        formData.append(Key, value);
+      Object.entries(data).forEach(([key, value]) => {
+        formData.append(key, value);
       });
     }
     formData.append("id", currentData?.id ?? "");
@@ -73,16 +73,15 @@ export default function DialogUpdateUser({
   useEffect(() => {
     if (currentData) {
       form.setValue("name", currentData.name as string);
-      form.setValue("jenis_kelamin", currentData.jenis_kelamin as string);
-      form.setValue("tempat_lahir", currentData.tempat_lahir as string);
-      form.setValue("tanggal_lahir", currentData.tanggal_lahir as string);
-      form.setValue("jurusan", currentData.jurusan as string);
-      form.setValue("universitas", currentData.universitas as string);
-      form.setValue("nama_ayah", currentData.nama_ayah as string);
-      form.setValue("pekerjaan_ayah", currentData.pekerjaan_ayah as string);
-      form.setValue("nama_ibu", currentData.nama_ibu as string);
-      form.setValue("pekerjaan_ibu", currentData.pekerjaan_ibu as string);
-      form.setValue("role", currentData.role as string);
+      // Mapping dari nama kolom database ke form
+      form.setValue("jenis_kelamin", currentData.jenisKelamim || currentData.jenis_kelamin as string);
+      form.setValue("tempat_lahir", currentData.tempatLahir || currentData.tempat_lahir as string);
+      form.setValue("tanggal_lahir", currentData.tangggalLahir || currentData.tanggal_lahir as string);
+      form.setValue("nama_ayah", currentData.namaAyah || currentData.nama_ayah as string);
+      form.setValue("pekerjaan_ayah", currentData.pekerjaanAyah || currentData.pekerjaan_ayah as string);
+      form.setValue("nama_ibu", currentData.namaIbu || currentData.nama_ibu as string);
+      form.setValue("pekerjaan_ibu", currentData.pekerjaanIbu || currentData.pekerjaan_ibu as string);
+      form.setValue("role", "santri");
       form.setValue("avatar_url", currentData.avatar_url as string);
       setPreview({
         file: new File([], currentData.avatar_url as string),

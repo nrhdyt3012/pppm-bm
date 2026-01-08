@@ -7,7 +7,7 @@ import { AuthFormState } from "@/types/auth";
 import { createUserSchema, updateUserSchema } from "@/validations/auth-validation";
 
 export async function createUser(prevState: AuthFormState, formData: FormData) {
-  let validatedFields = createUserSchema.safeParse({
+  const validatedFields = createUserSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
     name: formData.get("name"),
@@ -67,8 +67,6 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
   if (validatedFields.data.role === "santri") {
     authMetadata.tempat_lahir = validatedFields.data.tempat_lahir;
     authMetadata.tanggal_lahir = validatedFields.data.tanggal_lahir;
-    authMetadata.jurusan = validatedFields.data.jurusan;
-    authMetadata.universitas = validatedFields.data.universitas;
     authMetadata.nama_ayah = validatedFields.data.nama_ayah;
     authMetadata.pekerjaan_ayah = validatedFields.data.pekerjaan_ayah;
     authMetadata.nama_ibu = validatedFields.data.nama_ibu;
@@ -99,7 +97,7 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
 }
 
 export async function updateUser(prevState: AuthFormState, formData: FormData) {
-  let validatedFields = updateUserSchema.safeParse({
+  const validatedFields = updateUserSchema.safeParse({
     name: formData.get("name"),
     jenis_kelamin: formData.get("jenis_kelamin"),
     tempat_lahir: formData.get("tempat_lahir"),
