@@ -38,7 +38,7 @@ export async function createOrderBatch(
 
   // Ambil data menu/tagihan
   const { data: menu, error: menuError } = await supabase
-    .from("menus")
+    .from("master_tagihan")
     .select("*")
     .eq("id", menuId)
     .single();

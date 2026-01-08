@@ -1,3 +1,4 @@
+// src/lib/supabase/server.ts
 import { environment } from "../../configs/environtment";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -13,9 +14,14 @@ export async function createClient({
   const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } =
     environment;
 
+  // PENTING: Gunakan SERVICE_ROLE_KEY saat isAdmin = true
+  const apiKey = isAdmin ? SUPABASE_SERVICE_ROLE_KEY! : SUPABASE_ANON_KEY!;
+
+  console.log('🔑 Using API Key:', isAdmin ? 'SERVICE_ROLE' : 'ANON'); // Debug log
+
   return createServerClient(
     SUPABASE_URL!,
-    isAdmin ? SUPABASE_SERVICE_ROLE_KEY! : SUPABASE_ANON_KEY!,
+    apiKey,
     {
       cookies: {
         getAll() {

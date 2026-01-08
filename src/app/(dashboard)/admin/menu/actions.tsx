@@ -31,7 +31,7 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("menus").insert({
+  const { error } = await supabase.from("master_tagihan").insert({
     periode: validatedFields.data.periode,
     description: validatedFields.data.description,
     uang_makan: validatedFields.data.uang_makan,
@@ -85,7 +85,7 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("menus")
+    .from("master_tagihan")
     .update({
       periode: validatedFields.data.periode,
       description: validatedFields.data.description,
@@ -118,7 +118,7 @@ export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("menus")
+    .from("master_tagihan")
     .delete()
     .eq("id", formData.get("id"));
 

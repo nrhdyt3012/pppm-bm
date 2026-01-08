@@ -14,36 +14,33 @@ export default function Dashboard() {
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   // Query untuk Sensus Santri
-  const { data: santriStats } = useQuery({
-    queryKey: ["santri-stats"],
-    queryFn: async () => {
-      // Total santri
-      const { count: totalSantri } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .neq("role", "admin");
+const { data: santriStats } = useQuery({
+  queryKey: ["santri-stats"],
+  queryFn: async () => {
+    const { data, error } = await supabase.rpc('get_santri_stats');
 
-      // Santri laki-laki
-      const { count: santriLaki } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .eq("jenis_kelamin", "Laki-laki")
-        .neq("role", "admin");
-
-      // Santri perempuan
-      const { count: santriPerempuan } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .eq("jenis_kelamin", "Perempuan")
-        .neq("role", "admin");
-
+    if (error) {
+      console.error("Error fetching santri stats:", error);
+      toast.error("Gagal memuat statistik santri", {
+        description: error.message,
+      });
       return {
-        total: totalSantri || 0,
-        lakiLaki: santriLaki || 0,
-        perempuan: santriPerempuan || 0,
+        total: 0,
+        lakiLaki: 0,
+        perempuan: 0,
       };
-    },
-  });
+    }
+
+    // RPC returns array with single object
+    const stats = data[0] || {};
+    
+    return {
+      total: Number(stats.total_santri) || 0,
+      lakiLaki: Number(stats.santri_laki_laki) || 0,
+      perempuan: Number(stats.santri_perempuan) || 0,
+    };
+  },
+});
 
   // Query untuk Tagihan
   const { data: tagihanStats } = useQuery({

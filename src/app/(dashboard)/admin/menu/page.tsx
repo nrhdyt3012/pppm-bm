@@ -1,7 +1,10 @@
 import MenuManagement from "./_components/menu";
 
 export const metadata = {
-  title: "WPU Cafe | Menu Management",
+  title: "PPPM BM | Kelola Tagihan",
+  icons: {
+    icon: "/logo_ppm.svg",
+  },
 };
 
 export default function MenuManagementPage() {

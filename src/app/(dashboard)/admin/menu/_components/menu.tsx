@@ -38,7 +38,7 @@ export default function MenuManagement() {
     queryKey: ["menus", currentPage, currentLimit, currentSearch],
     queryFn: async () => {
       const query = supabase
-        .from("menus")
+        .from("master_tagihan")
         .select("*", { count: "exact" })
         .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
         .order("created_at", { ascending: false });
