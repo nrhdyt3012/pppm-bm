@@ -25,9 +25,9 @@ export type Profile = {
   avatar_url?: string;
   role?: string;
   // Data dari tabel santri (dengan nama kolom sesuai database)
-  jenisKelamim?: string; // Typo di database, ikuti as-is
+  jenisKelamin?: string; // Typo di database, ikuti as-is
   tempatLahir?: string;
-  tangggalLahir?: string; // Typo di database (3 'g'), ikuti as-is
+  tanggalLahir?: string; // Typo di database (3 'g'), ikuti as-is
   namaAyah?: string;
   namaIbu?: string;
   pekerjaanAyah?: string;

@@ -41,9 +41,9 @@ export default function UserManagement() {
           `
           *,
           santri!santri_idSantri_fkey(
-            jenisKelamim,
+            jenisKelamin,
             tempatLahir,
-            tangggalLahir,
+            tanggalLahir,
             namaAyah,
             namaIbu,
             pekerjaanAyah,
@@ -88,9 +88,9 @@ export default function UserManagement() {
       return [
         currentLimit * (currentPage - 1) + index + 1,
         user.name,
-        santriData?.jenisKelamim || "-",
+        santriData?.jenisKelamin || "-",
         santriData?.tempatLahir || "-",
-        santriData?.tangggalLahir
+        santriData?.tanggalLahir
           ? new Date(santriData.tangggalLahir).toLocaleDateString("id-ID")
           : "-",
         santriData?.namaAyah || "-",
