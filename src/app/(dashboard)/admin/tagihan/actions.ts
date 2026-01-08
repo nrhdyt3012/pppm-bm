@@ -69,10 +69,7 @@ export async function updateTagihan(
 }
 
 // Delete Tagihan
-export async function deleteTagihan(
-  prevState: any,
-  formData: FormData
-) {
+export async function deleteTagihan(prevState: any, formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -96,10 +93,7 @@ export async function deleteTagihan(
 }
 
 // Create Tagihan Batch
-export async function createTagihanBatch(
-  prevState: any,
-  formData: FormData
-) {
+export async function createTagihanBatch(prevState: any, formData: FormData) {
   const santriIds = JSON.parse(
     formData.get("santri_ids") as string
   ) as string[];
@@ -151,9 +145,10 @@ export async function createTagihanBatch(
   const ordersToInsert = (santriData || []).map((santri: any) => {
     return {
       order_id: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      customer_id: santri.id, // simpan ID
+      master_tagihan_id: masterTagihanId,
       customer_name: santri.name,
       status: "process",
-      payment_token: null,
     };
   });
 
@@ -178,10 +173,7 @@ export async function createTagihanBatch(
 }
 
 // Delete Order (untuk order.tsx)
-export async function deleteOrder(
-  prevState: any,
-  formData: FormData
-) {
+export async function deleteOrder(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const orderId = formData.get("order_id") as string;
 
@@ -198,11 +190,16 @@ export async function deleteOrder(
   const { error: deleteMenuError } = await supabase
     .from("orders_menus")
     .delete()
-    .eq("order_id", (await supabase
-      .from("orders")
-      .select("id")
-      .eq("order_id", orderId)
-      .single()).data?.id);
+    .eq(
+      "order_id",
+      (
+        await supabase
+          .from("orders")
+          .select("id")
+          .eq("order_id", orderId)
+          .single()
+      ).data?.id
+    );
 
   if (deleteMenuError && deleteMenuError.code !== "PGRST116") {
     return {
@@ -234,10 +231,7 @@ export async function deleteOrder(
 }
 
 // Update Order Customer
-export async function updateOrderCustomer(
-  prevState: any,
-  formData: FormData
-) {
+export async function updateOrderCustomer(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const orderId = formData.get("order_id") as string;
   const santriId = formData.get("santri_id") as string;
@@ -289,10 +283,7 @@ export async function updateOrderCustomer(
 }
 
 // Add Order Item
-export async function addOrderItem(
-  prevState: any,
-  data: any
-) {
+export async function addOrderItem(prevState: any, data: any) {
   const supabase = await createClient();
   const { order_id, items } = data;
 
@@ -327,9 +318,7 @@ export async function addOrderItem(
     ...item,
   }));
 
-  const { error } = await supabase
-    .from("orders_menus")
-    .insert(itemsToInsert);
+  const { error } = await supabase.from("orders_menus").insert(itemsToInsert);
 
   if (error) {
     return {
@@ -381,10 +370,7 @@ export async function updateStatusOrderitem(
 }
 
 // Generate Payment
-export async function generatePayment(
-  prevState: any,
-  formData: FormData
-) {
+export async function generatePayment(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const id = formData.get("id") as string;
   const grossAmount = formData.get("gross_amount") as string;
