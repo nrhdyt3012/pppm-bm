@@ -28,7 +28,7 @@ export const SIDEBAR_MENU_LIST = {
     },
     {
       title: "Tagihan Santri",
-      url: "/admin/order",
+      url: "/admin/tagihan",
       icon: Receipt,
     },
     {

@@ -31,7 +31,7 @@ export default function TagihanSantri() {
     queryKey: ["tagihan-santri", profile.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("orders")
+        .from("tagihan_santri")
         .select(
           `
           id,
