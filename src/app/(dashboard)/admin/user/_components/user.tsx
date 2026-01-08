@@ -1,3 +1,4 @@
+// src/app/(dashboard)/admin/user/_components/user.tsx
 "use client";
 
 import DataTable from "@/components/common/data-table";
@@ -35,37 +36,31 @@ export default function UserManagement() {
   } = useQuery({
     queryKey: ["users", currentPage, currentLimit, currentSearch],
     queryFn: async () => {
-      const result = await supabase
-        .from("profiles")
-        .select(
-          `
-          *,
-          santri!santri_idSantri_fkey(
-            jenisKelamin,
-            tempatLahir,
-            tanggalLahir,
-            namaAyah,
-            namaIbu,
-            pekerjaanAyah,
-            pekerjaanIbu
-          )
-        `,
-          { count: "exact" }
-        )
-        .eq("role", "santri")
-        .range(
-          (currentPage - 1) * currentLimit,
-          currentPage * currentLimit - 1
-        )
-        .order("created_at")
-        .ilike("name", `%${currentSearch}%`);
+      // Gunakan RPC function untuk fetch data yang sudah flat
+      const result = await supabase.rpc('get_santri_with_details', {
+        search_term: currentSearch,
+        page_limit: currentLimit,
+        page_offset: (currentPage - 1) * currentLimit
+      });
 
-      if (result.error)
+      if (result.error) {
+        console.error("Supabase error:", result.error);
         toast.error("Get User data failed", {
           description: result.error.message,
         });
+        return { data: [], count: 0 };
+      }
 
-      return result;
+      console.log("Fetched users data:", result.data); // Debug log
+      
+      // Hitung total count
+      const { count } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'santri')
+        .ilike('name', `%${currentSearch}%`);
+
+      return { data: result.data || [], count: count || 0 };
     },
   });
 
@@ -79,24 +74,28 @@ export default function UserManagement() {
   };
 
   const filteredData = useMemo(() => {
-    return (users?.data || []).map((user, index) => {
-      // Ambil data santri (relasi 1-to-1, jadi santri adalah array dengan 1 elemen atau null)
-      const santriData = Array.isArray(user.santri) && user.santri.length > 0 
-        ? user.santri[0] 
-        : null;
+    if (!users?.data) return [];
+
+    return users.data.map((user: any, index) => {
+      // Data sudah flat dari RPC function, langsung akses dari user object
+      console.log("User data:", user); // Debug log
 
       return [
         currentLimit * (currentPage - 1) + index + 1,
-        user.name,
-        santriData?.jenisKelamin || "-",
-        santriData?.tempatLahir || "-",
-        santriData?.tanggalLahir
-          ? new Date(santriData.tangggalLahir).toLocaleDateString("id-ID")
+        user.name || "-",
+        user.jenisKelamin || "-",
+        user.tempatLahir || "-",
+        user.tanggalLahir
+          ? new Date(user.tanggalLahir).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
           : "-",
-        santriData?.namaAyah || "-",
-        santriData?.pekerjaanAyah || "-",
-        santriData?.namaIbu || "-",
-        santriData?.pekerjaanIbu || "-",
+        user.namaAyah || "-",
+        user.pekerjaanAyah || "-",
+        user.namaIbu || "-",
+        user.pekerjaanIbu || "-",
         <DropdownAction
           key={`action-${user.id}`}
           menu={[
@@ -109,7 +108,17 @@ export default function UserManagement() {
               ),
               action: () => {
                 setSelectedAction({
-                  data: { ...user, ...santriData },
+                  data: {
+                    ...user,
+                    // Map camelCase ke snake_case untuk form
+                    jenis_kelamin: user.jenisKelamin,
+                    tempat_lahir: user.tempatLahir,
+                    tanggal_lahir: user.tanggalLahir,
+                    nama_ayah: user.namaAyah,
+                    nama_ibu: user.namaIbu,
+                    pekerjaan_ayah: user.pekerjaanAyah,
+                    pekerjaan_ibu: user.pekerjaanIbu,
+                  },
                   type: "update",
                 });
               },
@@ -124,7 +133,7 @@ export default function UserManagement() {
               variant: "destructive",
               action: () => {
                 setSelectedAction({
-                  data: { ...user, ...santriData },
+                  data: user,
                   type: "delete",
                 });
               },
@@ -133,13 +142,7 @@ export default function UserManagement() {
         />,
       ];
     });
-  }, [users]);
-
-  const totalPages = useMemo(() => {
-    return users && users.count !== null
-      ? Math.ceil(users.count / currentLimit)
-      : 0;
-  }, [users]);
+  }, [users, currentLimit, currentPage]);
 
   return (
     <div className="w-full">
@@ -162,7 +165,11 @@ export default function UserManagement() {
         header={HEADER_TABLE_USER}
         data={filteredData}
         isLoading={isLoading}
-        totalPages={totalPages}
+        totalPages={
+          users && users.count !== null
+            ? Math.ceil(users.count / currentLimit)
+            : 0
+        }
         currentPage={currentPage}
         currentLimit={currentLimit}
         onChangePage={handleChangePage}

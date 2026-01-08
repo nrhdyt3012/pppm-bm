@@ -1,3 +1,4 @@
+// src/types/auth.d.ts
 export type AuthFormState = {
   status?: string;
   errors?: {
@@ -9,8 +10,6 @@ export type AuthFormState = {
     jenis_kelamin?: string[];
     tempat_lahir?: string[];
     tanggal_lahir?: string[];
-    jurusan?: string[];
-    universitas?: string[];
     nama_ayah?: string[];
     pekerjaan_ayah?: string[];
     nama_ibu?: string[];
@@ -24,22 +23,20 @@ export type Profile = {
   name?: string;
   avatar_url?: string;
   role?: string;
-  // Data dari tabel santri (dengan nama kolom sesuai database)
-  jenisKelamin?: string; // Typo di database, ikuti as-is
+  // Alias untuk kompatibilitas dengan form (snake_case)
+  jenis_kelamin?: string;
+  tempat_lahir?: string;
+  tanggal_lahir?: string;
+  nama_ayah?: string;
+  pekerjaan_ayah?: string;
+  nama_ibu?: string;
+  pekerjaan_ibu?: string;
+  // Data dari tabel santri (camelCase sesuai database)
+  jenisKelamin?: string;
   tempatLahir?: string;
-  tanggalLahir?: string; // Typo di database (3 'g'), ikuti as-is
+  tanggalLahir?: string;
   namaAyah?: string;
   namaIbu?: string;
   pekerjaanAyah?: string;
   pekerjaanIbu?: string;
-  // Tambahan untuk compatibility dengan form
-  jenis_kelamin?: string; // Alias untuk form
-  tempat_lahir?: string;  // Alias untuk form
-  tanggal_lahir?: string; // Alias untuk form
-  nama_ayah?: string;     // Alias untuk form
-  pekerjaan_ayah?: string; // Alias untuk form
-  nama_ibu?: string;      // Alias untuk form
-  pekerjaan_ibu?: string; // Alias untuk form
-  jurusan?: string;       // Tidak ada di database saat ini
-  universitas?: string;   // Tidak ada di database saat ini
 };

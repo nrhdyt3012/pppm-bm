@@ -14,8 +14,6 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     jenis_kelamin: formData.get("jenis_kelamin"),
     tempat_lahir: formData.get("tempat_lahir"),
     tanggal_lahir: formData.get("tanggal_lahir"),
-    jurusan: formData.get("jurusan"),
-    universitas: formData.get("universitas"),
     nama_ayah: formData.get("nama_ayah"),
     pekerjaan_ayah: formData.get("pekerjaan_ayah"),
     nama_ibu: formData.get("nama_ibu"),
@@ -34,46 +32,45 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     };
   }
 
-  // Upload avatar jika file
+  // Upload avatar jika berupa file
+  let avatarUrl = validatedFields.data.avatar_url;
   if (validatedFields.data.avatar_url instanceof File) {
-    const { errors, data } = await uploadFile(
+    const uploadResult = await uploadFile(
       "images",
       "users",
       validatedFields.data.avatar_url
     );
-    if (errors) {
+    
+    if (uploadResult.status === "error") {
       return {
         status: "error",
         errors: {
           ...prevState.errors,
-          _form: [...errors._form],
+          _form: uploadResult.errors?._form || ["Failed to upload avatar"],
         },
       };
     }
-    validatedFields.data.avatar_url = data.url;
+    avatarUrl = uploadResult.data?.url || "";
   }
 
   const supabase = await createClient();
 
-  // Data yang akan dikirim ke Supabase Auth
-  const authMetadata: any = {
+  // Siapkan metadata untuk auth.users
+  const authMetadata = {
     name: validatedFields.data.name,
     role: validatedFields.data.role,
-    avatar_url: validatedFields.data.avatar_url,
+    avatar_url: avatarUrl,
     jenis_kelamin: validatedFields.data.jenis_kelamin,
+    tempat_lahir: validatedFields.data.tempat_lahir,
+    tanggal_lahir: validatedFields.data.tanggal_lahir,
+    nama_ayah: validatedFields.data.nama_ayah,
+    pekerjaan_ayah: validatedFields.data.pekerjaan_ayah,
+    nama_ibu: validatedFields.data.nama_ibu,
+    pekerjaan_ibu: validatedFields.data.pekerjaan_ibu,
   };
 
-  // Tambahkan data spesifik santri jika rolenya santri
-  if (validatedFields.data.role === "santri") {
-    authMetadata.tempat_lahir = validatedFields.data.tempat_lahir;
-    authMetadata.tanggal_lahir = validatedFields.data.tanggal_lahir;
-    authMetadata.nama_ayah = validatedFields.data.nama_ayah;
-    authMetadata.pekerjaan_ayah = validatedFields.data.pekerjaan_ayah;
-    authMetadata.nama_ibu = validatedFields.data.nama_ibu;
-    authMetadata.pekerjaan_ibu = validatedFields.data.pekerjaan_ibu;
-  }
-
-  const { error } = await supabase.auth.signUp({
+  // Buat user di Supabase Auth
+  const { error: authError, data } = await supabase.auth.signUp({
     email: validatedFields.data.email,
     password: validatedFields.data.password,
     options: {
@@ -81,12 +78,12 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     },
   });
 
-  if (error) {
+  if (authError) {
     return {
       status: "error",
       errors: {
         ...prevState.errors,
-        _form: [error.message],
+        _form: [authError.message],
       },
     };
   }
@@ -102,8 +99,6 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
     jenis_kelamin: formData.get("jenis_kelamin"),
     tempat_lahir: formData.get("tempat_lahir"),
     tanggal_lahir: formData.get("tanggal_lahir"),
-    jurusan: formData.get("jurusan"),
-    universitas: formData.get("universitas"),
     nama_ayah: formData.get("nama_ayah"),
     pekerjaan_ayah: formData.get("pekerjaan_ayah"),
     nama_ibu: formData.get("nama_ibu"),
@@ -113,6 +108,7 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
   });
 
   if (!validatedFields.success) {
+    console.error("Validation failed:", validatedFields.error);
     return {
       status: "error",
       errors: {
@@ -123,75 +119,112 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
   }
 
   // Upload avatar jika ada file baru
+  let avatarUrl = validatedFields.data.avatar_url;
   if (validatedFields.data.avatar_url instanceof File) {
     const oldAvatarUrl = formData.get("old_avatar_url") as string;
-    const { errors, data } = await uploadFile(
+    const uploadResult = await uploadFile(
       "images",
       "users",
       validatedFields.data.avatar_url,
-      oldAvatarUrl.split("/images/")[1]
+      oldAvatarUrl?.split("/images/")[1]
     );
-    if (errors) {
+    
+    if (uploadResult.status === "error") {
       return {
         status: "error",
         errors: {
           ...prevState.errors,
-          _form: [...errors._form],
+          _form: uploadResult.errors?._form || ["Failed to upload avatar"],
         },
       };
     }
-    validatedFields.data.avatar_url = data.url;
+    avatarUrl = uploadResult.data?.url || "";
   }
 
   const supabase = await createClient();
   const userId = formData.get("id") as string;
 
+  console.log("=== UPDATE USER DEBUG ===");
+  console.log("User ID:", userId);
+  console.log("Data to update:", {
+    name: validatedFields.data.name,
+    jenis_kelamin: validatedFields.data.jenis_kelamin,
+    tempat_lahir: validatedFields.data.tempat_lahir,
+    tanggal_lahir: validatedFields.data.tanggal_lahir,
+    nama_ayah: validatedFields.data.nama_ayah,
+    nama_ibu: validatedFields.data.nama_ibu,
+    pekerjaan_ayah: validatedFields.data.pekerjaan_ayah,
+    pekerjaan_ibu: validatedFields.data.pekerjaan_ibu,
+  });
+
+  // Cek dulu apakah data santri ada
+  const { data: existingSantri, error: checkError } = await supabase
+    .from("santri")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  console.log("Existing santri data:", existingSantri);
+  console.log("Check error:", checkError);
+
   // Update tabel profiles
-  const { error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .update({
       name: validatedFields.data.name,
-      avatar_url: validatedFields.data.avatar_url,
+      avatar_url: avatarUrl,
+      updated_at: new Date().toISOString(),
     })
-    .eq("id", userId);
+    .eq("id", userId)
+    .select();
+
+  console.log("Profile update result:", profileData);
+  console.log("Profile error:", profileError);
 
   if (profileError) {
+    console.error("Profile update error:", profileError);
     return {
       status: "error",
       errors: {
         ...prevState.errors,
-        _form: [profileError.message],
+        _form: [`Profile update failed: ${profileError.message}`],
       },
     };
   }
 
-  // Update tabel santri jika rolenya santri
-  if (validatedFields.data.role === "santri") {
-    const { error: santriError } = await supabase
-      .from("santri")
-      .update({
-        namaSantri: validatedFields.data.name,
-        jenisKelamin: validatedFields.data.jenis_kelamin,
-        tempatLahir: validatedFields.data.tempat_lahir,
-        tanggalLahir: validatedFields.data.tanggal_lahir,
-        avatarUrl: validatedFields.data.avatar_url,
-        namaAyah: validatedFields.data.nama_ayah,
-        namaIbu: validatedFields.data.nama_ibu,
-        pekerjaanAyah: validatedFields.data.pekerjaan_ayah,
-        pekerjaanIbu: validatedFields.data.pekerjaan_ibu,
-      })
-      .eq("id", userId);
+  // Update tabel santri
+  const { data: santriData, error: santriError } = await supabase
+    .from("santri")
+    .update({
+      namaSantri: validatedFields.data.name,
+      jenisKelamin: validatedFields.data.jenis_kelamin,
+      tempatLahir: validatedFields.data.tempat_lahir,
+      tanggalLahir: validatedFields.data.tanggal_lahir,
+      avatarUrl: avatarUrl,
+      namaAyah: validatedFields.data.nama_ayah,
+      namaIbu: validatedFields.data.nama_ibu,
+      pekerjaanAyah: validatedFields.data.pekerjaan_ayah,
+      pekerjaanIbu: validatedFields.data.pekerjaan_ibu,
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", userId)
+    .select();
 
-    if (santriError) {
-      return {
-        status: "error",
-        errors: {
-          ...prevState.errors,
-          _form: [santriError.message],
-        },
-      };
-    }
+  console.log("Santri update result:", santriData);
+  console.log("Santri error:", santriError);
+
+  if (santriError) {
+    console.error("Santri update error:", santriError);
+    return {
+      status: "error",
+      errors: {
+        ...prevState.errors,
+        _form: [`Santri update failed: ${santriError.message}`],
+      },
+    };
   }
+
+  console.log("=== UPDATE COMPLETED ===");
 
   return {
     status: "success",
@@ -200,28 +233,16 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
 
 export async function deleteUser(prevState: AuthFormState, formData: FormData) {
   const supabase = await createClient({ isAdmin: true });
+  const userId = formData.get("id") as string;
   const image = formData.get("avatar_url") as string;
   
-  // Delete avatar file
-  const { status, errors } = await deleteFile(
-    "images",
-    image.split("/images/")[1]
-  );
-
-  if (status === "error") {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [errors?._form?.[0] ?? "Unknown error"],
-      },
-    };
+  // Delete avatar file jika ada
+  if (image && image.includes("/images/")) {
+    await deleteFile("images", image.split("/images/")[1]);
   }
 
-  // Delete user (cascade akan menghapus di profiles, santri, admin)
-  const { error } = await supabase.auth.admin.deleteUser(
-    formData.get("id") as string
-  );
+  // Delete user (cascade akan menghapus di profiles dan santri)
+  const { error } = await supabase.auth.admin.deleteUser(userId);
 
   if (error) {
     return {
