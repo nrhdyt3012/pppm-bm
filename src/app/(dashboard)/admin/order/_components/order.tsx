@@ -129,7 +129,6 @@ export default function OrderManagement() {
         currentLimit * (currentPage - 1) + index + 1,
         order.order_id,
         order.customer_name,
-        "-", // Table dihapus, diganti dengan placeholder
         <div
           key={order.id}
           className={cn("px-2 py-1 rounded-full text-white w-fit capitalize", {

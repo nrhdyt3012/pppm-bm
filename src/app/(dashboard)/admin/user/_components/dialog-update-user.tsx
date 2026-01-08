@@ -76,7 +76,7 @@ export default function DialogUpdateUser({
       // Mapping dari nama kolom database ke form
       form.setValue("jenis_kelamin", currentData.jenisKelamin || currentData.jenis_kelamin as string);
       form.setValue("tempat_lahir", currentData.tempatLahir || currentData.tempat_lahir as string);
-      form.setValue("tanggal_lahir", currentData.tangggalLahir || currentData.tanggal_lahir as string);
+      form.setValue("tanggal_lahir", currentData.tanggalLahir || currentData.tanggal_lahir as string);
       form.setValue("nama_ayah", currentData.namaAyah || currentData.nama_ayah as string);
       form.setValue("pekerjaan_ayah", currentData.pekerjaanAyah || currentData.pekerjaan_ayah as string);
       form.setValue("nama_ibu", currentData.namaIbu || currentData.nama_ibu as string);

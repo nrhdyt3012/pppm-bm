@@ -12,7 +12,6 @@ const Receipt = ({
 }: {
   order: {
     customer_name: string;
-    tables: { name: string }[];
     status: string;
     created_at: string;
   };
@@ -46,12 +45,7 @@ const Receipt = ({
           <p>
             Bill No: <span className="font-bold">{orderId}</span>
           </p>
-          <p>
-            Table:{" "}
-            <span className="font-bold">
-              {(order?.tables as unknown as { name: string })?.name}
-            </span>
-          </p>
+        
           <p>
             Customer: <span className="font-bold">{order?.customer_name}</span>
           </p>
@@ -66,9 +60,9 @@ const Receipt = ({
           {orderMenu?.map((item) => (
             <div key={item.id} className="flex justify-between items-center">
               <p>
-                {item.menus.name} x {item.quantity}
+                {item.menus.asrama} x {item.quantity}
               </p>
-              <p>{convertIDR(item.menus.price * item.quantity)}</p>
+              <p>{convertIDR(item.menus.asrama * item.quantity)}</p>
             </div>
           ))}
         </div>

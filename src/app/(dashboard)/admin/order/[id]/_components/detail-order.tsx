@@ -36,7 +36,7 @@ export default function DetailOrder({ id }: { id: string }) {
       const result = await supabase
         .from("orders")
         .select(
-          "id, customer_name, status, payment_token, tables (name, id), created_at"
+          "id, customer_name, status, payment_token, created_at"
         )
         .eq("order_id", id)
         .single();

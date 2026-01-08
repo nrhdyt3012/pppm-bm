@@ -84,7 +84,6 @@ export async function createOrderBatch(
       order_id: orderId,
       customer_name: santri.name,
       status: "process",
-      table_id: null, // Tidak pakai table lagi
     };
   });
 
