@@ -92,13 +92,15 @@ export async function deleteTagihan(prevState: any, formData: FormData) {
   return { status: "success" };
 }
 
-// Update Tagihan Santri
+// src/app/(dashboard)/admin/tagihan/actions.ts
+// TAMBAHKAN atau UPDATE function ini
 export async function updateTagihanSantri(prevState: any, formData: FormData) {
   const idTagihan = formData.get("id_tagihan_santri");
+  const idMasterTagihan = formData.get("id_master_tagihan");
   const jumlahTagihan = formData.get("jumlah_tagihan");
   const statusPembayaran = formData.get("status_pembayaran");
 
-  if (!idTagihan || !jumlahTagihan || !statusPembayaran) {
+  if (!idTagihan || !idMasterTagihan || !jumlahTagihan || !statusPembayaran) {
     return {
       status: "error",
       errors: {
@@ -109,9 +111,11 @@ export async function updateTagihanSantri(prevState: any, formData: FormData) {
 
   const supabase = await createClient();
 
+  // Update tagihan_santri
   const { error } = await supabase
     .from("tagihan_santri")
     .update({
+      id_master_tagihan: parseInt(idMasterTagihan as string),
       jumlah_tagihan: parseFloat(jumlahTagihan as string),
       status_pembayaran: statusPembayaran as string,
       updated_at: new Date().toISOString(),
@@ -215,6 +219,38 @@ export async function createTagihanBatch(
 
   const supabase = await createClient();
 
+  // CEK DUPLIKAT: Santri yang sudah punya tagihan periode ini
+  const { data: existingTagihan, error: checkError } = await supabase
+    .from("tagihan_santri")
+    .select("id_santri, santri:profiles!id_santri(name)")
+    .eq("id_master_tagihan", masterTagihanId)
+    .in("id_santri", santriIds);
+
+  if (checkError) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal memeriksa duplikat: " + checkError.message],
+      },
+    };
+  }
+
+  // Jika ada yang duplikat, beri warning
+  if (existingTagihan && existingTagihan.length > 0) {
+    const duplicateNames = existingTagihan
+      .map((t: any) => t.santri?.name)
+      .join(", ");
+
+    return {
+      status: "error",
+      errors: {
+        _form: [
+          `Santri berikut sudah memiliki tagihan periode ini: ${duplicateNames}. Silakan hapus dari pilihan atau pilih periode lain.`,
+        ],
+      },
+    };
+  }
+
   // Ambil data master tagihan
   const { data: masterTagihan, error: masterError } = await supabase
     .from("master_tagihan")
@@ -241,7 +277,7 @@ export async function createTagihanBatch(
     (masterTagihan.uang_tahunan || 0) +
     (masterTagihan.iuran_kampung || 0);
 
-  // Buat tagihan untuk setiap santri
+  // Buat tagihan untuk setiap santri (ID akan auto-generate dari trigger)
   const tagihanToInsert = santriIds.map((santriId: string) => ({
     id_santri: santriId,
     id_master_tagihan: parseInt(masterTagihanId as string),

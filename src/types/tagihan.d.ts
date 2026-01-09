@@ -9,11 +9,11 @@ export type TagihanFormState = {
 };
 
 export type Tagihan = {
-  id_tagihan_santri: number;
+  id_tagihan_santri: string; // Changed from number to string
   id_santri: string;
   id_master_tagihan: number;
   jumlah_tagihan: number;
-  status_pembayaran: 'BELUM BAYAR' | 'LUNAS' | 'KADALUARSA';
+  status_pembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
   payment_token: string | null;
   created_at: string;
   updated_at: string;
