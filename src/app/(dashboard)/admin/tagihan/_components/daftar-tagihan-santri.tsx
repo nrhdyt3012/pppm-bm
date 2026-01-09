@@ -22,6 +22,8 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { convertIDR, cn } from "@/lib/utils";
+import DialogEditTagihanSantri from "./dialog-edit-tagihan-santri";
+import DialogDeleteTagihanSantri from "./dialog-delete-tagihan-santri";
 import DialogCreateTagihan from "./dialog-create-tagihan";
 import DialogEditTagihan from "./dialog-edit-tagihan";
 import DialogDeleteTagihan from "./dialog-delete-tagihan";
@@ -194,6 +196,7 @@ export default function DaftarTagihanSantri() {
             year: "numeric",
           })}
         </div>,
+        // Pada bagian DropdownAction, pastikan:
         <DropdownAction
           key={`action-${item.id_tagihan_santri}`}
           menu={[
@@ -206,7 +209,7 @@ export default function DaftarTagihanSantri() {
               ),
               action: () => {
                 setSelectedAction({
-                  data: item,
+                  data: item, // PENTING: pastikan item di-pass dengan benar
                   type: "edit",
                 });
               },
@@ -221,7 +224,7 @@ export default function DaftarTagihanSantri() {
               variant: "destructive",
               action: () => {
                 setSelectedAction({
-                  data: item,
+                  data: item, // PENTING: pastikan item di-pass dengan benar
                   type: "delete",
                 });
               },
@@ -329,14 +332,15 @@ export default function DaftarTagihanSantri() {
         onChangeLimit={handleChangeLimit}
       />
 
-      <DialogEditTagihan
+      <DialogEditTagihanSantri
         open={selectedAction !== null && selectedAction.type === "edit"}
         refetch={refetch}
         currentData={selectedAction?.data}
         handleChangeAction={handleChangeAction}
       />
 
-      <DialogDeleteTagihan
+      {/* PENTING: Gunakan DialogDeleteTagihanSantri bukan DialogDeleteTagihan! */}
+      <DialogDeleteTagihanSantri
         open={selectedAction !== null && selectedAction.type === "delete"}
         refetch={refetch}
         currentData={selectedAction?.data}

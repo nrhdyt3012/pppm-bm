@@ -4,18 +4,12 @@ import { deleteTagihan } from "../actions";
 import { INITIAL_STATE_ACTION } from "@/constants/general-constant";
 import { toast } from "sonner";
 
-type DeleteActionState = {
-  status: "idle" | "error" | "success";
-  errors?: {
-    _form?: string[];
-  };
-};
+type DeleteActionState =
+  | { status: "idle" | "success" }
+  | { status: "error"; errors: { _form: string[] } };
 
 const INITIAL_DELETE_STATE: DeleteActionState = {
   status: "idle",
-  errors: {
-    _form: [],
-  },
 };
 
 export default function DialogDeleteTagihan({
@@ -33,8 +27,17 @@ export default function DialogDeleteTagihan({
     useActionState(deleteTagihan, INITIAL_DELETE_STATE);
 
   const onSubmit = () => {
+    if (!currentData || !currentData.id_tagihan_santri) {
+      toast.error("Data tidak valid");
+      return;
+    }
+
     const formData = new FormData();
-    formData.append("id", currentData?.id as string);
+    formData.append(
+      "id_tagihan_santri",
+      currentData.id_tagihan_santri as string
+    );
+
     startTransition(() => {
       deleteTagihanAction(formData);
     });

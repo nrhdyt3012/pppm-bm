@@ -72,23 +72,33 @@ export async function updateTagihan(
 export async function deleteTagihan(prevState: any, formData: FormData) {
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("master_tagihan")
-    .delete()
-    .eq("id", formData.get("id"));
+  const id_tagihan_santri = formData.get("id_tagihan_santri") as string;
 
-  if (error) {
+  if (!id_tagihan_santri) {
     return {
       status: "error",
       errors: {
-        ...prevState.errors,
-        _form: [error.message],
+        _form: ["ID tagihan tidak valid"],
+      },
+    };
+  }
+
+  const { error } = await supabase
+    .from("tagihan_santri")
+    .delete()
+    .eq("id_tagihan_santri", id_tagihan_santri); // PENTING: gunakan id_tagihan_santri
+
+  if (error) {
+    console.error("Delete error:", error);
+    return {
+      status: "error",
+      errors: {
+        _form: [`Gagal menghapus tagihan: ${error.message}`],
       },
     };
   }
 
   revalidatePath("/admin/tagihan");
-
   return { status: "success" };
 }
 
