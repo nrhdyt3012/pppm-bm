@@ -1,20 +1,50 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/auth-store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createClient } from "@/lib/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   User,
   Calendar,
   MapPin,
-  GraduationCap,
-  School,
   Users,
+  Loader2,
+  Briefcase,
 } from "lucide-react";
 
 export default function InfoSantri() {
   const profile = useAuthStore((state) => state.profile);
+  const supabase = createClient();
+
+  // Fetch data santri dari RPC function yang sama seperti di admin
+  const { data: santriData, isLoading } = useQuery({
+    queryKey: ["santri-detail", profile.id],
+    queryFn: async () => {
+      const result = await supabase.rpc("get_santri_with_details", {
+        search_term: "",
+        page_limit: 1,
+        page_offset: 0,
+      });
+
+      if (result.error) {
+        console.error("Error fetching santri data:", result.error);
+        toast.error("Gagal memuat data santri", {
+          description: result.error.message,
+        });
+        return null;
+      }
+
+      // Filter data sesuai user yang login
+      const currentUserData = result.data?.find(
+        (item: any) => item.id === profile.id
+      );
+
+      return currentUserData || null;
+    },
+  });
 
   const InfoItem = ({
     icon: Icon,
@@ -34,6 +64,14 @@ export default function InfoSantri() {
     </div>
   );
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="animate-spin h-8 w-8 text-teal-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6">
       <div>
@@ -49,25 +87,28 @@ export default function InfoSantri() {
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
             <Avatar className="w-32 h-32 border-4 border-teal-500">
               <AvatarImage
-                src={profile.avatar_url}
-                alt={profile.name}
+                src={santriData?.avatar_url || profile.avatar_url}
+                alt={santriData?.name || profile.name}
                 className="object-cover"
               />
               <AvatarFallback className="text-2xl">
-                {profile.name?.charAt(0)}
+                {(santriData?.name || profile.name)?.charAt(0)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 text-center md:text-left space-y-2">
-              <h2 className="text-3xl font-bold">{profile.name}</h2>
+              <h2 className="text-3xl font-bold">
+                {santriData?.name || profile.name}
+              </h2>
               <p className="text-muted-foreground">
-                ID Santri: {profile.id?.substring(0, 8).toUpperCase()}
+                ID Santri:{" "}
+                {(santriData?.id || profile.id)?.substring(0, 8).toUpperCase()}
               </p>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start mt-4">
                 <span className="px-3 py-1 bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-100 rounded-full text-sm">
-                  {profile.jenis_kelamin}
+                  {santriData?.jenisKelamin || "-"}
                 </span>
                 <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 rounded-full text-sm capitalize">
-                  {profile.role}
+                  Santri
                 </span>
               </div>
             </div>
@@ -85,18 +126,22 @@ export default function InfoSantri() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <InfoItem icon={User} label="Nama Lengkap" value={profile.name} />
+            <InfoItem
+              icon={User}
+              label="Nama Lengkap"
+              value={santriData?.name}
+            />
             <InfoItem
               icon={MapPin}
               label="Tempat Lahir"
-              value={profile.tempat_lahir}
+              value={santriData?.tempatLahir}
             />
             <InfoItem
               icon={Calendar}
               label="Tanggal Lahir"
               value={
-                profile.tanggal_lahir
-                  ? new Date(profile.tanggal_lahir).toLocaleDateString(
+                santriData?.tanggalLahir
+                  ? new Date(santriData.tanggalLahir).toLocaleDateString(
                       "id-ID",
                       {
                         day: "numeric",
@@ -110,28 +155,6 @@ export default function InfoSantri() {
           </CardContent>
         </Card>
 
-        {/* Data Pendidikan */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-teal-500" />
-              Data Pendidikan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <InfoItem
-              icon={School}
-              label="Universitas/Sekolah"
-              value={profile.universitas}
-            />
-            <InfoItem
-              icon={GraduationCap}
-              label="Jurusan"
-              value={profile.jurusan}
-            />
-          </CardContent>
-        </Card>
-
         {/* Data Orang Tua - Ayah */}
         <Card>
           <CardHeader>
@@ -141,11 +164,15 @@ export default function InfoSantri() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <InfoItem icon={User} label="Nama Ayah" value={profile.nama_ayah} />
             <InfoItem
-              icon={GraduationCap}
+              icon={User}
+              label="Nama Ayah"
+              value={santriData?.namaAyah}
+            />
+            <InfoItem
+              icon={Briefcase}
               label="Pekerjaan"
-              value={profile.pekerjaan_ayah}
+              value={santriData?.pekerjaanAyah}
             />
           </CardContent>
         </Card>
@@ -159,29 +186,33 @@ export default function InfoSantri() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <InfoItem icon={User} label="Nama Ibu" value={profile.nama_ibu} />
             <InfoItem
-              icon={GraduationCap}
+              icon={User}
+              label="Nama Ibu"
+              value={santriData?.namaIbu}
+            />
+            <InfoItem
+              icon={Briefcase}
               label="Pekerjaan"
-              value={profile.pekerjaan_ibu}
+              value={santriData?.pekerjaanIbu}
             />
           </CardContent>
         </Card>
-      </div>
 
-      {/* Informasi Tambahan */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Catatan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Jika ada perubahan data atau informasi yang kurang tepat, silakan
-            hubungi bagian administrasi pondok pesantren untuk melakukan
-            pembaruan data.
-          </p>
-        </CardContent>
-      </Card>
+        {/* Catatan */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Catatan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              Jika ada perubahan data atau informasi yang kurang tepat, silakan
+              hubungi bagian administrasi pondok pesantren untuk melakukan
+              pembaruan data.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
