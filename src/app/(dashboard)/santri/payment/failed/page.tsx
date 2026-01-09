@@ -1,7 +1,10 @@
 import Failed from "./_components/failed";
 
 export const metadata = {
-  title: "WPU Cafe | Payment Failed",
+  title: "PPPM BM | Pembayaran Gagal",
+  icons: {
+    icon: "/logo_ppm.svg",
+  },
 };
 
 export default function FailedPage() {
