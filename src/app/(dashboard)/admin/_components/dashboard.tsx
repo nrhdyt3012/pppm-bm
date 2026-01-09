@@ -31,7 +31,6 @@ export default function Dashboard() {
         };
       }
 
-      // RPC returns array with single object
       const stats = data[0] || {};
 
       return {
@@ -42,30 +41,30 @@ export default function Dashboard() {
     },
   });
 
-  // Query untuk Tagihan
+  // Query untuk Tagihan Santri
   const { data: tagihanStats } = useQuery({
     queryKey: ["tagihan-stats", currentMonth],
     queryFn: async () => {
-      // Tagihan bulan ini
+      // Tagihan terbit bulan ini
       const { count: tagihanBulanIni } = await supabase
-        .from("orders")
+        .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
         .gte("created_at", `${currentMonth}-01`)
         .lt("created_at", getNextMonth(currentMonth));
 
-      // Tagihan yang sudah terbayar
+      // Tagihan yang sudah terbayar (LUNAS) bulan ini
       const { count: tagihanTerbayar } = await supabase
-        .from("orders")
+        .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .eq("status", "settled")
+        .eq("status_pembayaran", "LUNAS")
         .gte("created_at", `${currentMonth}-01`)
         .lt("created_at", getNextMonth(currentMonth));
 
-      // Tagihan yang belum terbayar
+      // Tagihan yang belum terbayar (BELUM BAYAR) bulan ini
       const { count: tagihanBelumTerbayar } = await supabase
-        .from("orders")
+        .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .neq("status", "settled")
+        .eq("status_pembayaran", "BELUM BAYAR")
         .gte("created_at", `${currentMonth}-01`)
         .lt("created_at", getNextMonth(currentMonth));
 
@@ -81,62 +80,37 @@ export default function Dashboard() {
   const { data: pemasukanStats } = useQuery({
     queryKey: ["pemasukan-stats", currentMonth],
     queryFn: async () => {
-      // Pemasukan bulan ini
-      const { data: ordersBulanIni } = await supabase
-        .from("orders")
-        .select(
-          `
-          id,
-          status,
-          orders_menus(nominal)
-        `
-        )
-        .eq("status", "settled")
-        .gte("created_at", `${currentMonth}-01`)
-        .lt("created_at", getNextMonth(currentMonth));
+      // Pemasukan bulan ini (total dari tagihan yang LUNAS)
+      const { data: tagihanLunasBulanIni } = await supabase
+        .from("tagihan_santri")
+        .select("jumlah_tagihan")
+        .eq("status_pembayaran", "LUNAS")
+        .gte("updated_at", `${currentMonth}-01`)
+        .lt("updated_at", getNextMonth(currentMonth));
 
       const pemasukanBulanIni =
-        ordersBulanIni?.reduce((sum, order) => {
-          const orderTotal = order.orders_menus.reduce(
-            (s: number, om: any) => s + om.nominal,
-            0
-          );
-          // Hitung dengan pajak dan admin
-          const subtotal = orderTotal;
-          const tax = Math.round(subtotal * 0.12);
-          const service = Math.round(subtotal * 0.05);
-          return sum + subtotal + tax + service;
-        }, 0) || 0;
+        tagihanLunasBulanIni?.reduce(
+          (sum, item) => sum + parseFloat(item.jumlah_tagihan || "0"),
+          0
+        ) || 0;
 
       // Pemasukan minggu ini
       const today = new Date();
       const weekAgo = new Date(today);
       weekAgo.setDate(weekAgo.getDate() - 7);
 
-      const { data: ordersMingguIni } = await supabase
-        .from("orders")
-        .select(
-          `
-          id,
-          status,
-          orders_menus(nominal)
-        `
-        )
-        .eq("status", "settled")
-        .gte("created_at", weekAgo.toISOString())
-        .lte("created_at", today.toISOString());
+      const { data: tagihanLunasMingguIni } = await supabase
+        .from("tagihan_santri")
+        .select("jumlah_tagihan")
+        .eq("status_pembayaran", "LUNAS")
+        .gte("updated_at", weekAgo.toISOString())
+        .lte("updated_at", today.toISOString());
 
       const pemasukanMingguIni =
-        ordersMingguIni?.reduce((sum, order) => {
-          const orderTotal = order.orders_menus.reduce(
-            (s: number, om: any) => s + om.nominal,
-            0
-          );
-          const subtotal = orderTotal;
-          const tax = Math.round(subtotal * 0.12);
-          const service = Math.round(subtotal * 0.05);
-          return sum + subtotal + tax + service;
-        }, 0) || 0;
+        tagihanLunasMingguIni?.reduce(
+          (sum, item) => sum + parseFloat(item.jumlah_tagihan || "0"),
+          0
+        ) || 0;
 
       return {
         bulanIni: pemasukanBulanIni,
@@ -156,7 +130,7 @@ export default function Dashboard() {
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">
-                Santri Laki - laki
+                Santri Laki-laki
               </CardTitle>
               <Users className="h-4 w-4 text-blue-600" />
             </CardHeader>
