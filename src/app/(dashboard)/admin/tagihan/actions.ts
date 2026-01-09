@@ -6,7 +6,7 @@ import { MenuFormState } from "@/types/menu";
 import { menuSchema } from "@/validations/menu-validation";
 import { revalidatePath } from "next/cache";
 
-// Update Tagihan
+// Update Tagihan (Master Tagihan)
 export async function updateTagihan(
   prevState: MenuFormState,
   formData: FormData
@@ -68,7 +68,7 @@ export async function updateTagihan(
   };
 }
 
-// Delete Tagihan
+// Delete Tagihan (Master Tagihan)
 export async function deleteTagihan(prevState: any, formData: FormData) {
   const supabase = await createClient();
 
@@ -92,27 +92,123 @@ export async function deleteTagihan(prevState: any, formData: FormData) {
   return { status: "success" };
 }
 
+// Update Tagihan Santri
+export async function updateTagihanSantri(prevState: any, formData: FormData) {
+  const idTagihan = formData.get("id_tagihan_santri");
+  const jumlahTagihan = formData.get("jumlah_tagihan");
+  const statusPembayaran = formData.get("status_pembayaran");
+
+  if (!idTagihan || !jumlahTagihan || !statusPembayaran) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Data tidak lengkap"],
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("tagihan_santri")
+    .update({
+      jumlah_tagihan: parseFloat(jumlahTagihan as string),
+      status_pembayaran: statusPembayaran as string,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id_tagihan_santri", idTagihan);
+
+  if (error) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal mengubah tagihan: " + error.message],
+      },
+    };
+  }
+
+  revalidatePath("/admin/tagihan");
+
+  return { status: "success" };
+}
+
+// Delete Tagihan Santri
+export async function deleteTagihanSantri(prevState: any, formData: FormData) {
+  const idTagihan = formData.get("id_tagihan_santri");
+
+  if (!idTagihan) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["ID tagihan tidak valid"],
+      },
+    };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("tagihan_santri")
+    .delete()
+    .eq("id_tagihan_santri", idTagihan);
+
+  if (error) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Gagal menghapus tagihan: " + error.message],
+      },
+    };
+  }
+
+  revalidatePath("/admin/tagihan");
+
+  return { status: "success" };
+}
+
 // Create Tagihan Batch
-export async function createTagihanBatch(prevState: any, formData: FormData) {
-  const santriIds = JSON.parse(
-    formData.get("santri_ids") as string
-  ) as string[];
-  const masterTagihanId = formData.get("master_tagihan_id") as string;
+export async function createTagihanBatch(
+  prevState: any,
+  formData: FormData | null
+) {
+  if (!formData) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Data tidak valid"],
+      },
+    };
+  }
+
+  const santriIdsStr = formData.get("santri_ids");
+  const masterTagihanId = formData.get("master_tagihan_id");
+
+  if (!santriIdsStr || !masterTagihanId) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Data santri atau tagihan tidak lengkap"],
+      },
+    };
+  }
+
+  let santriIds: string[];
+  try {
+    santriIds = JSON.parse(santriIdsStr as string) as string[];
+  } catch (error) {
+    return {
+      status: "error",
+      errors: {
+        _form: ["Format data santri tidak valid"],
+      },
+    };
+  }
 
   if (!santriIds || santriIds.length === 0) {
     return {
       status: "error",
       errors: {
         _form: ["Pilih minimal 1 santri"],
-      },
-    };
-  }
-
-  if (!masterTagihanId) {
-    return {
-      status: "error",
-      errors: {
-        _form: ["Pilih jenis tagihan"],
       },
     };
   }
@@ -135,28 +231,30 @@ export async function createTagihanBatch(prevState: any, formData: FormData) {
     };
   }
 
-  // Ambil data santri untuk mendapatkan nama
-  const { data: santriData } = await supabase
-    .from("profiles")
-    .select("id, name")
-    .in("id", santriIds);
+  // Hitung total tagihan
+  const jumlahTagihan =
+    (masterTagihan.uang_makan || 0) +
+    (masterTagihan.asrama || 0) +
+    (masterTagihan.kas_pondok || 0) +
+    (masterTagihan.shodaqoh_sukarela || 0) +
+    (masterTagihan.jariyah_sb || 0) +
+    (masterTagihan.uang_tahunan || 0) +
+    (masterTagihan.iuran_kampung || 0);
 
-  // Buat order untuk setiap santri
-  const ordersToInsert = (santriData || []).map((santri: any) => {
-    return {
-      order_id: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      customer_id: santri.id, // simpan ID
-      master_tagihan_id: masterTagihanId,
-      customer_name: santri.name,
-      status: "process",
-    };
-  });
+  // Buat tagihan untuk setiap santri
+  const tagihanToInsert = santriIds.map((santriId: string) => ({
+    id_santri: santriId,
+    id_master_tagihan: parseInt(masterTagihanId as string),
+    jumlah_tagihan: jumlahTagihan,
+    status_pembayaran: "BELUM BAYAR",
+  }));
 
   const { error: insertError } = await supabase
-    .from("orders")
-    .insert(ordersToInsert);
+    .from("tagihan_santri")
+    .insert(tagihanToInsert);
 
   if (insertError) {
+    console.error("Insert error:", insertError);
     return {
       status: "error",
       errors: {
@@ -186,7 +284,6 @@ export async function deleteOrder(prevState: any, formData: FormData) {
     };
   }
 
-  // Delete order_menus terlebih dahulu (foreign key constraint)
   const { error: deleteMenuError } = await supabase
     .from("orders_menus")
     .delete()
@@ -210,7 +307,6 @@ export async function deleteOrder(prevState: any, formData: FormData) {
     };
   }
 
-  // Delete order
   const { error } = await supabase
     .from("orders")
     .delete()
@@ -245,7 +341,6 @@ export async function updateOrderCustomer(prevState: any, formData: FormData) {
     };
   }
 
-  // Ambil nama santri
   const { data: santri } = await supabase
     .from("profiles")
     .select("name")
@@ -296,7 +391,6 @@ export async function addOrderItem(prevState: any, data: any) {
     };
   }
 
-  // Get order ID from order_id
   const { data: orderData } = await supabase
     .from("orders")
     .select("id")
@@ -312,7 +406,6 @@ export async function addOrderItem(prevState: any, data: any) {
     };
   }
 
-  // Insert items
   const itemsToInsert = items.map((item: any) => ({
     order_id: orderData.id,
     ...item,
@@ -385,8 +478,6 @@ export async function generatePayment(prevState: any, formData: FormData) {
     };
   }
 
-  // This should call your Midtrans API to generate payment token
-  // For now, return a dummy response
   return {
     status: "success",
     data: {
