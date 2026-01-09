@@ -31,25 +31,34 @@ export default function RekapanTunggakan() {
   const { data: tunggakanData, isLoading } = useQuery({
     queryKey: ["tunggakan-data", currentMonthStr],
     queryFn: async () => {
-      const { data: orders, error } = await supabase
-        .from("orders")
+      const { data: tagihan, error } = await supabase
+        .from("tagihan_santri")
         .select(
           `
-          id,
-          order_id,
-          customer_name,
-          status,
+          id_tagihan_santri,
+          jumlah_tagihan,
+          status_pembayaran,
           created_at,
-          orders_menus(
-            nominal,
-            menus(name)
+          updated_at,
+          santri:profiles!id_santri(id, name),
+          master_tagihan:master_tagihan!id_master_tagihan(
+            id,
+            periode,
+            description,
+            uang_makan,
+            asrama,
+            kas_pondok,
+            shodaqoh_sukarela,
+            jariyah_sb,
+            uang_tahunan,
+            iuran_kampung
           )
         `
         )
-        .neq("status", "settled")
+        .eq("status_pembayaran", "BELUM BAYAR")
         .gte("created_at", `${currentMonthStr}-01`)
         .lt("created_at", getNextMonth(currentMonthStr))
-        .order("created_at");
+        .order("created_at", { ascending: false });
 
       if (error) {
         toast.error("Gagal memuat data tunggakan", {
@@ -58,7 +67,7 @@ export default function RekapanTunggakan() {
         return [];
       }
 
-      return orders || [];
+      return tagihan || [];
     },
   });
 
@@ -76,9 +85,9 @@ export default function RekapanTunggakan() {
       const result = await Promise.all(
         months.map(async (month) => {
           const { count } = await supabase
-            .from("orders")
-            .select("id", { count: "exact", head: true })
-            .neq("status", "settled")
+            .from("tagihan_santri")
+            .select("id_tagihan_santri", { count: "exact", head: true })
+            .eq("status_pembayaran", "BELUM BAYAR")
             .gte("created_at", `${month}-01`)
             .lt("created_at", getNextMonth(month));
 
@@ -95,12 +104,8 @@ export default function RekapanTunggakan() {
 
   const totalNominal = useMemo(() => {
     if (!tunggakanData) return 0;
-    return tunggakanData.reduce((sum, order: any) => {
-      const orderTotal = order.orders_menus.reduce(
-        (s: number, om: any) => s + om.nominal,
-        0
-      );
-      return sum + orderTotal;
+    return tunggakanData.reduce((sum, item: any) => {
+      return sum + parseFloat(item.jumlah_tagihan || 0);
     }, 0);
   }, [tunggakanData]);
 
@@ -126,23 +131,18 @@ export default function RekapanTunggakan() {
       return;
     }
 
-    const exportData = tunggakanData.map((order: any, index: number) => {
-      const nominal = order.orders_menus.reduce(
-        (sum: number, om: any) => sum + om.nominal,
-        0
-      );
-      const items = order.orders_menus
-        .map((om: any) => om.menus.name)
-        .join(", ");
-
+    const exportData = tunggakanData.map((item: any, index: number) => {
       return {
         No: index + 1,
-        "Order ID": order.order_id,
-        "Nama Santri": order.customer_name,
-        "Jenis Tagihan": items,
-        Nominal: nominal,
+        "ID Tagihan": item.id_tagihan_santri,
+        "Nama Santri": item.santri?.name || "-",
+        Periode: item.master_tagihan?.periode || "-",
+        "Jenis Tagihan": getJenisTagihan(item.master_tagihan),
+        "Jumlah Tagihan": parseFloat(item.jumlah_tagihan || 0),
         Status: "Belum Bayar",
-        Tanggal: new Date(order.created_at).toLocaleDateString("id-ID"),
+        "Tanggal Tagihan": new Date(item.created_at).toLocaleDateString(
+          "id-ID"
+        ),
       };
     });
 
@@ -243,61 +243,85 @@ export default function RekapanTunggakan() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse min-w-[1200px]">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3">No</th>
-                    <th className="text-left p-3">Order ID</th>
-                    <th className="text-left p-3">Nama Santri</th>
-                    <th className="text-left p-3">Jenis Tagihan</th>
-                    <th className="text-right p-3">Nominal</th>
-                    <th className="text-center p-3">Status</th>
-                    <th className="text-left p-3">Tanggal</th>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 whitespace-nowrap w-[50px]">
+                      No
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap w-[180px]">
+                      ID Tagihan
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap w-[200px]">
+                      Nama Santri
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap w-[180px]">
+                      Periode
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap w-[250px]">
+                      Jenis Tagihan
+                    </th>
+                    <th className="text-right p-3 whitespace-nowrap w-[150px]">
+                      Nominal
+                    </th>
+                    <th className="text-center p-3 whitespace-nowrap w-[130px]">
+                      Status
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
+                      Tanggal Tagihan
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tunggakanData.map((order: any, index: number) => {
-                    const nominal = order.orders_menus.reduce(
-                      (sum: number, om: any) => sum + om.nominal,
-                      0
-                    );
-                    return (
-                      <tr key={order.id} className="border-b hover:bg-muted/50">
-                        <td className="p-3">{index + 1}</td>
-                        <td className="p-3 font-mono text-sm">
-                          {order.order_id}
-                        </td>
-                        <td className="p-3 font-medium">
-                          {order.customer_name}
-                        </td>
-                        <td className="p-3 text-sm text-muted-foreground">
-                          {order.orders_menus
-                            .map((om: any) => om.menus.name)
-                            .join(", ")}
-                        </td>
-                        <td className="p-3 text-right font-semibold">
-                          {convertIDR(nominal)}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  {tunggakanData.map((item: any, index: number) => (
+                    <tr
+                      key={item.id_tagihan_santri}
+                      className="border-b hover:bg-muted/50"
+                    >
+                      <td className="p-3 whitespace-nowrap">{index + 1}</td>
+                      <td className="p-3 font-mono text-sm whitespace-nowrap">
+                        {item.id_tagihan_santri}
+                      </td>
+                      <td className="p-3 font-medium whitespace-nowrap">
+                        {item.santri?.name || "-"}
+                      </td>
+                      <td className="p-3 whitespace-nowrap">
+                        <div>
+                          <p className="font-semibold">
+                            {item.master_tagihan?.periode || "-"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.master_tagihan?.description || "-"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm">
+                        <div className="max-w-[250px]">
+                          {getJenisTagihan(item.master_tagihan)}
+                        </div>
+                      </td>
+                      <td className="p-3 text-right font-semibold whitespace-nowrap">
+                        {convertIDR(parseFloat(item.jumlah_tagihan || 0))}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex justify-center">
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 whitespace-nowrap inline-block">
                             Belum Bayar
                           </span>
-                        </td>
-                        <td className="p-3 text-sm">
-                          {new Date(order.created_at).toLocaleDateString(
-                            "id-ID"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm whitespace-nowrap">
+                        {new Date(item.created_at).toLocaleDateString("id-ID")}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 font-bold">
-                    <td colSpan={4} className="p-3 text-right">
+                  <tr className="border-t-2 font-bold bg-muted/30">
+                    <td colSpan={5} className="p-3 text-right">
                       Total:
                     </td>
-                    <td className="p-3 text-right text-red-600">
+                    <td className="p-3 text-right text-red-600 whitespace-nowrap">
                       {convertIDR(totalNominal)}
                     </td>
                     <td colSpan={2}></td>
@@ -336,4 +360,19 @@ function formatMonthName(monthStr: string): string {
   ];
   const [year, month] = monthStr.split("-");
   return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
+}
+
+function getJenisTagihan(masterTagihan: any): string {
+  if (!masterTagihan) return "-";
+
+  const items = [];
+  if (masterTagihan.uang_makan > 0) items.push("Uang Makan");
+  if (masterTagihan.asrama > 0) items.push("Asrama");
+  if (masterTagihan.kas_pondok > 0) items.push("Kas Pondok");
+  if (masterTagihan.shodaqoh_sukarela > 0) items.push("Shodaqoh");
+  if (masterTagihan.jariyah_sb > 0) items.push("Jariyah SB");
+  if (masterTagihan.uang_tahunan > 0) items.push("Uang Tahunan");
+  if (masterTagihan.iuran_kampung > 0) items.push("Iuran Kampung");
+
+  return items.length > 0 ? items.join(", ") : "-";
 }
