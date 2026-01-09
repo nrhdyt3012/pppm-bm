@@ -1,18 +1,14 @@
-import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
-import { Coffee } from "lucide-react";
+// src/app/(dashboard)/santri/payment/layout.tsx
 import { ReactNode } from "react";
 
-type AuthLayoutProps = {
+type PaymentLayoutProps = {
   children: ReactNode;
 };
 
-export default function AuthLayout({ children }: AuthLayoutProps) {
+export default function PaymentLayout({ children }: PaymentLayoutProps) {
   return (
-    <div className="relative bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="absolute top-4 right-4">
-        <DarkmodeToggle />
-      </div>
-      <div className="flex w-full max-w-sm flex-col gap-6">{children}</div>
+    <div className="w-full min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+      {children}
     </div>
   );
 }

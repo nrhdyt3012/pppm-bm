@@ -1,3 +1,4 @@
+// src/app/(dashboard)/santri/payment/failed/_components/failed.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ export default function Failed() {
   const order_id = searchParams.get("order_id");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-red-50 to-white dark:from-gray-900 dark:via-red-950 dark:to-gray-900 p-6">
+    <div className="w-full flex items-center justify-center">
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="pt-6">
           <div className="flex flex-col items-center gap-6 text-center">
@@ -26,7 +27,7 @@ export default function Failed() {
               </p>
             </div>
             {order_id && (
-              <div className="w-full space-y-2">
+              <div className="w-full space-y-2 p-4 bg-muted rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">ID Tagihan:</span>
                   <span className="font-mono font-medium">{order_id}</span>

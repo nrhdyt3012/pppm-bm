@@ -1,3 +1,4 @@
+// src/app/(dashboard)/santri/payment/success/_components/success.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ export default function Success() {
   }, [order_id]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-green-50 to-white dark:from-gray-900 dark:via-green-950 dark:to-gray-900 p-6">
+    <div className="w-full flex items-center justify-center">
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="pt-6">
           <div className="flex flex-col items-center gap-6 text-center">
@@ -73,18 +74,20 @@ export default function Success() {
                     Terima kasih, pembayaran SPP Anda telah berhasil diproses.
                   </p>
                 </div>
-                <div className="w-full space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">ID Tagihan:</span>
-                    <span className="font-mono font-medium">{order_id}</span>
+                {order_id && (
+                  <div className="w-full space-y-2 p-4 bg-muted rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">ID Tagihan:</span>
+                      <span className="font-mono font-medium">{order_id}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className="text-green-600 dark:text-green-400 font-medium">
+                        Lunas
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Status:</span>
-                    <span className="text-green-600 dark:text-green-400 font-medium">
-                      Lunas
-                    </span>
-                  </div>
-                </div>
+                )}
                 <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <Link href="/santri/tagihan" className="flex-1">
                     <Button variant="outline" className="w-full">

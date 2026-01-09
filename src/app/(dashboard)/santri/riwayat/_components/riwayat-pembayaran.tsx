@@ -1,22 +1,36 @@
-// File: src/app/(dashboard)/santri/riwayat/_components/riwayat-pembayaran.tsx
+// src/app/(dashboard)/santri/riwayat/_components/riwayat-pembayaran.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/stores/auth-store";
-import { convertIDR } from "@/lib/utils";
+import { convertIDR, cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Loader2,
-  Receipt,
-  Download,
-  CheckCircle2,
-  Calendar,
-} from "lucide-react";
+import { Loader2, Receipt, Download, Printer } from "lucide-react";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
+
+type TagihanData = {
+  id_tagihan_santri: string;
+  jumlah_tagihan: string;
+  status_pembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
+  created_at: string;
+  updated_at: string;
+  master_tagihan: {
+    id: number;
+    periode: string;
+    description: string;
+    uang_makan: number;
+    asrama: number;
+    kas_pondok: number;
+    shodaqoh_sukarela: number;
+    jariyah_sb: number;
+    uang_tahunan: number;
+    iuran_kampung: number;
+  };
+};
 
 export default function RiwayatPembayaran() {
   const supabase = createClient();
@@ -26,24 +40,29 @@ export default function RiwayatPembayaran() {
     queryKey: ["riwayat-pembayaran", profile.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("orders")
+        .from("tagihan_santri")
         .select(
           `
-          id,
-          order_id,
-          customer_name,
-          status,
+          id_tagihan_santri,
+          jumlah_tagihan,
+          status_pembayaran,
           created_at,
-          orders_menus(
+          updated_at,
+          master_tagihan:master_tagihan!id_master_tagihan(
             id,
-            nominal,
-            notes,
-            menus(name, periode, description)
+            periode,
+            description,
+            uang_makan,
+            asrama,
+            kas_pondok,
+            shodaqoh_sukarela,
+            jariyah_sb,
+            uang_tahunan,
+            iuran_kampung
           )
         `
         )
-        .eq("customer_name", profile.name)
-        .eq("status", "settled")
+        .eq("id_santri", profile.id)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -53,7 +72,7 @@ export default function RiwayatPembayaran() {
         return [];
       }
 
-      return data || [];
+      return (data as TagihanData[]) || [];
     },
   });
 
@@ -64,6 +83,27 @@ export default function RiwayatPembayaran() {
       </div>
     );
   }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      "BELUM BAYAR":
+        "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100",
+      LUNAS:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+      KADALUARSA: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+    };
+
+    return (
+      <span
+        className={cn(
+          "px-3 py-1 rounded-full text-xs font-medium inline-block",
+          statusConfig[status as keyof typeof statusConfig]
+        )}
+      >
+        {status}
+      </span>
+    );
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -86,121 +126,130 @@ export default function RiwayatPembayaran() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {riwayatList.map((pembayaran: any) => {
-            const subtotal = pembayaran.orders_menus.reduce(
-              (sum: number, item: any) => sum + item.nominal,
-              0
-            );
-            const tax = Math.round(subtotal * 0.12);
-            const service = Math.round(subtotal * 0.05);
-            const grandTotal = subtotal + tax + service;
-
-            return (
-              <ReceiptCard
-                key={pembayaran.id}
-                pembayaran={pembayaran}
-                subtotal={subtotal}
-                tax={tax}
-                service={service}
-                grandTotal={grandTotal}
-              />
-            );
-          })}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Daftar Riwayat Pembayaran</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 whitespace-nowrap">No</th>
+                    <th className="text-left p-3 whitespace-nowrap">
+                      ID Tagihan
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap">Periode</th>
+                    <th className="text-right p-3 whitespace-nowrap">Jumlah</th>
+                    <th className="text-center p-3 whitespace-nowrap">
+                      Status
+                    </th>
+                    <th className="text-left p-3 whitespace-nowrap">Tanggal</th>
+                    <th className="text-center p-3 whitespace-nowrap">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {riwayatList.map((item, index) => (
+                    <tr
+                      key={item.id_tagihan_santri}
+                      className="border-b hover:bg-muted/50"
+                    >
+                      <td className="p-3 whitespace-nowrap">{index + 1}</td>
+                      <td className="p-3 font-mono text-sm whitespace-nowrap">
+                        #{item.id_tagihan_santri}
+                      </td>
+                      <td className="p-3">
+                        <div>
+                          <p className="font-semibold">
+                            {item.master_tagihan.periode}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.master_tagihan.description}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-3 text-right font-semibold whitespace-nowrap">
+                        {convertIDR(parseFloat(item.jumlah_tagihan))}
+                      </td>
+                      <td className="p-3 text-center">
+                        {getStatusBadge(item.status_pembayaran)}
+                      </td>
+                      <td className="p-3 text-sm whitespace-nowrap">
+                        {new Date(item.updated_at).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="p-3 text-center">
+                        {item.status_pembayaran === "LUNAS" && (
+                          <ReceiptButton tagihan={item} />
+                        )}
+                        {item.status_pembayaran !== "LUNAS" && (
+                          <span className="text-xs text-muted-foreground">
+                            -
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 }
 
-function ReceiptCard({
-  pembayaran,
-  subtotal,
-  tax,
-  service,
-  grandTotal,
-}: {
-  pembayaran: any;
-  subtotal: number;
-  tax: number;
-  service: number;
-  grandTotal: number;
-}) {
+function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
+  const profile = useAuthStore((state) => state.profile);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Kwitansi-${pembayaran.order_id}`,
+    documentTitle: `Kwitansi-${tagihan.id_tagihan_santri}`,
   });
+
+  const getRincianTagihan = () => {
+    const items = [];
+    const master = tagihan.master_tagihan;
+
+    if (master.uang_makan > 0)
+      items.push({ label: "Uang Makan", value: master.uang_makan });
+    if (master.asrama > 0)
+      items.push({ label: "Asrama", value: master.asrama });
+    if (master.kas_pondok > 0)
+      items.push({ label: "Kas Pondok", value: master.kas_pondok });
+    if (master.shodaqoh_sukarela > 0)
+      items.push({
+        label: "Shodaqoh Sukarela",
+        value: master.shodaqoh_sukarela,
+      });
+    if (master.jariyah_sb > 0)
+      items.push({ label: "Jariyah SB", value: master.jariyah_sb });
+    if (master.uang_tahunan > 0)
+      items.push({ label: "Uang Tahunan", value: master.uang_tahunan });
+    if (master.iuran_kampung > 0)
+      items.push({ label: "Iuran Kampung", value: master.iuran_kampung });
+
+    return items;
+  };
 
   return (
     <>
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-teal-500" />
-                {pembayaran.orders_menus[0]?.menus?.periode || "Pembayaran SPP"}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Order ID: {pembayaran.order_id}
-              </p>
-            </div>
-            <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 rounded-full text-sm font-medium flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4" />
-              Lunas
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>
-              {new Date(pembayaran.created_at).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
-              <span>{convertIDR(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Pajak (12%)</span>
-              <span>{convertIDR(tax)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Biaya Admin (5%)</span>
-              <span>{convertIDR(service)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2">
-              <span>Total Dibayar</span>
-              <span className="text-teal-600">{convertIDR(grandTotal)}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Rincian:</p>
-            {pembayaran.orders_menus.map((item: any, idx: number) => (
-              <div key={idx} className="text-sm text-muted-foreground pl-4">
-                • {item.notes || item.menus?.name}
-              </div>
-            ))}
-          </div>
-
-          <Button onClick={handlePrint} variant="outline" className="w-full">
-            <Download className="mr-2 h-4 w-4" />
-            Cetak Kwitansi
-          </Button>
-        </CardContent>
-      </Card>
+      <Button
+        onClick={handlePrint}
+        size="sm"
+        variant="outline"
+        className="gap-2"
+      >
+        <Printer className="h-4 w-4" />
+        Cetak
+      </Button>
 
       {/* Hidden Receipt for Printing */}
       <div className="hidden">
@@ -227,12 +276,12 @@ function ReceiptCard({
           <div className="space-y-2 mb-6">
             <div className="flex justify-between">
               <span className="font-medium">No. Kwitansi:</span>
-              <span>{pembayaran.order_id}</span>
+              <span>{tagihan.id_tagihan_santri}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Tanggal:</span>
               <span>
-                {new Date(pembayaran.created_at).toLocaleDateString("id-ID", {
+                {new Date(tagihan.updated_at).toLocaleDateString("id-ID", {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
@@ -241,11 +290,11 @@ function ReceiptCard({
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Nama Santri:</span>
-              <span>{pembayaran.customer_name}</span>
+              <span>{profile.name}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Periode:</span>
-              <span>{pembayaran.orders_menus[0]?.menus?.periode}</span>
+              <span>{tagihan.master_tagihan.periode}</span>
             </div>
           </div>
 
@@ -258,25 +307,17 @@ function ReceiptCard({
               </tr>
             </thead>
             <tbody>
-              {pembayaran.orders_menus.map((item: any, idx: number) => (
+              {getRincianTagihan().map((item, idx) => (
                 <tr key={idx} className="border-b border-gray-300">
-                  <td className="py-2">{item.notes || item.menus?.name}</td>
-                  <td className="text-right py-2">
-                    {convertIDR(item.nominal)}
-                  </td>
+                  <td className="py-2">{item.label}</td>
+                  <td className="text-right py-2">{convertIDR(item.value)}</td>
                 </tr>
               ))}
-              <tr className="border-b border-gray-300">
-                <td className="py-2">Pajak (12%)</td>
-                <td className="text-right py-2">{convertIDR(tax)}</td>
-              </tr>
-              <tr className="border-b border-gray-300">
-                <td className="py-2">Biaya Admin (5%)</td>
-                <td className="text-right py-2">{convertIDR(service)}</td>
-              </tr>
               <tr className="border-t-2 border-gray-400 font-bold">
                 <td className="py-2">TOTAL</td>
-                <td className="text-right py-2">{convertIDR(grandTotal)}</td>
+                <td className="text-right py-2">
+                  {convertIDR(parseFloat(tagihan.jumlah_tagihan))}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -286,7 +327,7 @@ function ReceiptCard({
             <div className="text-center">
               <p className="mb-16">Penerima,</p>
               <p className="border-t border-black pt-1 inline-block px-8">
-                {pembayaran.customer_name}
+                {profile.name}
               </p>
             </div>
             <div className="text-center">
