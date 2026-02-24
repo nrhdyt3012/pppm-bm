@@ -48,94 +48,45 @@ export async function login(
     };
   }
 
-  if (!user) {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: ["User tidak ditemukan."],
-      },
-    };
-  }
-
-  console.log("🔍 Checking user ID:", user.id);
-  console.log("📧 User email:", user.email);
-
-  // Cek apakah user adalah santri (PERBAIKAN: sesuaikan nama kolom)
-  const { data: santriData, error: santriError } = await supabase
-    .from("santri")
-    .select("id, nama, jenisKelamin, avatarUrl")
-    .eq("id", user.id)
+const { data: adminData } = await supabase
+   .from('admin')
+   .select('id, nama, jenis_kelamin, noHP')
+   .eq('id', user?.id)
+   .single();
+   // Cek apakah user adalah santri,
+const { data: santriData } = await supabase
+   .from('santri')
+    .select('id, nama, jenisKelamin, avatarUrl')
+    .eq('id', user?.id)
     .single();
 
-  console.log("👤 Santri data:", santriData);
-  console.log("❌ Santri error:", santriError);
+const role = adminData ? 'admin' : 'santri';
+let profile = null;
 
-  // Cek apakah user adalah admin (PERBAIKAN: sesuaikan nama kolom)
-  const { data: adminData, error: adminError } = await supabase
-    .from("admin")
-    .select("id, nama, jenis_kelamin, noHP")
-    .eq("id", user.id)
-    .single();
-
-  console.log("👤 Admin data:", adminData);
-  console.log("❌ Admin error:", adminError);
-
-  let profile = null;
-
-  if (adminData) {
-    profile = {
-      id: adminData.id,
-      name: adminData.nama,
-      role: "admin",
-      avatar_url: null,
-    };
-  } else if (santriData) {
-    profile = {
-      id: santriData.id,
-      name: santriData.nama,
-      role: "santri",
-      avatar_url: santriData.avatarUrl,
-    };
-  } else {
-    // DEBUGGING: Log semua tabel untuk user ini
-    console.error("🚨 User not found in santri or admin tables");
-    console.error("🔍 User ID:", user.id);
-    console.error("📧 Email:", user.email);
-    console.error("🔐 User metadata:", user.user_metadata);
-    
-    // Logout supaya tidak stuck
-    await supabase.auth.signOut();
-    
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [
-          `User profile tidak ditemukan untuk email ${user.email}. ` +
-          `User ID: ${user.id}. ` +
-          `Hubungi administrator untuk membuat profile santri/admin.`
-        ],
-      },
-    };
-  }
-
-  // ✅ SIMPAN PROFILE KE COOKIE
-  const cookiesStore = await cookies();
-  cookiesStore.set("user_profile", JSON.stringify(profile), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 hari
-    path: "/",
-  });
+if (adminData) {
+  profile = {
+    id: adminData.id,
+    name: adminData.nama,
+    role: "admin",
+    avatar_url: null,
+  };
+} else if (santriData) {
+  profile = {
+    id: santriData.id,
+    name: santriData.nama,
+    role: "santri",
+    avatar_url: santriData.avatarUrl,
+  };
+} else {
+  return {
+    status: "error",
+    errors: {
+      ...prevState.errors,
+      _form: ["User profile tidak ditemukan."],
+    },
+  };
+}
 
   revalidatePath("/", "layout");
-  
-  // ✅ REDIRECT LANGSUNG BERDASARKAN ROLE
-  if (profile.role === "admin") {
-    redirect("/admin");
-  } else {
-    redirect("/santri/info");
-  }
+  redirect("/");
 }
