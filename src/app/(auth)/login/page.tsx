@@ -1,4 +1,4 @@
-import Login from "../login/_components/login";
+import Login from "./_components/login";
 
 export const metadata = {
   title: "PPPM BM | Login",
