@@ -48,55 +48,44 @@ export async function login(
     };
   }
 
-  // Cek apakah user adalah admin
-  const { data: adminData } = await supabase
-    .from("admin")
-    .select("id, nama, jenis_kelamin, noHP")
-    .eq("id", user?.id)
+const { data: adminData } = await supabase
+   .from('admin')
+   .select('id, nama, jenis_kelamin, noHP')
+   .eq('id', user?.id)
+   .single();
+   // Cek apakah user adalah santri,
+const { data: santriData } = await supabase
+   .from('santri')
+    .select('id, nama, jenisKelamin, avatarUrl')
+    .eq('id', user?.id)
     .single();
 
-  // Cek apakah user adalah santri
-  const { data: santriData } = await supabase
-    .from("santri")
-    .select("id, nama, jenisKelamin, avatarUrl")
-    .eq("id", user?.id)
-    .single();
+const role = adminData ? 'admin' : 'santri';
+let profile = null;
 
-  let profile = null;
-
-  if (adminData) {
-    profile = {
-      id: adminData.id,
-      name: adminData.nama,
-      role: "admin",
-      avatar_url: null,
-    };
-  } else if (santriData) {
-    profile = {
-      id: santriData.id,
-      name: santriData.nama,
-      role: "santri",
-      avatar_url: santriData.avatarUrl,
-    };
-  } else {
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: ["User profile tidak ditemukan."],
-      },
-    };
-  }
-
-  // ✅ SIMPAN PROFILE KE COOKIE sebelum redirect
-  const cookiesStore = await cookies();
-  cookiesStore.set("user_profile", JSON.stringify(profile), {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    // secure: true, // aktifkan di production (HTTPS)
-    maxAge: 60 * 60 * 24 * 7, // 7 hari
-  });
+if (adminData) {
+  profile = {
+    id: adminData.id,
+    name: adminData.nama,
+    role: "admin",
+    avatar_url: null,
+  };
+} else if (santriData) {
+  profile = {
+    id: santriData.id,
+    name: santriData.nama,
+    role: "santri",
+    avatar_url: santriData.avatarUrl,
+  };
+} else {
+  return {
+    status: "error",
+    errors: {
+      ...prevState.errors,
+      _form: ["User profile tidak ditemukan."],
+    },
+  };
+}
 
   revalidatePath("/", "layout");
   redirect("/");
