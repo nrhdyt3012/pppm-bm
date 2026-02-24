@@ -1,4 +1,4 @@
-import { useState, useEffect, startTransition, useActionState } from "react";
+import { useState, useEffect, startTransition, useActionState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, SortAsc } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { convertIDR } from "@/lib/utils";
 import {
   DialogClose,
@@ -31,32 +31,32 @@ const INITIAL_STATE_TAGIHAN: TagihanFormState = {
   errors: { _form: [] },
 };
 
-export default function DialogCreateTagihan({
-  refetch,
-}: {
+export default function DialogCreateTagihan({ 
+  refetch 
+}: { 
   refetch: () => void;
 }) {
   const supabase = createClient();
   const [selectedSantri, setSelectedSantri] = useState<string[]>([]);
-  const [selectedMasterTagihan, setSelectedMasterTagihan] =
-    useState<string>("");
+  const [selectedMasterTagihan, setSelectedMasterTagihan] = useState<string>("");
   const [searchSantri, setSearchSantri] = useState("");
-  const [sortAsc, setSortAsc] = useState(true);
 
   const [createState, createAction, isPending] = useActionState(
-    createTagihanBatch,
+    createTagihanBatch as any,
     INITIAL_STATE_TAGIHAN
   );
 
+  const formDataRef = useRef<FormData | null>(null);
+
   // Fetch daftar santri
   const { data: santriList, isLoading: loadingSantri } = useQuery({
-    queryKey: ["santri-list-create", searchSantri, sortAsc],
+    queryKey: ["santri-list-create", searchSantri],
     queryFn: async () => {
       const query = supabase
         .from("profiles")
         .select("id, name")
         .eq("role", "santri")
-        .order("name", { ascending: sortAsc });
+        .order("name");
 
       if (searchSantri) {
         query.ilike("name", `%${searchSantri}%`);
@@ -110,7 +110,7 @@ export default function DialogCreateTagihan({
     formData.append("master_tagihan_id", selectedMasterTagihan);
 
     startTransition(() => {
-      createAction(formData);
+      createAction();
     });
   };
 
@@ -123,6 +123,7 @@ export default function DialogCreateTagihan({
 
     if (createState?.status === "success") {
       toast.success(`Berhasil membuat ${selectedSantri.length} tagihan`);
+      // Tutup dialog dengan menemukan tombol close
       document.querySelector<HTMLButtonElement>('[data-state="open"]')?.click();
       refetch();
       setSelectedSantri([]);
@@ -145,7 +146,7 @@ export default function DialogCreateTagihan({
     : 0;
 
   return (
-    <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+    <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Berikan Tagihan kepada Santri</DialogTitle>
         <DialogDescription>
@@ -204,26 +205,19 @@ export default function DialogCreateTagihan({
                 { label: "Uang Makan", value: selectedMaster.uang_makan },
                 { label: "Asrama", value: selectedMaster.asrama },
                 { label: "Kas Pondok", value: selectedMaster.kas_pondok },
-                {
-                  label: "Shodaqoh Sukarela",
-                  value: selectedMaster.shodaqoh_sukarela,
-                },
+                { label: "Shodaqoh Sukarela", value: selectedMaster.shodaqoh_sukarela },
                 { label: "Jariyah SB", value: selectedMaster.jariyah_sb },
                 { label: "Uang Tahunan", value: selectedMaster.uang_tahunan },
                 { label: "Iuran Kampung", value: selectedMaster.iuran_kampung },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between">
                   <span>{item.label}:</span>
-                  <span className="font-medium">
-                    {convertIDR(item.value || 0)}
-                  </span>
+                  <span className="font-medium">{convertIDR(item.value || 0)}</span>
                 </div>
               ))}
               <div className="border-t pt-2 flex justify-between font-bold">
                 <span>Total:</span>
-                <span className="text-teal-600">
-                  {convertIDR(totalNominal)}
-                </span>
+                <span className="text-teal-600">{convertIDR(totalNominal)}</span>
               </div>
             </CardContent>
           </Card>
@@ -236,23 +230,11 @@ export default function DialogCreateTagihan({
               Pilih Santri ({selectedSantri.length} dipilih)
             </h3>
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari santri..."
-                  className="w-48 pl-8"
-                  value={searchSantri}
-                  onChange={(e) => setSearchSantri(e.target.value)}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSortAsc(!sortAsc)}
-              >
-                <SortAsc className="h-4 w-4 mr-2" />
-                {sortAsc ? "A-Z" : "Z-A"}
-              </Button>
+              <Input
+                placeholder="Cari santri..."
+                className="w-48"
+                onChange={(e) => setSearchSantri(e.target.value)}
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -270,47 +252,23 @@ export default function DialogCreateTagihan({
               <Loader2 className="animate-spin" />
             </div>
           ) : (
-            <div className="border rounded-lg max-h-80 overflow-y-auto">
-              <div className="divide-y">
-                {santriList?.map((santri: any, index: number) => (
-                  <div
-                    key={santri.id}
-                    className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer"
-                    onClick={() =>
-                      handleSelectSantri(
-                        santri.id,
-                        !selectedSantri.includes(santri.id)
-                      )
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto border rounded-lg p-3">
+              {santriList?.map((santri: any) => (
+                <div
+                  key={santri.id}
+                  className="flex items-center space-x-3 p-2 border rounded hover:bg-gray-50 dark:hover:bg-gray-900"
+                >
+                  <Checkbox
+                    checked={selectedSantri.includes(santri.id)}
+                    onCheckedChange={(checked) =>
+                      handleSelectSantri(santri.id, checked as boolean)
                     }
-                  >
-                    <Checkbox
-                      checked={selectedSantri.includes(santri.id)}
-                      onCheckedChange={(checked) =>
-                        handleSelectSantri(santri.id, checked as boolean)
-                      }
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground w-8">
-                          {index + 1}.
-                        </span>
-                        <span className="font-medium">{santri.name}</span>
-                      </div>
-                      {selectedSantri.includes(santri.id) && (
-                        <span className="text-xs text-teal-600 font-medium">
-                          Terpilih
-                        </span>
-                      )}
-                    </div>
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{santri.name}</p>
                   </div>
-                ))}
-                {santriList?.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground">
-                    Tidak ada santri ditemukan
-                  </div>
-                )}
-              </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -322,9 +280,7 @@ export default function DialogCreateTagihan({
         </DialogClose>
         <Button
           onClick={handleSubmit}
-          disabled={
-            isPending || selectedSantri.length === 0 || !selectedMasterTagihan
-          }
+          disabled={isPending || selectedSantri.length === 0 || !selectedMasterTagihan}
           className="bg-teal-500 hover:bg-teal-600"
         >
           {isPending ? (

@@ -56,7 +56,7 @@ export default function Dashboard() {
       const { count: tagihanTerbayar } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .eq("status_pembayaran", "LUNAS")
+        .eq("statusPembayaran", "LUNAS")
         .gte("created_at", `${currentMonth}-01`)
         .lt("created_at", getNextMonth(currentMonth));
 
@@ -64,7 +64,7 @@ export default function Dashboard() {
       const { count: tagihanBelumTerbayar } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .eq("status_pembayaran", "BELUM BAYAR")
+        .eq("statusPembayaran", "BELUM BAYAR")
         .gte("created_at", `${currentMonth}-01`)
         .lt("created_at", getNextMonth(currentMonth));
 
@@ -83,14 +83,14 @@ export default function Dashboard() {
       // Pemasukan bulan ini (total dari tagihan yang LUNAS)
       const { data: tagihanLunasBulanIni } = await supabase
         .from("tagihan_santri")
-        .select("jumlah_tagihan")
-        .eq("status_pembayaran", "LUNAS")
-        .gte("updated_at", `${currentMonth}-01`)
-        .lt("updated_at", getNextMonth(currentMonth));
+        .select("jumlahTagihan")
+        .eq("statusPembayaran", "LUNAS")
+        .gte("updatedAt", `${currentMonth}-01`)
+        .lt("updatedAt", getNextMonth(currentMonth));
 
       const pemasukanBulanIni =
         tagihanLunasBulanIni?.reduce(
-          (sum, item) => sum + parseFloat(item.jumlah_tagihan || "0"),
+          (sum, item) => sum + parseFloat(item.jumlahTagihan || "0"),
           0
         ) || 0;
 
@@ -101,14 +101,14 @@ export default function Dashboard() {
 
       const { data: tagihanLunasMingguIni } = await supabase
         .from("tagihan_santri")
-        .select("jumlah_tagihan")
-        .eq("status_pembayaran", "LUNAS")
-        .gte("updated_at", weekAgo.toISOString())
-        .lte("updated_at", today.toISOString());
+        .select("jumlahTagihan")
+        .eq("statusPembayaran", "LUNAS")
+        .gte("updatedAt", weekAgo.toISOString())
+        .lte("updatedAt", today.toISOString());
 
       const pemasukanMingguIni =
         tagihanLunasMingguIni?.reduce(
-          (sum, item) => sum + parseFloat(item.jumlah_tagihan || "0"),
+          (sum, item) => sum + parseFloat(item.jumlahTagihan || "0"),
           0
         ) || 0;
 

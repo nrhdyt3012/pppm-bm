@@ -147,32 +147,32 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
   console.log("=== UPDATE USER ===");
   console.log("User ID:", userId);
 
-  // Update tabel profiles
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({
-      name: validatedFields.data.name,
-      avatar_url: avatarUrl,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
+  // // Update tabel profiles
+  // const { error: profileError } = await supabase
+  //   .from("profiles")
+  //   .update({
+  //     name: validatedFields.data.name,
+  //     avatar_url: avatarUrl,
+  //     updated_at: new Date().toISOString(),
+  //   })
+  //   .eq("id", userId);
 
-  if (profileError) {
-    console.error("Profile update error:", profileError);
-    return {
-      status: "error",
-      errors: {
-        ...prevState.errors,
-        _form: [`Gagal update profile: ${profileError.message}`],
-      },
-    };
-  }
+  // if (profileError) {
+  //   console.error("Profile update error:", profileError);
+  //   return {
+  //     status: "error",
+  //     errors: {
+  //       ...prevState.errors,
+  //       _form: [`Gagal update profile: ${profileError.message}`],
+  //     },
+  //   };
+  // }
 
   // Update tabel santri
   const { error: santriError } = await supabase
     .from("santri")
     .update({
-      namaSantri: validatedFields.data.name,
+      nama: validatedFields.data.name,
       jenisKelamin: validatedFields.data.jenis_kelamin,
       tempatLahir: validatedFields.data.tempat_lahir,
       tanggalLahir: validatedFields.data.tanggal_lahir,

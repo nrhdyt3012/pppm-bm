@@ -44,12 +44,12 @@ export async function updateTagihan(
       uang_makan: validatedFields.data.uang_makan,
       asrama: validatedFields.data.asrama,
       kas_pondok: validatedFields.data.kas_pondok,
-      shodaqoh_sukarela: validatedFields.data.shodaqoh_sukarela,
-      jariyah_sb: validatedFields.data.jariyah_sb,
+      sedekah_sukarela: validatedFields.data.sedekah_sukarela,
+      aset_jariyah: validatedFields.data.aset_jariyah,
       uang_tahunan: validatedFields.data.uang_tahunan,
       iuran_kampung: validatedFields.data.iuran_kampung,
     })
-    .eq("id", formData.get("id"));
+    .eq("id_masterTagihan", formData.get("id"));
 
   if (error) {
     return {
@@ -125,12 +125,12 @@ export async function updateTagihanSantri(prevState: any, formData: FormData) {
   const { error } = await supabase
     .from("tagihan_santri")
     .update({
-      id_master_tagihan: parseInt(idMasterTagihan as string),
-      jumlah_tagihan: parseFloat(jumlahTagihan as string),
-      status_pembayaran: statusPembayaran as string,
-      updated_at: new Date().toISOString(),
+      idMasterTagihan: parseInt(idMasterTagihan as string),
+      jumlahTagihan: parseFloat(jumlahTagihan as string),
+      statusPembayaran: statusPembayaran as string,
+      updatedAt: new Date().toISOString(),
     })
-    .eq("id_tagihan_santri", idTagihan);
+    .eq("idTagihanSantri", idTagihan);
 
   if (error) {
     return {
@@ -164,7 +164,7 @@ export async function deleteTagihanSantri(prevState: any, formData: FormData) {
   const { error } = await supabase
     .from("tagihan_santri")
     .delete()
-    .eq("id_tagihan_santri", idTagihan);
+    .eq("idTagihanSantri", idTagihan);
 
   if (error) {
     return {
@@ -232,9 +232,9 @@ export async function createTagihanBatch(
   // CEK DUPLIKAT: Santri yang sudah punya tagihan periode ini
   const { data: existingTagihan, error: checkError } = await supabase
     .from("tagihan_santri")
-    .select("id_santri, santri:profiles!id_santri(name)")
-    .eq("id_master_tagihan", masterTagihanId)
-    .in("id_santri", santriIds);
+    .select("idSantri, santri:profiles!idSantri(name)")
+    .eq("idMasterTagihan", masterTagihanId)
+    .in("idSantri", santriIds);
 
   if (checkError) {
     return {
@@ -265,7 +265,7 @@ export async function createTagihanBatch(
   const { data: masterTagihan, error: masterError } = await supabase
     .from("master_tagihan")
     .select("*")
-    .eq("id", masterTagihanId)
+    .eq("idMasterTagihan", masterTagihanId)
     .single();
 
   if (masterError || !masterTagihan) {
@@ -282,17 +282,17 @@ export async function createTagihanBatch(
     (masterTagihan.uang_makan || 0) +
     (masterTagihan.asrama || 0) +
     (masterTagihan.kas_pondok || 0) +
-    (masterTagihan.shodaqoh_sukarela || 0) +
-    (masterTagihan.jariyah_sb || 0) +
+    (masterTagihan.sedekah_sukarela || 0) +
+    (masterTagihan.aset_jariyah || 0) +
     (masterTagihan.uang_tahunan || 0) +
     (masterTagihan.iuran_kampung || 0);
 
   // Buat tagihan untuk setiap santri (ID akan auto-generate dari trigger)
   const tagihanToInsert = santriIds.map((santriId: string) => ({
-    id_santri: santriId,
-    id_master_tagihan: parseInt(masterTagihanId as string),
-    jumlah_tagihan: jumlahTagihan,
-    status_pembayaran: "BELUM BAYAR",
+    idSantri: santriId,
+    idMasterTagihan: parseInt(masterTagihanId as string),
+    jumlahTagihan: jumlahTagihan,
+    statusPembayaran: "BELUM BAYAR",
   }));
 
   const { error: insertError } = await supabase

@@ -37,8 +37,8 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
     uang_makan: validatedFields.data.uang_makan,
     asrama: validatedFields.data.asrama,
     kas_pondok: validatedFields.data.kas_pondok,
-    shodaqoh_sukarela: validatedFields.data.shodaqoh_sukarela,
-    jariyah_sb: validatedFields.data.jariyah_sb,
+    sedekah_sukarela: validatedFields.data.sedekah_sukarela,
+    aset_jariyah: validatedFields.data.aset_jariyah,
     uang_tahunan: validatedFields.data.uang_tahunan,
     iuran_kampung: validatedFields.data.iuran_kampung,
   });
@@ -92,12 +92,12 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
       uang_makan: validatedFields.data.uang_makan,
       asrama: validatedFields.data.asrama,
       kas_pondok: validatedFields.data.kas_pondok,
-      shodaqoh_sukarela: validatedFields.data.shodaqoh_sukarela,
-      jariyah_sb: validatedFields.data.jariyah_sb,
+      sedekah_sukarela: validatedFields.data.sedekah_sukarela,
+      aset_jariyah: validatedFields.data.aset_jariyah,
       uang_tahunan: validatedFields.data.uang_tahunan,
       iuran_kampung: validatedFields.data.iuran_kampung,
     })
-    .eq("id", formData.get("id"));
+    .eq("id_masterTagihan", formData.get("id"));
 
   if (error) {
     return {
@@ -120,7 +120,7 @@ export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
   const { error } = await supabase
     .from("master_tagihan")
     .delete()
-    .eq("id", formData.get("id"));
+    .eq("id_masterTagihan", formData.get("id"));
 
   if (error) {
     return {

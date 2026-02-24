@@ -8,16 +8,16 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR, cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Receipt, Download, Printer } from "lucide-react";
+import { Loader2, Receipt, Printer } from "lucide-react";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
 type TagihanData = {
-  id_tagihan_santri: string;
-  jumlah_tagihan: string;
-  status_pembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
-  created_at: string;
-  updated_at: string;
+  idTagihanSantri: string;
+  jumlahTagihan: string;
+  statusPembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
+  createdAt: string;
+  updatedAt: string;
   master_tagihan: {
     id: number;
     periode: string;
@@ -25,8 +25,8 @@ type TagihanData = {
     uang_makan: number;
     asrama: number;
     kas_pondok: number;
-    shodaqoh_sukarela: number;
-    jariyah_sb: number;
+    sedekah_sukarela: number;
+    aset_jariyah: number;
     uang_tahunan: number;
     iuran_kampung: number;
   };
@@ -43,27 +43,27 @@ export default function RiwayatPembayaran() {
         .from("tagihan_santri")
         .select(
           `
-          id_tagihan_santri,
-          jumlah_tagihan,
-          status_pembayaran,
-          created_at,
-          updated_at,
-          master_tagihan:master_tagihan!id_master_tagihan(
+          idTagihanSantri,
+          jumlahTagihan,
+          statusPembayaran,
+          createdAt,
+          updatedAt,
+          master_tagihan:master_tagihan!idMasterTagihan(
             id,
             periode,
             description,
             uang_makan,
             asrama,
             kas_pondok,
-            shodaqoh_sukarela,
-            jariyah_sb,
+            sedekah_sukarela,
+            aset_jariyah,
             uang_tahunan,
             iuran_kampung
           )
         `
         )
-        .eq("id_santri", profile.id)
-        .order("created_at", { ascending: false });
+        .eq("idSantri", profile.id)
+        .order("createdAt", { ascending: false });
 
       if (error) {
         toast.error("Gagal memuat riwayat pembayaran", {
@@ -72,7 +72,7 @@ export default function RiwayatPembayaran() {
         return [];
       }
 
-      return (data as TagihanData[]) || [];
+      return (data as unknown as TagihanData[]) || [];
     },
   });
 
@@ -153,12 +153,12 @@ export default function RiwayatPembayaran() {
                 <tbody>
                   {riwayatList.map((item, index) => (
                     <tr
-                      key={item.id_tagihan_santri}
+                      key={item.idTagihanSantri}
                       className="border-b hover:bg-muted/50"
                     >
                       <td className="p-3 whitespace-nowrap">{index + 1}</td>
                       <td className="p-3 font-mono text-sm whitespace-nowrap">
-                        #{item.id_tagihan_santri}
+                        #{item.idTagihanSantri}
                       </td>
                       <td className="p-3">
                         <div>
@@ -171,23 +171,23 @@ export default function RiwayatPembayaran() {
                         </div>
                       </td>
                       <td className="p-3 text-right font-semibold whitespace-nowrap">
-                        {convertIDR(parseFloat(item.jumlah_tagihan))}
+                        {convertIDR(parseFloat(item.jumlahTagihan))}
                       </td>
                       <td className="p-3 text-center">
-                        {getStatusBadge(item.status_pembayaran)}
+                        {getStatusBadge(item.statusPembayaran)}
                       </td>
                       <td className="p-3 text-sm whitespace-nowrap">
-                        {new Date(item.updated_at).toLocaleDateString("id-ID", {
+                        {new Date(item.updatedAt).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
                         })}
                       </td>
                       <td className="p-3 text-center">
-                        {item.status_pembayaran === "LUNAS" && (
+                        {item.statusPembayaran === "LUNAS" && (
                           <ReceiptButton tagihan={item} />
                         )}
-                        {item.status_pembayaran !== "LUNAS" && (
+                        {item.statusPembayaran !== "LUNAS" && (
                           <span className="text-xs text-muted-foreground">
                             -
                           </span>
@@ -211,7 +211,7 @@ function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Kwitansi-${tagihan.id_tagihan_santri}`,
+    documentTitle: `Kwitansi-${tagihan.idTagihanSantri}`,
   });
 
   const getRincianTagihan = () => {
@@ -224,13 +224,13 @@ function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
       items.push({ label: "Asrama", value: master.asrama });
     if (master.kas_pondok > 0)
       items.push({ label: "Kas Pondok", value: master.kas_pondok });
-    if (master.shodaqoh_sukarela > 0)
+    if (master.sedekah_sukarela > 0)
       items.push({
         label: "Shodaqoh Sukarela",
-        value: master.shodaqoh_sukarela,
+        value: master.sedekah_sukarela,
       });
-    if (master.jariyah_sb > 0)
-      items.push({ label: "Jariyah SB", value: master.jariyah_sb });
+    if (master.aset_jariyah > 0)
+      items.push({ label: "Jariyah SB", value: master.aset_jariyah });
     if (master.uang_tahunan > 0)
       items.push({ label: "Uang Tahunan", value: master.uang_tahunan });
     if (master.iuran_kampung > 0)
@@ -276,12 +276,12 @@ function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
           <div className="space-y-2 mb-6">
             <div className="flex justify-between">
               <span className="font-medium">No. Kwitansi:</span>
-              <span>{tagihan.id_tagihan_santri}</span>
+              <span>{tagihan.idTagihanSantri}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Tanggal:</span>
               <span>
-                {new Date(tagihan.updated_at).toLocaleDateString("id-ID", {
+                {new Date(tagihan.updatedAt).toLocaleDateString("id-ID", {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
@@ -316,7 +316,7 @@ function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
               <tr className="border-t-2 border-gray-400 font-bold">
                 <td className="py-2">TOTAL</td>
                 <td className="text-right py-2">
-                  {convertIDR(parseFloat(tagihan.jumlah_tagihan))}
+                  {convertIDR(parseFloat(tagihan.jumlahTagihan))}
                 </td>
               </tr>
             </tbody>

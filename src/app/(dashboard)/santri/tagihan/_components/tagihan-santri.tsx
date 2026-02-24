@@ -51,29 +51,29 @@ export default function TagihanSantri() {
         .from("tagihan_santri")
         .select(
           `
-          id_tagihan_santri,
-          jumlah_tagihan,
-          status_pembayaran,
-          payment_token,
-          created_at,
-          updated_at,
-          master_tagihan:master_tagihan!id_master_tagihan(
-            id,
+          idTagihanSantri,
+          jumlahTagihan,
+          statusPembayaran,
+          paymentToken,
+          createdAt,
+          updatedAt,
+          master_tagihan:master_tagihan!idMasterTagihan(
+            id_masterTagihan,
             periode,
             description,
             uang_makan,
             asrama,
             kas_pondok,
-            shodaqoh_sukarela,
-            jariyah_sb,
+            sedekah_sukarela,
+            aset_jariyah,
             uang_tahunan,
             iuran_kampung
           )
         `
         )
-        .eq("id_santri", profile.id)
-        .eq("status_pembayaran", "BELUM BAYAR")
-        .order("created_at", { ascending: false });
+        .eq("idSantri", profile.id)
+        .eq("statusPembayaran", "BELUM BAYAR")
+        .order("createdAt", { ascending: false });
 
       if (error) {
         console.error("Error fetching tagihan:", error);
@@ -119,11 +119,11 @@ export default function TagihanSantri() {
     if (!selectedTagihan) return;
 
     try {
-      const jumlahTagihan = parseFloat(selectedTagihan.jumlah_tagihan || 0);
+      const jumlahTagihan = parseFloat(selectedTagihan.jumlahTagihan || 0);
 
-      if (selectedTagihan.payment_token) {
+      if (selectedTagihan.paymentToken) {
         // Jika sudah ada token, langsung buka snap
-        window.snap.pay(selectedTagihan.payment_token);
+        window.snap.pay(selectedTagihan.paymentToken);
         setShowPaymentDialog(false);
       } else {
         // Generate payment token
@@ -133,7 +133,7 @@ export default function TagihanSantri() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            order_id: selectedTagihan.id_tagihan_santri,
+            order_id: selectedTagihan.idTagihanSantri,
             gross_amount: jumlahTagihan,
             customer_name: santriData?.name || profile.name,
           }),
@@ -145,8 +145,8 @@ export default function TagihanSantri() {
           // Update payment token di database
           await supabase
             .from("tagihan_santri")
-            .update({ payment_token: result.token })
-            .eq("id_tagihan_santri", selectedTagihan.id_tagihan_santri);
+            .update({ paymentToken: result.token })
+            .eq("idTagihanSantri", selectedTagihan.idTagihanSantri);
 
           // Buka Snap payment
           window.snap.pay(result.token);
@@ -171,10 +171,10 @@ export default function TagihanSantri() {
       items.push(`Asrama: ${convertIDR(masterTagihan.asrama)}`);
     if (masterTagihan.kas_pondok > 0)
       items.push(`Kas Pondok: ${convertIDR(masterTagihan.kas_pondok)}`);
-    if (masterTagihan.shodaqoh_sukarela > 0)
-      items.push(`Shodaqoh: ${convertIDR(masterTagihan.shodaqoh_sukarela)}`);
-    if (masterTagihan.jariyah_sb > 0)
-      items.push(`Jariyah SB: ${convertIDR(masterTagihan.jariyah_sb)}`);
+    if (masterTagihan.sedekah_sukarela > 0)
+      items.push(`Shodaqoh: ${convertIDR(masterTagihan.sedekah_sukarela)}`);
+    if (masterTagihan.aset_jariyah > 0)
+      items.push(`Jariyah SB: ${convertIDR(masterTagihan.aset_jariyah)}`);
     if (masterTagihan.uang_tahunan > 0)
       items.push(`Uang Tahunan: ${convertIDR(masterTagihan.uang_tahunan)}`);
     if (masterTagihan.iuran_kampung > 0)
@@ -230,7 +230,7 @@ export default function TagihanSantri() {
               <tbody>
                 {tagihanList.map((tagihan: any, index: number) => (
                   <tr
-                    key={tagihan.id_tagihan_santri}
+                    key={tagihan.idTagihanSantri}
                     className="border-b hover:bg-muted/50"
                   >
                     <td className="p-3 whitespace-nowrap">{index + 1}</td>
@@ -363,7 +363,7 @@ export default function TagihanSantri() {
                   <div className="border-t pt-3 flex justify-between items-center">
                     <span className="font-bold">Total:</span>
                     <span className="text-xl font-bold text-teal-600">
-                      {convertIDR(parseFloat(selectedTagihan.jumlah_tagihan))}
+                      {convertIDR(parseFloat(selectedTagihan.jumlahTagihan))}
                     </span>
                   </div>
                 </CardContent>

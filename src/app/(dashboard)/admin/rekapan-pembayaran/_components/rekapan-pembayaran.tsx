@@ -32,33 +32,12 @@ export default function RekapanPembayaran() {
     queryKey: ["pembayaran-data", currentMonthStr],
     queryFn: async () => {
       const { data: tagihan, error } = await supabase
-        .from("tagihan_santri")
-        .select(
-          `
-          id_tagihan_santri,
-          jumlah_tagihan,
-          status_pembayaran,
-          created_at,
-          updated_at,
-          santri:profiles!id_santri(id, name),
-          master_tagihan:master_tagihan!id_master_tagihan(
-            id,
-            periode,
-            description,
-            uang_makan,
-            asrama,
-            kas_pondok,
-            shodaqoh_sukarela,
-            jariyah_sb,
-            uang_tahunan,
-            iuran_kampung
-          )
-        `
-        )
+        .from("rekapan_pembayaran")
+        .select('*')
         .eq("status_pembayaran", "LUNAS")
-        .gte("updated_at", `${currentMonthStr}-01`)
-        .lt("updated_at", getNextMonth(currentMonthStr))
-        .order("updated_at", { ascending: false });
+        .gte("tanggal_pembayaran", `${currentMonthStr}-01`)
+        .lt("tanggal_pembayaran", getNextMonth(currentMonthStr))
+        .order("tanggal_pembayaran", { ascending: false });
 
       if (error) {
         toast.error("Gagal memuat data pembayaran", {

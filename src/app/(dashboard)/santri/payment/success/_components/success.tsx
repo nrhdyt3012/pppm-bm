@@ -19,15 +19,12 @@ export default function Success() {
   const { mutate } = useMutation({
     mutationKey: ["mutateUpdateStatusTagihan"],
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("tagihan_santri")
-        .update({
-          status_pembayaran: "LUNAS",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id_tagihan_santri", order_id);
-
-      if (error) throw error;
+      const { data } = await supabase
+        .from("pembayaran")
+        .select("status_pembayaran")
+        .eq("id_tagihan_santri", order_id)
+        .single();
+      return data;
     },
     onSuccess: () => {
       setIsUpdating(false);

@@ -33,28 +33,7 @@ export default function RekapanTunggakan() {
     queryFn: async () => {
       const { data: tagihan, error } = await supabase
         .from("tagihan_santri")
-        .select(
-          `
-          id_tagihan_santri,
-          jumlah_tagihan,
-          status_pembayaran,
-          created_at,
-          updated_at,
-          santri:profiles!id_santri(id, name),
-          master_tagihan:master_tagihan!id_master_tagihan(
-            id,
-            periode,
-            description,
-            uang_makan,
-            asrama,
-            kas_pondok,
-            shodaqoh_sukarela,
-            jariyah_sb,
-            uang_tahunan,
-            iuran_kampung
-          )
-        `
-        )
+        .select('*')
         .eq("status_pembayaran", "BELUM BAYAR")
         .gte("created_at", `${currentMonthStr}-01`)
         .lt("created_at", getNextMonth(currentMonthStr))
