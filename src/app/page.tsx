@@ -3,7 +3,14 @@ import { cookies } from "next/headers";
 
 export default async function Home() {
   const cookiesStore = await cookies();
-  const profile = JSON.parse(cookiesStore.get("user_profile")?.value ?? "{}");
+  const userProfileCookie = cookiesStore.get("user_profile");
+  
+  // Jika tidak ada cookie, redirect ke beranda (public page)
+  if (!userProfileCookie) {
+    redirect("/beranda");
+  }
+
+  const profile = JSON.parse(userProfileCookie.value);
 
   // Redirect berdasarkan role
   if (profile.role === "admin") {
@@ -12,6 +19,6 @@ export default async function Home() {
     redirect("/santri/info");
   }
 
-  // Fallback jika tidak ada role
+  // Fallback ke beranda (seharusnya tidak sampai sini)
   redirect("/beranda");
 }

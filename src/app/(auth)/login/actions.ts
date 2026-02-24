@@ -100,7 +100,7 @@ export async function login(
     };
   }
 
-  // ✅ SIMPAN PROFILE KE COOKIE - ini yang hilang sebelumnya!
+  // ✅ SIMPAN PROFILE KE COOKIE
   const cookiesStore = await cookies();
   cookiesStore.set("user_profile", JSON.stringify(profile), {
     httpOnly: true,
@@ -111,5 +111,11 @@ export async function login(
   });
 
   revalidatePath("/", "layout");
-  redirect("/");
+  
+  // ✅ REDIRECT LANGSUNG BERDASARKAN ROLE
+  if (profile.role === "admin") {
+    redirect("/admin");
+  } else {
+    redirect("/santri/info");
+  }
 }
