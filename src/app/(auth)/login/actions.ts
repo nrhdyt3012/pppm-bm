@@ -58,19 +58,28 @@ export async function login(
     };
   }
 
-  // Cek apakah user adalah admin
-  const { data: adminData } = await supabase
+  console.log("🔍 Checking user ID:", user.id);
+  console.log("📧 User email:", user.email);
+
+  // Cek apakah user adalah santri (PERBAIKAN: sesuaikan nama kolom)
+  const { data: santriData, error: santriError } = await supabase
+    .from("santri")
+    .select("id, nama, jenisKelamin, avatarUrl")
+    .eq("id", user.id)
+    .single();
+
+  console.log("👤 Santri data:", santriData);
+  console.log("❌ Santri error:", santriError);
+
+  // Cek apakah user adalah admin (PERBAIKAN: sesuaikan nama kolom)
+  const { data: adminData, error: adminError } = await supabase
     .from("admin")
     .select("id, nama, jenis_kelamin, noHP")
     .eq("id", user.id)
     .single();
 
-  // Cek apakah user adalah santri
-  const { data: santriData } = await supabase
-    .from("santri")
-    .select("id, nama, jenisKelamin, avatarUrl")
-    .eq("id", user.id)
-    .single();
+  console.log("👤 Admin data:", adminData);
+  console.log("❌ Admin error:", adminError);
 
   let profile = null;
 
@@ -89,13 +98,24 @@ export async function login(
       avatar_url: santriData.avatarUrl,
     };
   } else {
-    // Logout dulu supaya tidak stuck
+    // DEBUGGING: Log semua tabel untuk user ini
+    console.error("🚨 User not found in santri or admin tables");
+    console.error("🔍 User ID:", user.id);
+    console.error("📧 Email:", user.email);
+    console.error("🔐 User metadata:", user.user_metadata);
+    
+    // Logout supaya tidak stuck
     await supabase.auth.signOut();
+    
     return {
       status: "error",
       errors: {
         ...prevState.errors,
-        _form: ["User profile tidak ditemukan. Hubungi administrator."],
+        _form: [
+          `User profile tidak ditemukan untuk email ${user.email}. ` +
+          `User ID: ${user.id}. ` +
+          `Hubungi administrator untuk membuat profile santri/admin.`
+        ],
       },
     };
   }
