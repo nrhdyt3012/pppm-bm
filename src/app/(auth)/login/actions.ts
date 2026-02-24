@@ -48,44 +48,52 @@ export async function login(
     };
   }
 
-const { data: adminData } = await supabase
-   .from('admin')
-   .select('id, nama, jenis_kelamin, noHP')
-   .eq('id', user?.id)
-   .single();
-   // Cek apakah user adalah santri,
-const { data: santriData } = await supabase
-   .from('santri')
-    .select('id, nama, jenisKelamin, avatarUrl')
-    .eq('id', user?.id)
+  const { data: adminData } = await supabase
+    .from("admin")
+    .select("id, nama, jenis_kelamin, noHP")
+    .eq("id", user?.id)
     .single();
 
-const role = adminData ? 'admin' : 'santri';
-let profile = null;
+  const { data: santriData } = await supabase
+    .from("santri")
+    .select("id, nama, jenisKelamin, avatarUrl")
+    .eq("id", user?.id)
+    .single();
 
-if (adminData) {
-  profile = {
-    id: adminData.id,
-    name: adminData.nama,
-    role: "admin",
-    avatar_url: null,
-  };
-} else if (santriData) {
-  profile = {
-    id: santriData.id,
-    name: santriData.nama,
-    role: "santri",
-    avatar_url: santriData.avatarUrl,
-  };
-} else {
-  return {
-    status: "error",
-    errors: {
-      ...prevState.errors,
-      _form: ["User profile tidak ditemukan."],
-    },
-  };
-}
+  let profile = null;
+
+  if (adminData) {
+    profile = {
+      id: adminData.id,
+      name: adminData.nama,
+      role: "admin",
+      avatar_url: null,
+    };
+  } else if (santriData) {
+    profile = {
+      id: santriData.id,
+      name: santriData.nama,
+      role: "santri",
+      avatar_url: santriData.avatarUrl,
+    };
+  } else {
+    return {
+      status: "error",
+      errors: {
+        ...prevState.errors,
+        _form: ["User profile tidak ditemukan."],
+      },
+    };
+  }
+
+  // ✅ TAMBAHKAN INI — simpan profile ke cookie
+  const cookiesStore = await cookies();
+  cookiesStore.set("user_profile", JSON.stringify(profile), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7, // 7 hari
+    path: "/",
+  });
 
   revalidatePath("/", "layout");
   redirect("/");
