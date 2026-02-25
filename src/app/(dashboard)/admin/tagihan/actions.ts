@@ -49,7 +49,7 @@ export async function updateTagihan(
       uang_tahunan: validatedFields.data.uang_tahunan,
       iuran_kampung: validatedFields.data.iuran_kampung,
     })
-    .eq("id_masterTagihan", formData.get("id"));
+    .eq("idMasterTagihan", formData.get("id"));
 
   if (error) {
     return {
@@ -72,9 +72,9 @@ export async function updateTagihan(
 export async function deleteTagihan(prevState: any, formData: FormData) {
   const supabase = await createClient();
 
-  const id_tagihan_santri = formData.get("id_tagihan_santri") as string;
+  const idTagihanSantri = formData.get("idTagihanSantri") as string;
 
-  if (!id_tagihan_santri) {
+  if (!idTagihanSantri) {
     return {
       status: "error",
       errors: {
@@ -86,7 +86,7 @@ export async function deleteTagihan(prevState: any, formData: FormData) {
   const { error } = await supabase
     .from("tagihan_santri")
     .delete()
-    .eq("id_tagihan_santri", id_tagihan_santri); // PENTING: gunakan id_tagihan_santri
+    .eq("idTagihanSantri", idTagihanSantri); // PENTING: gunakan id_tagihan_santri
 
   if (error) {
     console.error("Delete error:", error);
@@ -105,10 +105,10 @@ export async function deleteTagihan(prevState: any, formData: FormData) {
 // src/app/(dashboard)/admin/tagihan/actions.ts
 // TAMBAHKAN atau UPDATE function ini
 export async function updateTagihanSantri(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("id_tagihan_santri");
-  const idMasterTagihan = formData.get("id_master_tagihan");
-  const jumlahTagihan = formData.get("jumlah_tagihan");
-  const statusPembayaran = formData.get("status_pembayaran");
+  const idTagihan = formData.get("idTagihanSantri");
+  const idMasterTagihan = formData.get("idMasterTagihan");
+  const jumlahTagihan = formData.get("jumlahTagihan");
+  const statusPembayaran = formData.get("statusPembayaran");
 
   if (!idTagihan || !idMasterTagihan || !jumlahTagihan || !statusPembayaran) {
     return {
@@ -148,7 +148,7 @@ export async function updateTagihanSantri(prevState: any, formData: FormData) {
 
 // Delete Tagihan Santri
 export async function deleteTagihanSantri(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("id_tagihan_santri");
+  const idTagihan = formData.get("idTagihanSantri");
 
   if (!idTagihan) {
     return {

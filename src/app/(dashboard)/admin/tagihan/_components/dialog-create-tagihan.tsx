@@ -1,4 +1,6 @@
-import { useState, useEffect, startTransition, useActionState, useRef } from "react";
+// src/app/(dashboard)/admin/tagihan/_components/dialog-create-tagihan.tsx
+// VERSI YANG SUDAH DIPERBAIKI
+import { useState, useEffect, startTransition, useActionState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -41,40 +43,52 @@ export default function DialogCreateTagihan({
   const [selectedMasterTagihan, setSelectedMasterTagihan] = useState<string>("");
   const [searchSantri, setSearchSantri] = useState("");
 
+  // DIPERBAIKI: useActionState tanpa argument pada createTagihanBatch
   const [createState, createAction, isPending] = useActionState(
-    createTagihanBatch as any,
+    createTagihanBatch,
     INITIAL_STATE_TAGIHAN
   );
 
-  const formDataRef = useRef<FormData | null>(null);
-
-  // Fetch daftar santri
+  // DIPERBAIKI: Fetch daftar santri dari tabel santri
   const { data: santriList, isLoading: loadingSantri } = useQuery({
     queryKey: ["santri-list-create", searchSantri],
     queryFn: async () => {
-      const query = supabase
-        .from("profiles")
-        .select("id, name")
-        .eq("role", "santri")
-        .order("name");
+      let query = supabase
+        .from("santri")
+        .select("id, nama")
+        .order("nama");
 
       if (searchSantri) {
-        query.ilike("name", `%${searchSantri}%`);
+        query = query.ilike("nama", `%${searchSantri}%`);
       }
 
       const result = await query;
+      
+      if (result.error) {
+        console.error("Error fetching santri:", result.error);
+        toast.error("Gagal memuat daftar santri");
+        return [];
+      }
+      
       return result.data || [];
     },
   });
 
-  // Fetch daftar master tagihan
+  // DIPERBAIKI: Fetch daftar master tagihan dengan nama kolom yang benar
   const { data: masterTagihanList, isLoading: loadingMaster } = useQuery({
     queryKey: ["master-tagihan-list-create"],
     queryFn: async () => {
       const result = await supabase
         .from("master_tagihan")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("createdAt", { ascending: false });
+      
+      if (result.error) {
+        console.error("Error fetching master tagihan:", result.error);
+        toast.error("Gagal memuat daftar tagihan");
+        return [];
+      }
+      
       return result.data || [];
     },
   });
@@ -110,7 +124,7 @@ export default function DialogCreateTagihan({
     formData.append("master_tagihan_id", selectedMasterTagihan);
 
     startTransition(() => {
-      createAction();
+      createAction(formData);
     });
   };
 
@@ -123,7 +137,7 @@ export default function DialogCreateTagihan({
 
     if (createState?.status === "success") {
       toast.success(`Berhasil membuat ${selectedSantri.length} tagihan`);
-      // Tutup dialog dengan menemukan tombol close
+      // Tutup dialog
       document.querySelector<HTMLButtonElement>('[data-state="open"]')?.click();
       refetch();
       setSelectedSantri([]);
@@ -131,16 +145,17 @@ export default function DialogCreateTagihan({
     }
   }, [createState, selectedSantri.length, refetch]);
 
+  // DIPERBAIKI: Gunakan id_masterTagihan untuk mencari
   const selectedMaster = masterTagihanList?.find(
-    (m: any) => m.id.toString() === selectedMasterTagihan
+    (m: any) => m.id_masterTagihan?.toString() === selectedMasterTagihan
   );
 
   const totalNominal = selectedMaster
     ? (selectedMaster.uang_makan || 0) +
       (selectedMaster.asrama || 0) +
       (selectedMaster.kas_pondok || 0) +
-      (selectedMaster.shodaqoh_sukarela || 0) +
-      (selectedMaster.jariyah_sb || 0) +
+      (selectedMaster.sedekah_sukarela || 0) +
+      (selectedMaster.aset_jariyah || 0) +
       (selectedMaster.uang_tahunan || 0) +
       (selectedMaster.iuran_kampung || 0)
     : 0;
@@ -166,13 +181,13 @@ export default function DialogCreateTagihan({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {masterTagihanList?.map((master: any) => (
                 <div
-                  key={master.id}
+                  key={master.id_masterTagihan}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedMasterTagihan === master.id.toString()
+                    selectedMasterTagihan === master.id_masterTagihan?.toString()
                       ? "border-teal-500 bg-teal-50 dark:bg-teal-950"
                       : "hover:border-gray-400"
                   }`}
-                  onClick={() => setSelectedMasterTagihan(master.id.toString())}
+                  onClick={() => setSelectedMasterTagihan(master.id_masterTagihan?.toString() || "")}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -182,9 +197,9 @@ export default function DialogCreateTagihan({
                       </p>
                     </div>
                     <Checkbox
-                      checked={selectedMasterTagihan === master.id.toString()}
+                      checked={selectedMasterTagihan === master.id_masterTagihan?.toString()}
                       onCheckedChange={() =>
-                        setSelectedMasterTagihan(master.id.toString())
+                        setSelectedMasterTagihan(master.id_masterTagihan?.toString() || "")
                       }
                     />
                   </div>
@@ -205,8 +220,8 @@ export default function DialogCreateTagihan({
                 { label: "Uang Makan", value: selectedMaster.uang_makan },
                 { label: "Asrama", value: selectedMaster.asrama },
                 { label: "Kas Pondok", value: selectedMaster.kas_pondok },
-                { label: "Shodaqoh Sukarela", value: selectedMaster.shodaqoh_sukarela },
-                { label: "Jariyah SB", value: selectedMaster.jariyah_sb },
+                { label: "Sedekah Sukarela", value: selectedMaster.sedekah_sukarela },
+                { label: "Aset Jariyah", value: selectedMaster.aset_jariyah },
                 { label: "Uang Tahunan", value: selectedMaster.uang_tahunan },
                 { label: "Iuran Kampung", value: selectedMaster.iuran_kampung },
               ].map((item) => (
@@ -265,7 +280,7 @@ export default function DialogCreateTagihan({
                     }
                   />
                   <div className="flex-1">
-                    <p className="font-medium text-sm">{santri.name}</p>
+                    <p className="font-medium text-sm">{santri.nama}</p>
                   </div>
                 </div>
               ))}

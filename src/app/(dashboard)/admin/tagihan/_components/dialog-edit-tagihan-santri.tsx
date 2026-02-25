@@ -1,4 +1,5 @@
 // src/app/(dashboard)/admin/tagihan/_components/dialog-edit-tagihan-santri.tsx
+// VERSI YANG SUDAH DIPERBAIKI
 import { Dialog } from "@radix-ui/react-dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect, useState } from "react";
@@ -66,14 +67,21 @@ export default function DialogEditTagihan({
     INITIAL_STATE
   );
 
-  // Fetch master tagihan list
-  const { data: masterTagihanList } = useQuery({
+  // Fetch master tagihan list - DIPERBAIKI: Gunakan nama kolom yang benar
+  const { data: masterTagihanList, isLoading: loadingMasterTagihan } = useQuery({
     queryKey: ["master-tagihan-list"],
     queryFn: async () => {
       const result = await supabase
         .from("master_tagihan")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("createdAt", { ascending: false });
+      
+      if (result.error) {
+        console.error("Error fetching master tagihan:", result.error);
+        toast.error("Gagal memuat daftar tagihan");
+        return [];
+      }
+      
       return result.data || [];
     },
   });
@@ -84,8 +92,9 @@ export default function DialogEditTagihan({
   useEffect(() => {
     const masterId = form.watch("id_master_tagihan");
     if (masterId && masterTagihanList) {
+      // DIPERBAIKI: Gunakan id_masterTagihan
       const master = masterTagihanList.find(
-        (m: any) => m.id.toString() === masterId
+        (m: any) => m.id_masterTagihan?.toString() === masterId
       );
       if (master) {
         setSelectedMaster(master);
@@ -96,21 +105,21 @@ export default function DialogEditTagihan({
   const onSubmit = form.handleSubmit((data) => {
     // Hitung jumlah tagihan otomatis dari master
     const master = masterTagihanList?.find(
-      (m: any) => m.id.toString() === data.id_master_tagihan
+      (m: any) => m.id_masterTagihan?.toString() === data.id_master_tagihan
     );
 
     const jumlahTagihan = master
       ? (master.uang_makan || 0) +
         (master.asrama || 0) +
         (master.kas_pondok || 0) +
-        (master.shodaqoh_sukarela || 0) +
-        (master.jariyah_sb || 0) +
+        (master.sedekah_sukarela || 0) +
+        (master.aset_jariyah || 0) +
         (master.uang_tahunan || 0) +
         (master.iuran_kampung || 0)
       : 0;
 
     const formData = new FormData();
-    formData.append("id_tagihan_santri", currentData?.id_tagihan_santri ?? "");
+    formData.append("id_tagihan_santri", currentData?.idTagihanSantri ?? "");
     formData.append("id_master_tagihan", data.id_master_tagihan);
     formData.append("jumlah_tagihan", jumlahTagihan.toString());
     formData.append("status_pembayaran", data.status_pembayaran);
@@ -137,17 +146,19 @@ export default function DialogEditTagihan({
 
   useEffect(() => {
     if (currentData && masterTagihanList) {
+      // DIPERBAIKI: Gunakan idMasterTagihan
       form.setValue(
         "id_master_tagihan",
-        currentData.id_master_tagihan?.toString() || ""
+        currentData.idMasterTagihan?.toString() || ""
       );
       form.setValue(
         "status_pembayaran",
-        currentData.status_pembayaran || "BELUM BAYAR"
+        currentData.statusPembayaran || "BELUM BAYAR"
       );
 
+      // DIPERBAIKI: Gunakan id_masterTagihan untuk mencari
       const master = masterTagihanList.find(
-        (m: any) => m.id === currentData.id_master_tagihan
+        (m: any) => m.id_masterTagihan === currentData.idMasterTagihan
       );
       if (master) {
         setSelectedMaster(master);
@@ -160,8 +171,8 @@ export default function DialogEditTagihan({
     ? (selectedMaster.uang_makan || 0) +
       (selectedMaster.asrama || 0) +
       (selectedMaster.kas_pondok || 0) +
-      (selectedMaster.shodaqoh_sukarela || 0) +
-      (selectedMaster.jariyah_sb || 0) +
+      (selectedMaster.sedekah_sukarela || 0) +
+      (selectedMaster.aset_jariyah || 0) +
       (selectedMaster.uang_tahunan || 0) +
       (selectedMaster.iuran_kampung || 0)
     : 0;
@@ -183,7 +194,7 @@ export default function DialogEditTagihan({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">ID Tagihan:</span>
                   <span className="font-mono font-medium">
-                    {currentData?.id_tagihan_santri}
+                    {currentData?.idTagihanSantri}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -197,13 +208,13 @@ export default function DialogEditTagihan({
                     Jumlah Tagihan Saat Ini:
                   </span>
                   <span className="font-semibold text-teal-600">
-                    {convertIDR(parseFloat(currentData?.jumlah_tagihan) || 0)}
+                    {convertIDR(parseFloat(currentData?.jumlahTagihan) || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tanggal Dibuat:</span>
                   <span>
-                    {new Date(currentData?.created_at).toLocaleDateString(
+                    {new Date(currentData?.createdAt).toLocaleDateString(
                       "id-ID",
                       {
                         day: "numeric",
@@ -217,17 +228,24 @@ export default function DialogEditTagihan({
 
               {/* Pilih Periode - EDITABLE */}
               <div className="space-y-2">
-                <FormSelect
-                  form={form}
-                  name="id_master_tagihan"
-                  label="Periode Tagihan"
-                  selectItem={
-                    masterTagihanList?.map((m: any) => ({
-                      value: m.id.toString(),
-                      label: `${m.periode} - ${m.description}`,
-                    })) || []
-                  }
-                />
+                {loadingMasterTagihan ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="animate-spin" />
+                  </div>
+                ) : (
+                  <FormSelect
+                    form={form}
+                    name="id_master_tagihan"
+                    label="Periode Tagihan"
+                    selectItem={
+                      masterTagihanList?.map((m: any) => ({
+                        // DIPERBAIKI: Gunakan id_masterTagihan dan tambahkan optional chaining
+                        value: m.id_masterTagihan?.toString() || "",
+                        label: `${m.periode} - ${m.description}`,
+                      })) || []
+                    }
+                  />
+                )}
               </div>
 
               {/* Preview Rincian Periode Baru */}
@@ -240,10 +258,10 @@ export default function DialogEditTagihan({
                       { label: "Asrama", value: selectedMaster.asrama },
                       { label: "Kas Pondok", value: selectedMaster.kas_pondok },
                       {
-                        label: "Shodaqoh Sukarela",
-                        value: selectedMaster.shodaqoh_sukarela,
+                        label: "Sedekah Sukarela",
+                        value: selectedMaster.sedekah_sukarela,
                       },
-                      { label: "Jariyah SB", value: selectedMaster.jariyah_sb },
+                      { label: "Aset Jariyah", value: selectedMaster.aset_jariyah },
                       {
                         label: "Uang Tahunan",
                         value: selectedMaster.uang_tahunan,

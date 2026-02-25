@@ -1,4 +1,5 @@
 // src/app/(dashboard)/admin/tagihan/_components/daftar-tagihan-santri.tsx
+// VERSI YANG SUDAH DIPERBAIKI
 "use client";
 
 import DataTable from "@/components/common/data-table";
@@ -25,8 +26,6 @@ import { convertIDR, cn } from "@/lib/utils";
 import DialogEditTagihanSantri from "./dialog-edit-tagihan-santri";
 import DialogDeleteTagihanSantri from "./dialog-delete-tagihan-santri";
 import DialogCreateTagihan from "./dialog-create-tagihan";
-import DialogEditTagihan from "./dialog-edit-tagihan";
-import DialogDeleteTagihan from "./dialog-delete-tagihan";
 
 export default function DaftarTagihanSantri() {
   const supabase = createClient();
@@ -39,7 +38,7 @@ export default function DaftarTagihanSantri() {
     handleChangeSearch,
   } = useDataTable();
 
-  // Query untuk statistik
+  // Query untuk statistik - DIPERBAIKI: Gunakan nama kolom yang benar
   const { data: stats } = useQuery({
     queryKey: ["tagihan-stats"],
     queryFn: async () => {
@@ -50,20 +49,20 @@ export default function DaftarTagihanSantri() {
       const { count: belumBayar } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .eq("status_pembayaran", "BELUM BAYAR");
+        .eq("statusPembayaran", "BELUM BAYAR");
 
       const { count: lunas } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .eq("status_pembayaran", "LUNAS");
+        .eq("statusPembayaran", "LUNAS");
 
       const { data: totalNominal } = await supabase
         .from("tagihan_santri")
-        .select("jumlah_tagihan");
+        .select("jumlahTagihan");
 
       const sumNominal =
         totalNominal?.reduce(
-          (sum, item) => sum + parseFloat(item.jumlah_tagihan || "0"),
+          (sum, item) => sum + parseFloat(item.jumlahTagihan || "0"),
           0
         ) || 0;
 
@@ -76,6 +75,7 @@ export default function DaftarTagihanSantri() {
     },
   });
 
+  // DIPERBAIKI: Query untuk tagihan santri dengan nama kolom yang benar
   const {
     data: tagihanList,
     isLoading,
@@ -83,51 +83,59 @@ export default function DaftarTagihanSantri() {
   } = useQuery({
     queryKey: ["tagihan-santri-list", currentPage, currentLimit, currentSearch],
     queryFn: async () => {
-      let query = supabase
+      // Pertama, ambil data tagihan
+      const query = supabase
         .from("tagihan_santri")
-        .select(
-          `
-          *,
-          santri:profiles!id_santri(id, name, avatar_url),
-          master_tagihan:master_tagihan!id_master_tagihan(id, periode, description)
-        `,
-          { count: "exact" }
-        )
+        .select("*", { count: "exact" })
         .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
-        .order("created_at", { ascending: false });
-
-      if (currentSearch) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id")
-          .ilike("name", `%${currentSearch}%`);
-
-        const { data: masterTagihan } = await supabase
-          .from("master_tagihan")
-          .select("id")
-          .ilike("periode", `%${currentSearch}%`);
-
-        const santriIds = profiles?.map((p) => p.id) || [];
-        const masterIds = masterTagihan?.map((m) => m.id) || [];
-
-        if (santriIds.length > 0 || masterIds.length > 0) {
-          query = query.or(
-            `id_santri.in.(${santriIds.join(
-              ","
-            )}),id_master_tagihan.in.(${masterIds.join(",")})`
-          );
-        } else {
-          return { data: [], count: 0 };
-        }
-      }
+        .order("createdAt", { ascending: false });
 
       const result = await query;
 
       if (result.error) {
+        console.error("Error fetching tagihan:", result.error);
         toast.error("Gagal memuat data tagihan", {
           description: result.error.message,
         });
         return { data: [], count: 0 };
+      }
+
+      // Jika ada data, ambil detail santri dan master_tagihan
+      if (result.data && result.data.length > 0) {
+        const santriIds = [...new Set(result.data.map((t: any) => t.idSantri))];
+        const masterIds = [...new Set(result.data.map((t: any) => t.idMasterTagihan))];
+
+        // Ambil data santri
+        const { data: santriData } = await supabase
+          .from("santri")
+          .select("id, nama, avatarUrl")
+          .in("id", santriIds);
+
+        // Ambil data master tagihan
+        const { data: masterData } = await supabase
+          .from("master_tagihan")
+          .select("*")
+          .in("id_masterTagihan", masterIds);
+
+        // Gabungkan data
+        const enrichedData = result.data.map((tagihan: any) => {
+          const santri = santriData?.find((s: any) => s.id === tagihan.idSantri);
+          const master = masterData?.find((m: any) => m.id_masterTagihan === tagihan.idMasterTagihan);
+
+          return {
+            ...tagihan,
+            santri: santri ? { name: santri.nama, avatar_url: santri.avatarUrl } : null,
+            master_tagihan: master
+              ? {
+                  id_masterTagihan: master.id_masterTagihan,
+                  periode: master.periode,
+                  description: master.description,
+                }
+              : null,
+          };
+        });
+
+        return { data: enrichedData, count: result.count };
       }
 
       return result;
@@ -170,35 +178,34 @@ export default function DaftarTagihanSantri() {
     return (tagihanList?.data || []).map((item: any, index) => {
       return [
         currentLimit * (currentPage - 1) + index + 1,
-        <div key={`id-${item.id_tagihan_santri}`} className="font-mono text-sm">
-          #{item.id_tagihan_santri}
+        <div key={`id-${item.idTagihanSantri}`} className="font-mono text-sm">
+          #{item.idTagihanSantri}
         </div>,
-        <div key={`santri-${item.id_tagihan_santri}`}>
+        <div key={`santri-${item.idTagihanSantri}`}>
           <p className="font-medium">{item.santri?.name || "-"}</p>
         </div>,
-        <div key={`periode-${item.id_tagihan_santri}`}>
+        <div key={`periode-${item.idTagihanSantri}`}>
           <p className="font-semibold">{item.master_tagihan?.periode || "-"}</p>
           <p className="text-xs text-muted-foreground">
             {item.master_tagihan?.description || "-"}
           </p>
         </div>,
         <div
-          key={`nominal-${item.id_tagihan_santri}`}
+          key={`nominal-${item.idTagihanSantri}`}
           className="font-semibold"
         >
-          {convertIDR(parseFloat(item.jumlah_tagihan) || 0)}
+          {convertIDR(parseFloat(item.jumlahTagihan) || 0)}
         </div>,
-        getStatusBadge(item.status_pembayaran),
-        <div key={`date-${item.id_tagihan_santri}`} className="text-sm">
-          {new Date(item.created_at).toLocaleDateString("id-ID", {
+        getStatusBadge(item.statusPembayaran),
+        <div key={`date-${item.idTagihanSantri}`} className="text-sm">
+          {new Date(item.createdAt).toLocaleDateString("id-ID", {
             day: "numeric",
             month: "short",
             year: "numeric",
           })}
         </div>,
-        // Pada bagian DropdownAction, pastikan:
         <DropdownAction
-          key={`action-${item.id_tagihan_santri}`}
+          key={`action-${item.idTagihanSantri}`}
           menu={[
             {
               label: (
@@ -208,8 +215,9 @@ export default function DaftarTagihanSantri() {
                 </span>
               ),
               action: () => {
+                console.log("Setting action with data:", item);
                 setSelectedAction({
-                  data: item, // PENTING: pastikan item di-pass dengan benar
+                  data: item,
                   type: "edit",
                 });
               },
@@ -223,8 +231,9 @@ export default function DaftarTagihanSantri() {
               ),
               variant: "destructive",
               action: () => {
+                console.log("Setting delete action with data:", item);
                 setSelectedAction({
-                  data: item, // PENTING: pastikan item di-pass dengan benar
+                  data: item,
                   type: "delete",
                 });
               },
@@ -339,7 +348,6 @@ export default function DaftarTagihanSantri() {
         handleChangeAction={handleChangeAction}
       />
 
-      {/* PENTING: Gunakan DialogDeleteTagihanSantri bukan DialogDeleteTagihan! */}
       <DialogDeleteTagihanSantri
         open={selectedAction !== null && selectedAction.type === "delete"}
         refetch={refetch}
