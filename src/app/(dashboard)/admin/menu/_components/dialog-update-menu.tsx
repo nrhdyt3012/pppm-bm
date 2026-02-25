@@ -29,10 +29,21 @@ export default function DialogUpdateMenu({
 
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-    parseInt(formData.get("id") as string)
+
+    // Append semua field dari form
+    formData.append("periode", data.periode);
+    formData.append("description", data.description);
+    formData.append("uang_makan", data.uang_makan);
+    formData.append("asrama", data.asrama);
+    formData.append("kas_pondok", data.kas_pondok);
+    formData.append("sedekah_sukarela", data.sedekah_sukarela);
+    formData.append("aset_jariyah", data.aset_jariyah);
+    formData.append("uang_tahunan", data.uang_tahunan);
+    formData.append("iuran_kampung", data.iuran_kampung);
+
+    // Append id secara eksplisit dari currentData
+    formData.append("id", currentData!.id_masterTagihan!.toString());
+
     startTransition(() => {
       updateMenuAction(formData);
     });
