@@ -32,8 +32,7 @@ export default function DialogUpdateMenu({
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
-    formData.append("id", currentData?.id ?? "");
-
+    parseInt(formData.get("id") as string)
     startTransition(() => {
       updateMenuAction(formData);
     });
@@ -62,10 +61,10 @@ export default function DialogUpdateMenu({
       form.setValue("asrama", currentData.asrama.toString());
       form.setValue("kas_pondok", currentData.kas_pondok.toString());
       form.setValue(
-        "shodaqoh_sukarela",
-        currentData.shodaqoh_sukarela.toString()
+        "sedekah_sukarela",
+        currentData.sedekah_sukarela.toString()
       );
-      form.setValue("jariyah_sb", currentData.jariyah_sb.toString());
+      form.setValue("aset_jariyah", currentData.aset_jariyah.toString());
       form.setValue("uang_tahunan", currentData.uang_tahunan.toString());
       form.setValue("iuran_kampung", currentData.iuran_kampung.toString());
     }

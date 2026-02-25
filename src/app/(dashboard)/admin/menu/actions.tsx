@@ -12,9 +12,9 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
     uang_makan: parseFloat(formData.get("uang_makan") as string) || 0,
     asrama: parseFloat(formData.get("asrama") as string) || 0,
     kas_pondok: parseFloat(formData.get("kas_pondok") as string) || 0,
-    shodaqoh_sukarela:
-      parseFloat(formData.get("shodaqoh_sukarela") as string) || 0,
-    jariyah_sb: parseFloat(formData.get("jariyah_sb") as string) || 0,
+    sedekah_sukarela:
+      parseFloat(formData.get("sedekah_sukarela") as string) || 0,
+    aset_jariyah: parseFloat(formData.get("aset_jariyah") as string) || 0,
     uang_tahunan: parseFloat(formData.get("uang_tahunan") as string) || 0,
     iuran_kampung: parseFloat(formData.get("iuran_kampung") as string) || 0,
   });
@@ -60,14 +60,15 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
 
 export async function updateMenu(prevState: MenuFormState, formData: FormData) {
   const validatedFields = menuSchema.safeParse({
+    id_masterTagihan: parseInt(formData.get("id") as string),   // ← parseInt
     periode: formData.get("periode"),
     description: formData.get("description"),
     uang_makan: parseFloat(formData.get("uang_makan") as string) || 0,
     asrama: parseFloat(formData.get("asrama") as string) || 0,
     kas_pondok: parseFloat(formData.get("kas_pondok") as string) || 0,
-    shodaqoh_sukarela:
-      parseFloat(formData.get("shodaqoh_sukarela") as string) || 0,
-    jariyah_sb: parseFloat(formData.get("jariyah_sb") as string) || 0,
+    sedekah_sukarela:
+      parseFloat(formData.get("sedekah_sukarela") as string) || 0,
+    aset_jariyah: parseFloat(formData.get("aset_jariyah") as string) || 0,
     uang_tahunan: parseFloat(formData.get("uang_tahunan") as string) || 0,
     iuran_kampung: parseFloat(formData.get("iuran_kampung") as string) || 0,
   });
@@ -97,7 +98,7 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
       uang_tahunan: validatedFields.data.uang_tahunan,
       iuran_kampung: validatedFields.data.iuran_kampung,
     })
-    .eq("id_masterTagihan", formData.get("id"));
+    .eq("id_masterTagihan", validatedFields.data.id_masterTagihan);
 
   if (error) {
     return {
@@ -120,7 +121,7 @@ export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
   const { error } = await supabase
     .from("master_tagihan")
     .delete()
-    .eq("id_masterTagihan", formData.get("id"));
+    .eq("id_masterTagihan", parseInt(formData.get("id") as string));
 
   if (error) {
     return {

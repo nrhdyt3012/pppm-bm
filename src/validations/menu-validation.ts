@@ -12,6 +12,7 @@ export const menuFormSchema = z.object({
         });
         
         export const menuSchema = z.object({
+          id_masterTagihan: z.number().optional(),           
           periode: z.string(),
           description: z.string(),
           uang_makan: z.number(),
@@ -22,3 +23,6 @@ export const menuFormSchema = z.object({
           uang_tahunan: z.number(),
           iuran_kampung: z.number(),
         });
+
+        export type MenuForm = z.infer<typeof menuFormSchema>;
+export type Menu = z.infer<typeof menuSchema>;

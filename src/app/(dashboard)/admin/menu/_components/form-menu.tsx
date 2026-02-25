@@ -79,8 +79,8 @@ export default function FormMenu<T extends FieldValues>({
               />
               <FormInput
                 form={form}
-                name={"shodaqoh_sukarela" as Path<T>}
-                label="Shodaqoh Sukarela"
+                name={"sedekah_sukarela" as Path<T>}
+                label="Sedekah Sukarela"
                 placeholder="0"
                 type="number"
               />
@@ -89,8 +89,8 @@ export default function FormMenu<T extends FieldValues>({
             <div className="grid grid-cols-2 gap-4">
               <FormInput
                 form={form}
-                name={"jariyah_sb" as Path<T>}
-                label="Jariyah SB"
+                name={"aset_jariyah" as Path<T>}
+                label="Aset Jariyah"
                 placeholder="0"
                 type="number"
               />

@@ -22,7 +22,7 @@ export default function DialogDeleteMenu({
 
   const onSubmit = () => {
     const formData = new FormData();
-    formData.append("id", currentData!.id as string);
+    formData.append("id", currentData!.id_masterTagihan!.toString());    
     startTransition(() => {
       deleteMenuAction(formData);
     });

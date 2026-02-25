@@ -75,26 +75,26 @@ export default function MenuManagement() {
         (menu.uang_makan || 0) +
         (menu.asrama || 0) +
         (menu.kas_pondok || 0) +
-        (menu.shodaqoh_sukarela || 0) +
-        (menu.jariyah_sb || 0) +
+        (menu.sedekah_sukarela || 0) +
+        (menu.aset_jariyah || 0) +
         (menu.uang_tahunan || 0) +
         (menu.iuran_kampung || 0);
 
       return [
         currentLimit * (currentPage - 1) + index + 1,
-        <div key={`periode-${menu.id}`}>
+        <div key={`periode-${menu.id_masterTagihan}`}>
           <p className="font-bold">{menu.periode}</p>
           <p className="text-xs text-muted-foreground">{menu.description}</p>
         </div>,
         convertIDR(menu.uang_makan || 0),
         convertIDR(menu.asrama || 0),
         convertIDR(menu.kas_pondok || 0),
-        convertIDR(menu.shodaqoh_sukarela || 0),
-        convertIDR(menu.jariyah_sb || 0),
+        convertIDR(menu.sedekah_sukarela || 0),
+        convertIDR(menu.aset_jariyah || 0),
         convertIDR(menu.uang_tahunan || 0),
         convertIDR(menu.iuran_kampung || 0),
         <DropdownAction
-          key={`action-${menu.id}`}
+          key={`action-${menu.id_masterTagihan}`}
           menu={[
             {
               label: (
