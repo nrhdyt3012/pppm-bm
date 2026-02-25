@@ -48,10 +48,7 @@ export default function Login() {
   useEffect(() => {
     if (loginState?.status === "error") {
       toast.error("Login Failed", {
-        description: loginState.errors?._form?.[0],
-      });
-      startTransition(() => {
-        loginAction(null);
+        description: loginState.errors?._form?.[0] || "Terjadi kesalahan saat login",
       });
     }
   }, [loginState]);
@@ -110,15 +107,19 @@ export default function Login() {
                 form={form}
                 name="password"
                 label="Password"
-                placeholder="******"
+                placeholder="••••••••"
                 type="password"
               />
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isPendingLogin}
               >
                 {isPendingLogin ? (
-                  <Loader2 className="animate-spin" />
+                  <>
+                    <Loader2 className="mr-2 animate-spin" />
+                    Sedang login...
+                  </>
                 ) : (
                   "Login"
                 )}
