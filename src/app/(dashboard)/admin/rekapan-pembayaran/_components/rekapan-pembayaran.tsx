@@ -28,13 +28,13 @@ export default function RekapanPembayaran() {
     return selectedMonth.toISOString().slice(0, 7);
   }, [selectedMonth]);
 
+  // Query ke tabel rekapan_pembayaran (sudah aggregated)
   const { data: pembayaranData, isLoading } = useQuery({
     queryKey: ["pembayaran-data", currentMonthStr],
     queryFn: async () => {
-      const { data: tagihan, error } = await supabase
+      const { data: rekapan, error } = await supabase
         .from("rekapan_pembayaran")
         .select('*')
-        .eq("status_pembayaran", "LUNAS")
         .gte("tanggal_pembayaran", `${currentMonthStr}-01`)
         .lt("tanggal_pembayaran", getNextMonth(currentMonthStr))
         .order("tanggal_pembayaran", { ascending: false });
@@ -46,10 +46,11 @@ export default function RekapanPembayaran() {
         return [];
       }
 
-      return tagihan || [];
+      return rekapan || [];
     },
   });
 
+  // Query untuk grafik 6 bulan terakhir
   const { data: chartData } = useQuery({
     queryKey: ["chart-pembayaran"],
     queryFn: async () => {
@@ -64,11 +65,10 @@ export default function RekapanPembayaran() {
       const result = await Promise.all(
         months.map(async (month) => {
           const { count } = await supabase
-            .from("tagihan_santri")
-            .select("id_tagihan_santri", { count: "exact", head: true })
-            .eq("status_pembayaran", "LUNAS")
-            .gte("updated_at", `${month}-01`)
-            .lt("updated_at", getNextMonth(month));
+            .from("rekapan_pembayaran")
+            .select("id_rekapan_pembayaran", { count: "exact", head: true })
+            .gte("tanggal_pembayaran", `${month}-01`)
+            .lt("tanggal_pembayaran", getNextMonth(month));
 
           return {
             name: formatMonthName(month),
@@ -83,8 +83,8 @@ export default function RekapanPembayaran() {
 
   const totalNominal = useMemo(() => {
     if (!pembayaranData) return 0;
-    return pembayaranData.reduce((sum, item: any) => {
-      return sum + parseFloat(item.jumlah_tagihan || 0);
+    return pembayaranData.reduce((sum: number, item: any) => {
+      return sum + parseFloat(item.jumlah_dibayar || 0);
     }, 0);
   }, [pembayaranData]);
 
@@ -113,13 +113,13 @@ export default function RekapanPembayaran() {
     const exportData = pembayaranData.map((item: any, index: number) => {
       return {
         No: index + 1,
-        "ID Tagihan": item.id_tagihan_santri,
-        "Nama Santri": item.santri?.name || "-",
-        Periode: item.master_tagihan?.periode || "-",
-        "Jenis Tagihan": getJenisTagihan(item.master_tagihan),
-        "Jumlah Tagihan": parseFloat(item.jumlah_tagihan || 0),
-        Status: "Lunas",
-        "Tanggal Bayar": new Date(item.updated_at).toLocaleDateString("id-ID"),
+        "ID Pembayaran": item.id_rekapan_pembayaran,
+        "Nama Santri": item.nama_santri || "-",
+        Periode: item.periode || "-",
+        "Jenis Tagihan": item.jenis_tagihan || "-",
+        "Jumlah Dibayar": parseFloat(item.jumlah_dibayar || 0),
+        "Metode Pembayaran": item.metode_pembayaran || "-",
+        "Tanggal Pembayaran": new Date(item.tanggal_pembayaran).toLocaleDateString("id-ID"),
       };
     });
 
@@ -190,7 +190,7 @@ export default function RekapanPembayaran() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">
-              {pembayaranData?.length || 0} Santri
+              {pembayaranData?.length || 0} Transaksi
             </p>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ export default function RekapanPembayaran() {
       {/* Tabel Data */}
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Santri yang Sudah Membayar</CardTitle>
+          <CardTitle>Daftar Pembayaran SPP</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -226,13 +226,13 @@ export default function RekapanPembayaran() {
                     <th className="text-left p-3 whitespace-nowrap w-[50px]">
                       No
                     </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[180px]">
-                      ID Tagihan
+                    <th className="text-left p-3 whitespace-nowrap w-[100px]">
+                      ID Pembayaran
                     </th>
                     <th className="text-left p-3 whitespace-nowrap w-[200px]">
                       Nama Santri
                     </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[180px]">
+                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
                       Periode
                     </th>
                     <th className="text-left p-3 whitespace-nowrap w-[250px]">
@@ -241,54 +241,43 @@ export default function RekapanPembayaran() {
                     <th className="text-right p-3 whitespace-nowrap w-[150px]">
                       Nominal
                     </th>
-                    <th className="text-center p-3 whitespace-nowrap w-[130px]">
-                      Status
+                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
+                      Metode
                     </th>
                     <th className="text-left p-3 whitespace-nowrap w-[150px]">
-                      Tanggal Bayar
+                      Tanggal Pembayaran
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {pembayaranData.map((item: any, index: number) => (
                     <tr
-                      key={item.id_tagihan_santri}
+                      key={item.id_rekapan_pembayaran}
                       className="border-b hover:bg-muted/50"
                     >
                       <td className="p-3 whitespace-nowrap">{index + 1}</td>
                       <td className="p-3 font-mono text-sm whitespace-nowrap">
-                        {item.id_tagihan_santri}
+                        {item.id_rekapan_pembayaran}
                       </td>
                       <td className="p-3 font-medium whitespace-nowrap">
-                        {item.santri?.name || "-"}
+                        {item.nama_santri || "-"}
                       </td>
                       <td className="p-3 whitespace-nowrap">
-                        <div>
-                          <p className="font-semibold">
-                            {item.master_tagihan?.periode || "-"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {item.master_tagihan?.description || "-"}
-                          </p>
-                        </div>
+                        {item.periode || "-"}
                       </td>
                       <td className="p-3 text-sm">
                         <div className="max-w-[250px]">
-                          {getJenisTagihan(item.master_tagihan)}
+                          {item.jenis_tagihan || "-"}
                         </div>
                       </td>
                       <td className="p-3 text-right font-semibold whitespace-nowrap">
-                        {convertIDR(parseFloat(item.jumlah_tagihan || 0))}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-center">
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 whitespace-nowrap inline-block">
-                            Lunas
-                          </span>
-                        </div>
+                        {convertIDR(parseFloat(item.jumlah_dibayar || 0))}
                       </td>
                       <td className="p-3 text-sm whitespace-nowrap">
-                        {new Date(item.updated_at).toLocaleDateString("id-ID")}
+                        {item.metode_pembayaran || "-"}
+                      </td>
+                      <td className="p-3 text-sm whitespace-nowrap">
+                        {new Date(item.tanggal_pembayaran).toLocaleDateString("id-ID")}
                       </td>
                     </tr>
                   ))}
@@ -337,19 +326,4 @@ function formatMonthName(monthStr: string): string {
   ];
   const [year, month] = monthStr.split("-");
   return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
-}
-
-function getJenisTagihan(masterTagihan: any): string {
-  if (!masterTagihan) return "-";
-
-  const items = [];
-  if (masterTagihan.uang_makan > 0) items.push("Uang Makan");
-  if (masterTagihan.asrama > 0) items.push("Asrama");
-  if (masterTagihan.kas_pondok > 0) items.push("Kas Pondok");
-  if (masterTagihan.shodaqoh_sukarela > 0) items.push("Shodaqoh");
-  if (masterTagihan.jariyah_sb > 0) items.push("Jariyah SB");
-  if (masterTagihan.uang_tahunan > 0) items.push("Uang Tahunan");
-  if (masterTagihan.iuran_kampung > 0) items.push("Iuran Kampung");
-
-  return items.length > 0 ? items.join(", ") : "-";
 }
