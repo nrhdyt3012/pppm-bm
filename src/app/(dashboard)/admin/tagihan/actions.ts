@@ -180,7 +180,7 @@ export async function deleteTagihanSantri(prevState: any, formData: FormData) {
   return { status: "success" };
 }
 
-// Create Tagihan Batch
+// Create Tagihan Batch - DIPERBAIKI
 export async function createTagihanBatch(
   prevState: any,
   formData: FormData | null
@@ -229,10 +229,10 @@ export async function createTagihanBatch(
 
   const supabase = await createClient();
 
-  // CEK DUPLIKAT: Santri yang sudah punya tagihan periode ini
+  // ✅ DIPERBAIKI: Gunakan relasi ke santri, bukan profiles
   const { data: existingTagihan, error: checkError } = await supabase
     .from("tagihan_santri")
-    .select("idSantri, santri:profiles!idSantri(name)")
+    .select("idSantri, santri!idSantri(nama)")
     .eq("idMasterTagihan", masterTagihanId)
     .in("idSantri", santriIds);
 
@@ -248,7 +248,7 @@ export async function createTagihanBatch(
   // Jika ada yang duplikat, beri warning
   if (existingTagihan && existingTagihan.length > 0) {
     const duplicateNames = existingTagihan
-      .map((t: any) => t.santri?.name)
+      .map((t: any) => t.santri?.nama)
       .join(", ");
 
     return {
@@ -265,7 +265,7 @@ export async function createTagihanBatch(
   const { data: masterTagihan, error: masterError } = await supabase
     .from("master_tagihan")
     .select("*")
-    .eq("idMasterTagihan", masterTagihanId)
+    .eq("id_masterTagihan", masterTagihanId)
     .single();
 
   if (masterError || !masterTagihan) {
@@ -388,8 +388,8 @@ export async function updateOrderCustomer(prevState: any, formData: FormData) {
   }
 
   const { data: santri } = await supabase
-    .from("profiles")
-    .select("name")
+    .from("santri")
+    .select("nama")
     .eq("id", santriId)
     .single();
 
@@ -405,7 +405,7 @@ export async function updateOrderCustomer(prevState: any, formData: FormData) {
   const { error } = await supabase
     .from("orders")
     .update({
-      customer_name: santri.name,
+      customer_name: santri.nama,
     })
     .eq("order_id", orderId);
 
