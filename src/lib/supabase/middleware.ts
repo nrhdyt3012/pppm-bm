@@ -30,26 +30,26 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Jika tidak ada user dan bukan di halaman beranda atau login
-  if (
-    !user &&
-    request.nextUrl.pathname !== "/login" &&
-    request.nextUrl.pathname !== "/beranda"
-  ) {
+  const isAuthPage = request.nextUrl.pathname === "/login";
+  const isHomePage = request.nextUrl.pathname === "/beranda";
+  const isRootPage = request.nextUrl.pathname === "/";
+
+  // ✅ Jika tidak ada user dan bukan di halaman public
+  if (!user && !isAuthPage && !isHomePage) {
     const url = request.nextUrl.clone();
     url.pathname = "/beranda";
     return NextResponse.redirect(url);
   }
 
-  // Jika ada user dan di halaman login, redirect ke dashboard
-  if (user && request.nextUrl.pathname === "/login") {
+  // ✅ Jika ada user dan di halaman login, redirect ke root (akan di-handle oleh page.tsx)
+  if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
-  // Jika ada user dan di halaman beranda, redirect ke dashboard
-  if (user && request.nextUrl.pathname === "/beranda") {
+  // ✅ Jika ada user dan di halaman beranda, redirect ke root
+  if (user && isHomePage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

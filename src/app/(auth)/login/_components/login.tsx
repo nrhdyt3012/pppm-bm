@@ -22,8 +22,10 @@ import { login } from "../actions";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchemaForm),
     defaultValues: INITIAL_LOGIN_FORM,
@@ -47,20 +49,30 @@ export default function Login() {
 
   useEffect(() => {
     if (loginState?.status === "error") {
-      toast.error("Login Failed", {
-        description: loginState.errors?._form?.[0] || "Terjadi kesalahan saat login",
+      toast.error("Login Gagal", {
+        description:
+          loginState.errors?._form?.[0] || "Terjadi kesalahan saat login",
       });
     }
-  }, [loginState]);
+
+    if (loginState?.status === "success") {
+      toast.success("Login Berhasil", {
+        description: "Anda akan dialihkan...",
+      });
+
+      // Hard refresh untuk memastikan cookie dan layout ter-reload
+      setTimeout(() => {
+        window.location.href = loginState.data?.redirectUrl || "/";
+      }, 500);
+    }
+  }, [loginState, router]);
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
-      {/* Dark Mode Toggle */}
       <div className="absolute top-4 right-4 z-50">
         <DarkmodeToggle />
       </div>
 
-      {/* Logo */}
       <div className="mb-8">
         <Image
           src="/logo_ppm.svg"
@@ -72,7 +84,6 @@ export default function Login() {
         />
       </div>
 
-      {/* Welcome Text */}
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
           Selamat Datang
@@ -85,7 +96,6 @@ export default function Login() {
         </p>
       </div>
 
-      {/* Login Card */}
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-2xl">Login</CardTitle>
@@ -129,7 +139,6 @@ export default function Login() {
         </CardContent>
       </Card>
 
-      {/* Footer */}
       <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
         <p>© 2024 Pondok Pesantren Baitul Makmur</p>
         <p className="mt-1">Semua hak cipta dilindungi</p>

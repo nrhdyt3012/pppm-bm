@@ -16,6 +16,10 @@ export type AuthFormState = {
     pekerjaan_ibu?: string[];
     _form?: string[];
   };
+  data?: {
+    profile?: any;
+    redirectUrl?: string;
+  };
 };
 
 export type Profile = {

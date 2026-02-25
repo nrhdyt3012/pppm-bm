@@ -3,7 +3,21 @@ import { cookies } from "next/headers";
 
 export default async function Home() {
   const cookiesStore = await cookies();
-  const profile = JSON.parse(cookiesStore.get("user_profile")?.value ?? "{}");
+  const userProfileCookie = cookiesStore.get("user_profile");
+  
+  console.log("🍪 Cookie user_profile:", userProfileCookie?.value);
+
+  let profile = { role: null };
+  
+  try {
+    if (userProfileCookie?.value) {
+      profile = JSON.parse(userProfileCookie.value);
+    }
+  } catch (error) {
+    console.error("Error parsing user_profile cookie:", error);
+  }
+
+  console.log("👤 Parsed profile:", profile);
 
   // Redirect berdasarkan role
   if (profile.role === "admin") {

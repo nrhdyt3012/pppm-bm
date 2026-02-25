@@ -13,8 +13,8 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   images: {
     domains: [
-      "https://znfggwvdcmdhqtmvjcln.supabase.co",
-      "https://znfggwvdcmdhqtmvjcln.storage.supabase.co",
+      "znfggwvdcmdhqtmvjcln.supabase.co",
+      "znfggwvdcmdhqtmvjcln.storage.supabase.co",
     ],
     remotePatterns: [
       {
