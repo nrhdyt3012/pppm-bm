@@ -81,7 +81,7 @@ export default function DialogCreateTagihan({
       const result = await supabase
         .from("master_tagihan")
         .select("*")
-        .order("createdAt", { ascending: false });
+        .order("created_at", { ascending: false });
       
       if (result.error) {
         console.error("Error fetching master tagihan:", result.error);
