@@ -15,14 +15,14 @@ export async function POST(request: NextRequest) {
     });
 
     const serverKey = environment.MIDTRANS_SERVER_KEY;
-    const { order_id, status_code, gross_amount, signature_key } = body;
+    const { order_id: midtransOrderId, status_code, gross_amount, signature_key } = body;
 
     // =========================
     // 1. VERIFY SIGNATURE
     // =========================
     const expectedSignature = crypto
       .createHash("sha512")
-      .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
+      .update(`${midtransOrderId}${status_code}${gross_amount}${serverKey}`)
       .digest("hex");
 
     if (expectedSignature !== signature_key) {
@@ -33,19 +33,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // =========================
+    // 2. EKSTRAK TAGIHAN ID dari order_id
+    // Format: PPPM-{idTagihanSantri}-{timestamp}
+    // =========================
+    let tagihanId: string;
+    if (midtransOrderId.startsWith("PPPM-")) {
+      // Format baru: PPPM-{id}-{timestamp}
+      const parts = midtransOrderId.split("-");
+      tagihanId = parts[1]; // ambil id tagihan
+    } else {
+      // Format lama (fallback)
+      tagihanId = midtransOrderId;
+    }
+
+    console.log("🔍 [WEBHOOK] Tagihan ID:", tagihanId);
+
     const supabase = await createClient();
 
     // =========================
-    // 2. CEK TAGIHAN
+    // 3. CEK TAGIHAN
     // =========================
     const { data: tagihan, error: tagihanError } = await supabase
       .from("tagihan_santri")
       .select("idTagihanSantri, statusPembayaran")
-      .eq("idTagihanSantri", order_id)
+      .eq("idTagihanSantri", tagihanId)
       .single();
 
     if (tagihanError || !tagihan) {
-      console.error("❌ [WEBHOOK] Tagihan not found:", order_id);
+      console.error("❌ [WEBHOOK] Tagihan not found:", tagihanId);
       return NextResponse.json(
         { error: "Tagihan tidak ditemukan" },
         { status: 404 }
@@ -58,7 +74,7 @@ export async function POST(request: NextRequest) {
     });
 
     // =========================
-    // 3. MAP STATUS MIDTRANS
+    // 4. MAP STATUS MIDTRANS
     // =========================
     const midtransStatus = body.transaction_status;
     let statusPembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA" = "BELUM BAYAR";
@@ -73,23 +89,23 @@ export async function POST(request: NextRequest) {
       statusPembayaran = "BELUM BAYAR";
       console.log("❌ [WEBHOOK] Payment FAILED");
     } else {
-      console.log("⏳ [WEBHOOK] Payment PENDING");
+      console.log("⏳ [WEBHOOK] Payment PENDING:", midtransStatus);
     }
 
     // =========================
-    // 4. UPDATE STATUS TAGIHAN
+    // 5. UPDATE STATUS TAGIHAN
     // =========================
     const { error: updateError } = await supabase
       .from("tagihan_santri")
       .update({
-        statusPembayaran: statusPembayaran,  // ⭐ PERBAIKAN: Gunakan camelCase
+        statusPembayaran: statusPembayaran,
         updatedAt: new Date().toISOString(),
-        ...(statusPembayaran === "KADALUARSA" || statusPembayaran === "BELUM BAYAR" 
-          ? { paymentToken: null }  // Reset token jika gagal/expire
+        ...(statusPembayaran === "KADALUARSA" || statusPembayaran === "BELUM BAYAR"
+          ? { paymentToken: null }
           : {}
         ),
       })
-      .eq("idTagihanSantri", order_id);
+      .eq("idTagihanSantri", tagihanId);
 
     if (updateError) {
       console.error("❌ [WEBHOOK] Update failed:", updateError);
@@ -100,23 +116,23 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("✅ [WEBHOOK] Status updated:", {
-      order_id,
+      tagihanId,
       newStatus: statusPembayaran,
     });
 
     // =========================
-    // 5. LOG PAYMENT GATEWAY
+    // 6. LOG PAYMENT GATEWAY
     // =========================
     await supabase.from("payment_gateway_log").insert({
-      id_pembayaran: tagihan.idTagihanSantri,
-      order_id,
+      id_pembayaran: parseInt(tagihanId),
+      order_id: midtransOrderId,
       transaction_status_midtrans: midtransStatus,
       raw_response_midtrans: body,
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       status: "success",
-      order_id,
+      order_id: tagihanId,
       updated_status: statusPembayaran,
     });
 
