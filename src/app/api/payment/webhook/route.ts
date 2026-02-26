@@ -8,6 +8,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    console.log("🎯 [WEBHOOK] Received:", {
+      order_id: body.order_id,
+      transaction_status: body.transaction_status,
+      payment_type: body.payment_type,
+    });
+
     const serverKey = environment.MIDTRANS_SERVER_KEY;
     const { order_id, status_code, gross_amount, signature_key } = body;
 
@@ -20,6 +26,7 @@ export async function POST(request: NextRequest) {
       .digest("hex");
 
     if (expectedSignature !== signature_key) {
+      console.error("❌ [WEBHOOK] Invalid signature");
       return NextResponse.json(
         { error: "Invalid signature" },
         { status: 403 }
@@ -33,109 +40,88 @@ export async function POST(request: NextRequest) {
     // =========================
     const { data: tagihan, error: tagihanError } = await supabase
       .from("tagihan_santri")
-      .select("idTagihanSantri")
+      .select("idTagihanSantri, statusPembayaran")
       .eq("idTagihanSantri", order_id)
       .single();
 
     if (tagihanError || !tagihan) {
+      console.error("❌ [WEBHOOK] Tagihan not found:", order_id);
       return NextResponse.json(
         { error: "Tagihan tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    // =========================
-    // 3. CEK PEMBAYARAN
-    // =========================
-    const { data: pembayaran } = await supabase
-      .from("pembayaran")
-      .select("id_pembayaran, status_pembayaran")
-      .eq("id_tagihan_santri", tagihan.idTagihanSantri)
-      .maybeSingle();
+    console.log("✅ [WEBHOOK] Tagihan found:", {
+      id: tagihan.idTagihanSantri,
+      currentStatus: tagihan.statusPembayaran,
+    });
 
     // =========================
-    // 4. MAP STATUS MIDTRANS
+    // 3. MAP STATUS MIDTRANS
     // =========================
     const midtransStatus = body.transaction_status;
-
-    let statusPembayaran: "PENDING" | "SUCCESS" | "FAILED" | "EXPIRED" =
-      "PENDING";
+    let statusPembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA" = "BELUM BAYAR";
 
     if (midtransStatus === "settlement" || midtransStatus === "capture") {
-      statusPembayaran = "SUCCESS";
+      statusPembayaran = "LUNAS";
+      console.log("✅ [WEBHOOK] Payment SUCCESS");
     } else if (midtransStatus === "expire") {
-      statusPembayaran = "EXPIRED";
+      statusPembayaran = "KADALUARSA";
+      console.log("⏰ [WEBHOOK] Payment EXPIRED");
     } else if (midtransStatus === "cancel" || midtransStatus === "deny") {
-      statusPembayaran = "FAILED";
-    }
-
-    // =========================
-    // 5. INSERT / UPDATE PEMBAYARAN
-    // =========================
-    let idPembayaran: string;
-
-    if (!pembayaran) {
-      const { data: newPembayaran, error } = await supabase
-        .from("pembayaran")
-        .insert({
-          id_tagihan_santri: tagihan.idTagihanSantri,
-          id_santri: body.custom_field1,
-          jumlah_dibayar: parseFloat(gross_amount),
-          metode_pembayaran: body.payment_type,
-          status_pembayaran: statusPembayaran,
-        })
-        .select("id_pembayaran")
-        .single();
-
-      if (error || !newPembayaran) {
-        throw new Error("Gagal membuat pembayaran");
-      }
-
-      idPembayaran = newPembayaran.id_pembayaran;
+      statusPembayaran = "BELUM BAYAR";
+      console.log("❌ [WEBHOOK] Payment FAILED");
     } else {
-      idPembayaran = pembayaran.id_pembayaran;
-
-      await supabase
-        .from("pembayaran")
-        .update({ status_pembayaran: statusPembayaran })
-        .eq("id_pembayaran", idPembayaran);
+      console.log("⏳ [WEBHOOK] Payment PENDING");
     }
 
     // =========================
-    // 6. LOG PAYMENT GATEWAY
+    // 4. UPDATE STATUS TAGIHAN
+    // =========================
+    const { error: updateError } = await supabase
+      .from("tagihan_santri")
+      .update({
+        statusPembayaran: statusPembayaran,  // ⭐ PERBAIKAN: Gunakan camelCase
+        updatedAt: new Date().toISOString(),
+        ...(statusPembayaran === "KADALUARSA" || statusPembayaran === "BELUM BAYAR" 
+          ? { paymentToken: null }  // Reset token jika gagal/expire
+          : {}
+        ),
+      })
+      .eq("idTagihanSantri", order_id);
+
+    if (updateError) {
+      console.error("❌ [WEBHOOK] Update failed:", updateError);
+      return NextResponse.json(
+        { error: "Gagal update status" },
+        { status: 500 }
+      );
+    }
+
+    console.log("✅ [WEBHOOK] Status updated:", {
+      order_id,
+      newStatus: statusPembayaran,
+    });
+
+    // =========================
+    // 5. LOG PAYMENT GATEWAY
     // =========================
     await supabase.from("payment_gateway_log").insert({
-      id_pembayaran: idPembayaran,
+      id_pembayaran: tagihan.idTagihanSantri,
       order_id,
       transaction_status_midtrans: midtransStatus,
       raw_response_midtrans: body,
     });
 
-    // =========================
-    // 7. UPDATE STATUS TAGIHAN
-    // =========================
-    if (statusPembayaran === "SUCCESS") {
-      await supabase
-        .from("tagihan_santri")
-        .update({
-          status_pembayaran: "LUNAS",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("idTagihanSantri", order_id);
-    }
+    return NextResponse.json({ 
+      status: "success",
+      order_id,
+      updated_status: statusPembayaran,
+    });
 
-    if (statusPembayaran === "EXPIRED" || statusPembayaran === "FAILED") {
-      await supabase
-        .from("tagihan_santri")
-        .update({
-          payment_token: null,
-        })
-        .eq("idTagihanSantri", order_id);
-    }
-
-    return NextResponse.json({ status: "success" });
   } catch (error: any) {
-    console.error("Webhook error:", error);
+    console.error("💥 [WEBHOOK] Error:", error);
     return NextResponse.json(
       { error: error.message || "Webhook processing failed" },
       { status: 500 }

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 declare global {
   interface Window {
@@ -39,14 +39,34 @@ export default function TagihanSantri() {
   const [selectedTagihan, setSelectedTagihan] = useState<any>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
+  // ⭐ DEBUG: Log profile saat component mount
+  useEffect(() => {
+    console.log("🔍 TagihanSantri - Profile loaded:", {
+      id: profile.id,
+      name: profile.name,
+      role: profile.role,
+      fullProfile: profile
+    });
+  }, [profile]);
+
   // Fetch tagihan santri yang belum lunas
   const {
     data: tagihanList,
     isLoading,
     refetch,
+    error: queryError,
   } = useQuery({
     queryKey: ["tagihan-santri", profile.id],
+    enabled: !!profile.id, // ⭐ CRITICAL: Only run query if profile.id exists
     queryFn: async () => {
+      console.log("🚀 [Query START] Fetching tagihan for ID:", profile.id);
+      
+      if (!profile.id) {
+        const error = new Error("Profile ID tidak tersedia. Silakan login ulang.");
+        console.error("❌ No profile.id available!", error);
+        throw error;
+      }
+
       const { data, error } = await supabase
         .from("tagihan_santri")
         .select(
@@ -76,12 +96,22 @@ export default function TagihanSantri() {
         .order("createdAt", { ascending: false });
 
       if (error) {
-        console.error("Error fetching tagihan:", error);
+        console.error("❌ Supabase error:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
         toast.error("Gagal memuat data tagihan", {
           description: error.message,
         });
-        return [];
+        throw error;
       }
+
+      console.log("✅ [Query SUCCESS] Retrieved tagihan:", {
+        count: data?.length || 0,
+        data: data,
+      });
 
       return data || [];
     },
@@ -90,7 +120,10 @@ export default function TagihanSantri() {
   // Fetch data santri untuk dialog
   const { data: santriData } = useQuery({
     queryKey: ["santri-detail-payment", profile.id],
+    enabled: !!profile.id,
     queryFn: async () => {
+      if (!profile.id) return null;
+
       const result = await supabase.rpc("get_santri_with_details", {
         search_term: "",
         page_limit: 1,
@@ -106,11 +139,13 @@ export default function TagihanSantri() {
         (item: any) => item.id === profile.id
       );
 
+      console.log("👤 Santri data loaded:", currentUserData);
       return currentUserData || null;
     },
   });
 
   const handleOpenPaymentDialog = (tagihan: any) => {
+    console.log("💳 Opening payment dialog for tagihan:", tagihan.idTagihanSantri);
     setSelectedTagihan(tagihan);
     setShowPaymentDialog(true);
   };
@@ -121,11 +156,19 @@ export default function TagihanSantri() {
     try {
       const jumlahTagihan = parseFloat(selectedTagihan.jumlahTagihan || 0);
 
+      console.log("💰 Processing payment:", {
+        tagihanId: selectedTagihan.idTagihanSantri,
+        amount: jumlahTagihan,
+        hasToken: !!selectedTagihan.paymentToken,
+      });
+
       if (selectedTagihan.paymentToken) {
         // Jika sudah ada token, langsung buka snap
+        console.log("🎫 Using existing payment token");
         window.snap.pay(selectedTagihan.paymentToken);
         setShowPaymentDialog(false);
       } else {
+        console.log("🎫 Generating new payment token...");
         // Generate payment token
         const response = await fetch("/api/payment/create", {
           method: "POST",
@@ -140,23 +183,30 @@ export default function TagihanSantri() {
         });
 
         const result = await response.json();
+        console.log("🎫 Payment token generated:", result);
 
         if (result.token) {
           // Update payment token di database
-          await supabase
+          const { error: updateError } = await supabase
             .from("tagihan_santri")
             .update({ paymentToken: result.token })
             .eq("idTagihanSantri", selectedTagihan.idTagihanSantri);
 
+          if (updateError) {
+            console.error("❌ Failed to update payment token:", updateError);
+          }
+
           // Buka Snap payment
+          console.log("🚀 Opening Snap payment UI");
           window.snap.pay(result.token);
           setShowPaymentDialog(false);
         } else {
+          console.error("❌ No token in response:", result);
           toast.error("Gagal membuat pembayaran");
         }
       }
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error("💥 Payment error:", error);
       toast.error("Terjadi kesalahan saat memproses pembayaran");
     }
   };
@@ -183,10 +233,44 @@ export default function TagihanSantri() {
     return items;
   };
 
+  // ⭐ Show loading if profile is not ready
+  if (!profile.id) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="animate-spin h-8 w-8 text-teal-500 mx-auto" />
+          <p className="text-muted-foreground">Memuat profil Anda...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="animate-spin h-8 w-8 text-teal-500" />
+      </div>
+    );
+  }
+
+  // ⭐ Show error if query failed
+  if (queryError) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+              <div>
+                <h3 className="font-semibold text-lg">Gagal Memuat Data</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {queryError.message || "Terjadi kesalahan saat memuat tagihan"}
+                </p>
+              </div>
+              <Button onClick={() => refetch()}>Coba Lagi</Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
