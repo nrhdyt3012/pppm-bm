@@ -28,26 +28,40 @@ export default function RekapanTunggakan() {
     return selectedMonth.toISOString().slice(0, 7);
   }, [selectedMonth]);
 
-  // Query ke tabel rekapan_tunggakan (sudah aggregated)
+  // ✅ FIXED: Query dari tagihan_santri dengan join ke santri dan master_tagihan
   const { data: tunggakanData, isLoading } = useQuery({
     queryKey: ["tunggakan-data", currentMonthStr],
     queryFn: async () => {
-      // Ambil data dari tabel rekapan_tunggakan
-      const { data: rekapan, error } = await supabase
-        .from("rekapan_tunggakan")
-        .select('*')
-        .order("id_rekapan_tunggakan", { ascending: false });
+      const { data: tagihanBelumBayar, error } = await supabase
+        .from("tagihan_santri")
+        .select(`
+          idTagihanSantri,
+          jumlahTagihan,
+          statusPembayaran,
+          createdAt,
+          santri:santri!idSantri(id, nama),
+          master_tagihan:master_tagihan!idMasterTagihan(periode, description)
+        `)
+        .eq("statusPembayaran", "BELUM BAYAR")
+        .order("createdAt", { ascending: false });
 
       if (error) {
+        console.error("Error fetching tunggakan:", error);
         toast.error("Gagal memuat data tunggakan", {
           description: error.message,
         });
         return [];
       }
 
-      // Filter berdasarkan bulan (gunakan created_at dari tagihan_santri)
-      // Jika tidak ada field tanggal di rekapan_tunggakan, kita bisa query langsung dari tagihan_santri
-      return rekapan || [];
+      // Transform ke format yang diharapkan
+      return tagihanBelumBayar?.map((item: any) => ({
+        id_rekapan_tunggakan: item.idTagihanSantri,
+        nama_santri: item.santri?.nama || "-",
+        periode: item.master_tagihan?.periode || "-",
+        jenis_tagihan: item.master_tagihan?.description || "-",
+        jumlah_tunggakan: item.jumlahTagihan,
+        tanggal_tagihan: item.createdAt,
+      })) || [];
     },
   });
 
@@ -120,7 +134,7 @@ export default function RekapanTunggakan() {
         Periode: item.periode || "-",
         "Jenis Tagihan": item.jenis_tagihan || "-",
         "Jumlah Tunggakan": parseFloat(item.jumlah_tunggakan || 0),
-        "Tanggal Tagihan": new Date(item.id_rekapan_tunggakan).toLocaleDateString(
+        "Tanggal Tagihan": new Date(item.tanggal_tagihan).toLocaleDateString(
           "id-ID"
         ),
       };

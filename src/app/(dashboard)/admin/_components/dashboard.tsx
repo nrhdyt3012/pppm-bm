@@ -41,7 +41,7 @@ export default function Dashboard() {
     },
   });
 
-  // Query untuk Tagihan Santri
+  // ✅ FIXED: Query untuk Tagihan Santri dengan nama field yang benar
   const { data: tagihanStats } = useQuery({
     queryKey: ["tagihan-stats", currentMonth],
     queryFn: async () => {
@@ -49,24 +49,24 @@ export default function Dashboard() {
       const { count: tagihanBulanIni } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
-        .gte("created_at", `${currentMonth}-01`)
-        .lt("created_at", getNextMonth(currentMonth));
+        .gte("createdAt", `${currentMonth}-01`)
+        .lt("createdAt", getNextMonth(currentMonth));
 
       // Tagihan yang sudah terbayar (LUNAS) bulan ini
       const { count: tagihanTerbayar } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
         .eq("statusPembayaran", "LUNAS")
-        .gte("created_at", `${currentMonth}-01`)
-        .lt("created_at", getNextMonth(currentMonth));
+        .gte("createdAt", `${currentMonth}-01`)
+        .lt("createdAt", getNextMonth(currentMonth));
 
       // Tagihan yang belum terbayar (BELUM BAYAR) bulan ini
       const { count: tagihanBelumTerbayar } = await supabase
         .from("tagihan_santri")
         .select("*", { count: "exact", head: true })
         .eq("statusPembayaran", "BELUM BAYAR")
-        .gte("created_at", `${currentMonth}-01`)
-        .lt("created_at", getNextMonth(currentMonth));
+        .gte("createdAt", `${currentMonth}-01`)
+        .lt("createdAt", getNextMonth(currentMonth));
 
       return {
         bulanIni: tagihanBulanIni || 0,
@@ -76,7 +76,7 @@ export default function Dashboard() {
     },
   });
 
-  // Query untuk Pemasukan
+  // ✅ FIXED: Query untuk Pemasukan dengan nama field yang benar
   const { data: pemasukanStats } = useQuery({
     queryKey: ["pemasukan-stats", currentMonth],
     queryFn: async () => {

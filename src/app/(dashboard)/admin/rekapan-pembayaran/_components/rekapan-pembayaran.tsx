@@ -28,25 +28,69 @@ export default function RekapanPembayaran() {
     return selectedMonth.toISOString().slice(0, 7);
   }, [selectedMonth]);
 
-  // Query ke tabel rekapan_pembayaran (sudah aggregated)
-  const { data: pembayaranData, isLoading } = useQuery({
+  // ✅ FIXED: Query dari tagihan_santri dengan join ke santri dan master_tagihan
+  const {
+    data: pembayaranData,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["pembayaran-data", currentMonthStr],
     queryFn: async () => {
-      const { data: rekapan, error } = await supabase
-        .from("rekapan_pembayaran")
-        .select('*')
-        .gte("tanggal_pembayaran", `${currentMonthStr}-01`)
-        .lt("tanggal_pembayaran", getNextMonth(currentMonthStr))
-        .order("tanggal_pembayaran", { ascending: false });
+      const { data: tagihanLunas, error } = await supabase
+        .from("tagihan_santri")
+        .select(`
+          idTagihanSantri,
+          jumlahTagihan,
+          statusPembayaran,
+          updatedAt,
+          createdAt,
+          santri:santri!idSantri(id, nama),
+          master_tagihan:master_tagihan!idMasterTagihan(
+            id_masterTagihan,
+            periode,
+            description,
+            uang_makan,
+            asrama,
+            kas_pondok,
+            sedekah_sukarela,
+            aset_jariyah,
+            uang_tahunan,
+            iuran_kampung
+          )
+        `)
+        .eq("statusPembayaran", "LUNAS")
+        .gte("updatedAt", `${currentMonthStr}-01`)
+        .lt("updatedAt", getNextMonth(currentMonthStr))
+        .order("updatedAt", { ascending: false });
 
       if (error) {
+        console.error("Error fetching pembayaran:", error);
         toast.error("Gagal memuat data pembayaran", {
           description: error.message,
         });
         return [];
       }
 
-      return rekapan || [];
+      // Transform ke format yang diharapkan
+      return tagihanLunas?.map((item: any) => ({
+        id_rekapan_pembayaran: item.idTagihanSantri,
+        nama_santri: item.santri?.nama || "-",
+        periode: item.master_tagihan?.periode || "-",
+        jenis_tagihan: item.master_tagihan?.description || "-",
+        jumlah_dibayar: item.jumlahTagihan,
+        tanggal_pembayaran: item.updatedAt,
+        metode_pembayaran: "Online Payment", // Default untuk payment yang lunas
+        // Detail rincian untuk export
+        detail_tagihan: {
+          uang_makan: item.master_tagihan?.uang_makan || 0,
+          asrama: item.master_tagihan?.asrama || 0,
+          kas_pondok: item.master_tagihan?.kas_pondok || 0,
+          sedekah_sukarela: item.master_tagihan?.sedekah_sukarela || 0,
+          aset_jariyah: item.master_tagihan?.aset_jariyah || 0,
+          uang_tahunan: item.master_tagihan?.uang_tahunan || 0,
+          iuran_kampung: item.master_tagihan?.iuran_kampung || 0,
+        },
+      })) || [];
     },
   });
 
@@ -65,10 +109,11 @@ export default function RekapanPembayaran() {
       const result = await Promise.all(
         months.map(async (month) => {
           const { count } = await supabase
-            .from("rekapan_pembayaran")
-            .select("id_rekapan_pembayaran", { count: "exact", head: true })
-            .gte("tanggal_pembayaran", `${month}-01`)
-            .lt("tanggal_pembayaran", getNextMonth(month));
+            .from("tagihan_santri")
+            .select("idTagihanSantri", { count: "exact", head: true })
+            .eq("statusPembayaran", "LUNAS")
+            .gte("updatedAt", `${month}-01`)
+            .lt("updatedAt", getNextMonth(month));
 
           return {
             name: formatMonthName(month),
@@ -117,6 +162,13 @@ export default function RekapanPembayaran() {
         "Nama Santri": item.nama_santri || "-",
         Periode: item.periode || "-",
         "Jenis Tagihan": item.jenis_tagihan || "-",
+        "Uang Makan": parseFloat(item.detail_tagihan?.uang_makan || 0),
+        Asrama: parseFloat(item.detail_tagihan?.asrama || 0),
+        "Kas Pondok": parseFloat(item.detail_tagihan?.kas_pondok || 0),
+        "Sedekah Sukarela": parseFloat(item.detail_tagihan?.sedekah_sukarela || 0),
+        "Aset Jariyah": parseFloat(item.detail_tagihan?.aset_jariyah || 0),
+        "Uang Tahunan": parseFloat(item.detail_tagihan?.uang_tahunan || 0),
+        "Iuran Kampung": parseFloat(item.detail_tagihan?.iuran_kampung || 0),
         "Jumlah Dibayar": parseFloat(item.jumlah_dibayar || 0),
         "Metode Pembayaran": item.metode_pembayaran || "-",
         "Tanggal Pembayaran": new Date(item.tanggal_pembayaran).toLocaleDateString("id-ID"),
