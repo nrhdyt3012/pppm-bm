@@ -12,24 +12,26 @@ import { Loader2, Receipt, Printer } from "lucide-react";
 import { useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
+type MasterTagihan = {
+  id_masterTagihan: number;
+  periode: string;
+  description: string;
+  uang_makan: number;
+  asrama: number;
+  kas_pondok: number;
+  sedekah_sukarela: number;
+  aset_jariyah: number;
+  uang_tahunan: number;
+  iuran_kampung: number;
+};
+
 type TagihanData = {
   idTagihanSantri: string;
   jumlahTagihan: string;
   statusPembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
   createdAt: string;
   updatedAt: string;
-  master_tagihan: {
-    id: number;
-    periode: string;
-    description: string;
-    uang_makan: number;
-    asrama: number;
-    kas_pondok: number;
-    sedekah_sukarela: number;
-    aset_jariyah: number;
-    uang_tahunan: number;
-    iuran_kampung: number;
-  };
+  master_tagihan: MasterTagihan;
 };
 
 export default function RiwayatPembayaran() {
@@ -38,6 +40,7 @@ export default function RiwayatPembayaran() {
 
   const { data: riwayatList, isLoading } = useQuery({
     queryKey: ["riwayat-pembayaran", profile.id],
+    enabled: !!profile.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tagihan_santri")
@@ -49,7 +52,7 @@ export default function RiwayatPembayaran() {
           createdAt,
           updatedAt,
           master_tagihan:master_tagihan!idMasterTagihan(
-            id,
+            id_masterTagihan,
             periode,
             description,
             uang_makan,
@@ -66,6 +69,7 @@ export default function RiwayatPembayaran() {
         .order("createdAt", { ascending: false });
 
       if (error) {
+        console.error("Riwayat query error:", error);
         toast.error("Gagal memuat riwayat pembayaran", {
           description: error.message,
         });
@@ -76,7 +80,7 @@ export default function RiwayatPembayaran() {
     },
   });
 
-  if (isLoading) {
+  if (!profile.id || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="animate-spin h-8 w-8 text-teal-500" />
@@ -85,19 +89,20 @@ export default function RiwayatPembayaran() {
   }
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
+    const statusConfig: Record<string, string> = {
       "BELUM BAYAR":
         "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100",
       LUNAS:
         "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
-      KADALUARSA: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+      KADALUARSA:
+        "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
     };
 
     return (
       <span
         className={cn(
           "px-3 py-1 rounded-full text-xs font-medium inline-block",
-          statusConfig[status as keyof typeof statusConfig]
+          statusConfig[status] ?? statusConfig["BELUM BAYAR"]
         )}
       >
         {status}
@@ -163,10 +168,10 @@ export default function RiwayatPembayaran() {
                       <td className="p-3">
                         <div>
                           <p className="font-semibold">
-                            {item.master_tagihan.periode}
+                            {item.master_tagihan?.periode ?? "-"}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {item.master_tagihan.description}
+                            {item.master_tagihan?.description ?? "-"}
                           </p>
                         </div>
                       </td>
@@ -184,13 +189,10 @@ export default function RiwayatPembayaran() {
                         })}
                       </td>
                       <td className="p-3 text-center">
-                        {item.statusPembayaran === "LUNAS" && (
+                        {item.statusPembayaran === "LUNAS" ? (
                           <ReceiptButton tagihan={item} />
-                        )}
-                        {item.statusPembayaran !== "LUNAS" && (
-                          <span className="text-xs text-muted-foreground">
-                            -
-                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                       </td>
                     </tr>
@@ -215,28 +217,18 @@ function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
   });
 
   const getRincianTagihan = () => {
-    const items = [];
     const master = tagihan.master_tagihan;
+    if (!master) return [];
 
-    if (master.uang_makan > 0)
-      items.push({ label: "Uang Makan", value: master.uang_makan });
-    if (master.asrama > 0)
-      items.push({ label: "Asrama", value: master.asrama });
-    if (master.kas_pondok > 0)
-      items.push({ label: "Kas Pondok", value: master.kas_pondok });
-    if (master.sedekah_sukarela > 0)
-      items.push({
-        label: "Shodaqoh Sukarela",
-        value: master.sedekah_sukarela,
-      });
-    if (master.aset_jariyah > 0)
-      items.push({ label: "Jariyah SB", value: master.aset_jariyah });
-    if (master.uang_tahunan > 0)
-      items.push({ label: "Uang Tahunan", value: master.uang_tahunan });
-    if (master.iuran_kampung > 0)
-      items.push({ label: "Iuran Kampung", value: master.iuran_kampung });
-
-    return items;
+    return [
+      { label: "Uang Makan", value: master.uang_makan },
+      { label: "Asrama", value: master.asrama },
+      { label: "Kas Pondok", value: master.kas_pondok },
+      { label: "Shodaqoh Sukarela", value: master.sedekah_sukarela },
+      { label: "Jariyah SB", value: master.aset_jariyah },
+      { label: "Uang Tahunan", value: master.uang_tahunan },
+      { label: "Iuran Kampung", value: master.iuran_kampung },
+    ].filter((item) => item.value > 0);
   };
 
   return (
@@ -294,7 +286,7 @@ function ReceiptButton({ tagihan }: { tagihan: TagihanData }) {
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Periode:</span>
-              <span>{tagihan.master_tagihan.periode}</span>
+              <span>{tagihan.master_tagihan?.periode ?? "-"}</span>
             </div>
           </div>
 
