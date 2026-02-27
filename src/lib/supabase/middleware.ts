@@ -30,30 +30,34 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthPage = request.nextUrl.pathname === "/login";
-  const isHomePage = request.nextUrl.pathname === "/beranda";
-  const isRootPage = request.nextUrl.pathname === "/";
+  const pathname = request.nextUrl.pathname;
 
-  // ✅ Jika tidak ada user dan bukan di halaman public
-  if (!user && !isAuthPage && !isHomePage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/beranda";
-    return NextResponse.redirect(url);
-  }
+const isAuthPage = pathname === "/login";
 
-  // ✅ Jika ada user dan di halaman login, redirect ke root (akan di-handle oleh page.tsx)
-  if (user && isAuthPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
+// Semua halaman yang boleh diakses tanpa login
+const publicPages = [
+  "/beranda",
+  "/profil",
+  "/fasilitas",
+  "/info-sekolah",
+  "/kontak",
+  "/ppdb",
+];
+const isPublicPage = publicPages.some(
+  (page) => pathname === page || pathname.startsWith(page + "/")
+);
 
-  // ✅ Jika ada user dan di halaman beranda, redirect ke root
-  if (user && isHomePage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
+// Jika tidak ada user dan bukan halaman public → redirect ke beranda
+if (!user && !isAuthPage && !isPublicPage) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/beranda";
+  return NextResponse.redirect(url);
+}
 
-  return supabaseResponse;
+// Jika sudah login dan buka halaman login → redirect ke home
+if (user && isAuthPage) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/";
+  return NextResponse.redirect(url);
+}
 }
