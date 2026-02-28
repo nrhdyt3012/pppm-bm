@@ -42,6 +42,7 @@ const publicPages = [
   "/info-sekolah",
   "/kontak",
   "/ppdb",
+  "/berita",
 ];
 const isPublicPage = publicPages.some(
   (page) => pathname === page || pathname.startsWith(page + "/")

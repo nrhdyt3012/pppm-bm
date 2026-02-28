@@ -22,6 +22,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
+import BeritaTerbaru from "./berita-terbaru";
 
 export default function Homepage() {
   const features = [
@@ -215,7 +216,7 @@ export default function Homepage() {
           </div>
         </div>
       </section>
-
+      <BeritaTerbaru />
       {/* Video Section */}
       <section className="py-20 px-6 bg-white dark:bg-gray-800">
         <div className="container mx-auto max-w-5xl">
