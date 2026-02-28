@@ -1,10 +1,9 @@
 import DetailBerita from "./_components/detail-berita";
 
-// Metadata dinamis
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
   return {
     title: `Berita | PP Baitul Makmur`,
@@ -15,10 +14,11 @@ export async function generateMetadata({
   };
 }
 
-export default function BeritaDetailPage({
+export default async function BeritaDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  return <DetailBerita slug={params.slug} />;
+  const { slug } = await params;
+  return <DetailBerita slug={slug} />;
 }
