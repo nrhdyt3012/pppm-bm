@@ -9,14 +9,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  School2,
+  GraduationCap,
   BookOpen,
   Users,
-  Calendar,
-  Target,
-  Lightbulb,
-  Award,
   Heart,
+  Star,
+  Sparkles,
+  Baby,
+  School,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,38 +25,38 @@ import Footer from "@/components/common/footer";
 import BeritaTerbaru from "./berita-terbaru";
 
 export default function Homepage() {
-  const features = [
+  const programUnggulan = [
     {
       icon: <BookOpen className="w-12 h-12 text-teal-500" />,
-      title: "Program Tahfidz",
+      title: "Mengaji & Tahfidz Metode UMMI",
       description:
-        "Metode menghafal Al-Quran yang efektif dan menyenangkan dengan bimbingan ustadz berpengalaman",
+        "Metode menghafal Al-Quran yang efektif dan menyenangkan untuk anak usia dini",
     },
     {
-      icon: <School2 className="w-12 h-12 text-teal-500" />,
-      title: "Pendidikan Formal",
+      icon: <Star className="w-12 h-12 text-teal-500" />,
+      title: "Petualangan Maharaja",
       description:
-        "Kurikulum terintegrasi setara SD, SMP, dan SMA dengan standar nasional",
+        "Pintar baca tanpa belajar membaca - metode inovatif pembelajaran literasi",
     },
     {
-      icon: <Users className="w-12 h-12 text-teal-500" />,
-      title: "Pembinaan Karakter",
+      icon: <Heart className="w-12 h-12 text-teal-500" />,
+      title: "Berkemandirian & Karakter Islami",
       description:
-        "Membentuk akhlakul karimah melalui teladan dan pembiasaan sehari-hari",
+        "Membentuk karakter mandiri dan berakhlak mulia sejak dini",
     },
     {
-      icon: <Award className="w-12 h-12 text-teal-500" />,
-      title: "Prestasi Gemilang",
+      icon: <Sparkles className="w-12 h-12 text-teal-500" />,
+      title: "Tuntas Toilet Training",
       description:
-        "Santri kami berprestasi di berbagai kompetisi tingkat regional dan nasional",
+        "Program khusus melatih kemandirian anak dalam kehidupan sehari-hari",
     },
   ];
 
   const stats = [
-    { value: "500+", label: "Santri Aktif" },
-    { value: "50+", label: "Tenaga Pengajar" },
-    { value: "25+", label: "Tahun Berdiri" },
-    { value: "95%", label: "Kelulusan" },
+    { value: "150+", label: "Siswa Aktif", icon: <Users /> },
+    { value: "15+", label: "Tenaga Pendidik", icon: <GraduationCap /> },
+    { value: "10+", label: "Tahun Berdiri", icon: <School /> },
+    { value: "100%", label: "Akreditasi A", icon: <Star /> },
   ];
 
   return (
@@ -76,21 +76,32 @@ export default function Homepage() {
             <div className="flex justify-center mb-8">
               <Image
                 src="/logo_ppm.svg"
-                alt="Logo PPPM Baitul Makmur"
+                alt="Logo KB TK Aisyiyah Bustanul Athfal 1 Buduran"
                 width={150}
                 height={150}
                 className="rounded-full shadow-2xl"
               />
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-800 dark:text-gray-100">
-              Pondok Pesantren
+            <h1 className="text-4xl md:text-6xl font-bold text-gray-800 dark:text-gray-100">
+              KB TK 'Aisyiyah
               <br />
-              <span className="text-teal-500">Baitul Makmur</span>
+              <span className="text-teal-500">Bustanul Athfal 1 Buduran</span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Membentuk Generasi Qurani yang Berakhlak Mulia dan Berprestasi
+            <div className="flex flex-col gap-2 max-w-2xl mx-auto">
+              <p className="text-2xl md:text-3xl font-semibold text-teal-600 dark:text-teal-400">
+                Sholih, Ceria, Mandiri
+              </p>
+              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 italic">
+                "Diuruk karena menarik, disuka karena beda"
+              </p>
+            </div>
+
+            <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Sekolah dengan metode <span className="font-bold text-teal-600">Ramah Otak Anak</span>, 
+              mengoptimalkan stimulasi 7 Indera Ajaib dan 6 Aspek Perkembangan 
+              melalui kegiatan bermain yang menyenangkan
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
@@ -99,8 +110,8 @@ export default function Homepage() {
                   size="lg"
                   className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-6 text-lg"
                 >
-                  <School2 className="mr-2" />
-                  Daftar Santri Baru
+                  <Baby className="mr-2" />
+                  Daftar Siswa Baru
                 </Button>
               </Link>
               <Link href="/profil">
@@ -121,6 +132,9 @@ export default function Homepage() {
                   key={index}
                   className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg"
                 >
+                  <div className="flex justify-center text-teal-500 mb-2">
+                    {stat.icon}
+                  </div>
                   <div className="text-3xl font-bold text-teal-500">
                     {stat.value}
                   </div>
@@ -134,32 +148,79 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Sejarah Singkat */}
       <section className="py-20 px-6 bg-white dark:bg-gray-800">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-6">
+                Selayang Pandang
+              </h2>
+              <div className="space-y-4 text-gray-600 dark:text-gray-300 leading-relaxed">
+                <p>
+                  KB TK 'Aisyiyah Bustanul Athfal 1 Buduran merupakan lembaga pendidikan 
+                  anak usia dini yang berkomitmen memberikan pendidikan berkualitas dengan 
+                  pendekatan Islami dan metode pembelajaran yang ramah terhadap perkembangan otak anak.
+                </p>
+                <p>
+                  Dengan motto <span className="font-semibold text-teal-600">"Sholih, Ceria, Mandiri"</span>, 
+                  kami mengoptimalkan potensi setiap anak melalui stimulasi 7 Indera Ajaib 
+                  dan pengembangan 6 Aspek Perkembangan dalam suasana bermain yang menyenangkan.
+                </p>
+                <p>
+                  Kami percaya bahwa pembelajaran tidak harus dengan cara duduk diam, 
+                  melainkan melalui kegiatan bermain yang terstruktur dan bermakna, 
+                  sehingga anak-anak dapat tumbuh dan berkembang secara optimal.
+                </p>
+              </div>
+              <div className="mt-6">
+                <Link href="/profil">
+                  <Button className="bg-teal-500 hover:bg-teal-600">
+                    Baca Selengkapnya
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="relative h-96 bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900 dark:to-blue-900 rounded-2xl overflow-hidden shadow-xl">
+                <Image
+                  src="/logo_ppm.svg"
+                  alt="KB TK Aisyiyah"
+                  fill
+                  className="object-contain p-8"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Program Unggulan */}
+      <section className="py-20 px-6 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-4">
-              Keunggulan Kami
+              Program Unggulan
             </h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Pondok Pesantren Baitul Makmur memberikan pendidikan holistik
-              yang mengintegrasikan nilai-nilai Islam dengan pendidikan modern
+              Program-program terbaik yang dirancang khusus untuk mengoptimalkan 
+              tumbuh kembang anak usia dini
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
+            {programUnggulan.map((program, index) => (
               <Card
                 key={index}
                 className="hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border-2 hover:border-teal-500"
               >
                 <CardHeader>
-                  <div className="flex justify-center mb-4">{feature.icon}</div>
-                  <CardTitle className="text-center">{feature.title}</CardTitle>
+                  <div className="flex justify-center mb-4">{program.icon}</div>
+                  <CardTitle className="text-center text-lg">{program.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
-                    {feature.description}
+                    {program.description}
                   </p>
                 </CardContent>
               </Card>
@@ -168,61 +229,15 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Visi Misi Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <Card className="hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-4">
-                  <Target className="w-8 h-8 text-teal-500" />
-                  <CardTitle className="text-2xl">Visi</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg text-gray-600 dark:text-gray-300">
-                  Menjadi lembaga pendidikan Islam yang unggul dalam membentuk
-                  generasi Qurani, berakhlak mulia, dan berwawasan luas
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-4">
-                  <Lightbulb className="w-8 h-8 text-teal-500" />
-                  <CardTitle className="text-2xl">Misi</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 text-gray-600 dark:text-gray-300">
-                  <li className="flex items-start gap-2">
-                    <span className="text-teal-500 mt-1">📘</span>
-                    <span>
-                      Menyelenggarakan pendidikan agama Islam berkualitas
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-teal-500 mt-1">📜</span>
-                    <span>Membentuk karakter santri berakhlakul karimah</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-teal-500 mt-1">🌿</span>
-                    <span>Mengembangkan potensi santri secara optimal</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+      {/* Berita & Kegiatan */}
       <BeritaTerbaru />
-      {/* Video Section */}
+
+      {/* Video Profil */}
       <section className="py-20 px-6 bg-white dark:bg-gray-800">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-4">
-              Profil Pesantren
+              Profil Sekolah
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
               Lihat video profil kami untuk mengenal lebih dekat
@@ -231,8 +246,8 @@ export default function Homepage() {
           <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl">
             <iframe
               className="w-full h-full"
-              src="https://www.youtube.com/embed/Sqd_zdocELI"
-              title="Profil Pondok Pesantren Baitul Makmur"
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              title="Profil KB TK Aisyiyah Bustanul Athfal 1 Buduran"
               allowFullScreen
             />
           </div>
@@ -247,8 +262,8 @@ export default function Homepage() {
             Bergabunglah Bersama Kami
           </h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Wujudkan impian putra-putri Anda menjadi generasi Qurani yang
-            berakhlak mulia dan berprestasi
+            Wujudkan tumbuh kembang optimal putra-putri Anda dengan pendidikan 
+            berkualitas yang Islami, ceria, dan menyenangkan
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/ppdb">
