@@ -15,262 +15,125 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Loader2,
-  Receipt,
-  AlertCircle,
-  User,
-  MapPin,
-  Calendar,
-} from "lucide-react";
+import { Loader2, Receipt, AlertCircle, User, Phone } from "lucide-react";
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
 import { useState, useEffect } from "react";
 
 declare global {
-  interface Window {
-    snap: any;
-  }
+  interface Window { snap: any; }
 }
 
-export default function TagihanSantri() {
+const BULAN_NAMA = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+export default function TagihanSiswaPage() {
   const supabase = createClient();
   const profile = useAuthStore((state) => state.profile);
   const [selectedTagihan, setSelectedTagihan] = useState<any>(null);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
 
-  // ⭐ DEBUG: Log profile saat component mount
-  useEffect(() => {
-    console.log("🔍 TagihanSantri - Profile loaded:", {
-      id: profile.id,
-      name: profile.name,
-      role: profile.role,
-      fullProfile: profile
-    });
-  }, [profile]);
-
-  // Fetch tagihan santri yang belum lunas
-  const {
-    data: tagihanList,
-    isLoading,
-    refetch,
-    error: queryError,
-  } = useQuery({
-    queryKey: ["tagihan-santri", profile.id],
-    enabled: !!profile.id, // ⭐ CRITICAL: Only run query if profile.id exists
+  const { data: siswaData } = useQuery({
+    queryKey: ["siswa-self", profile.id],
+    enabled: !!profile.id,
     queryFn: async () => {
-      console.log("🚀 [Query START] Fetching tagihan for ID:", profile.id);
-      
-      if (!profile.id) {
-        const error = new Error("Profile ID tidak tersedia. Silakan login ulang.");
-        console.error("❌ No profile.id available!", error);
-        throw error;
-      }
+      const { data } = await supabase.from("siswa").select("*").eq("id", profile.id).single();
+      return data;
+    },
+  });
 
+  const { data: tagihanList, isLoading, refetch } = useQuery({
+    queryKey: ["tagihan-siswa-wali", profile.id],
+    enabled: !!profile.id,
+    queryFn: async () => {
       const { data, error } = await supabase
-        .from("tagihan_santri")
-        .select(
-          `
-          idTagihanSantri,
+        .from("tagihan_siswa")
+        .select(`
+          idTagihanSiswa,
           jumlahTagihan,
           statusPembayaran,
           paymentToken,
+          bulan,
+          tahun,
           createdAt,
-          updatedAt,
           master_tagihan:master_tagihan!idMasterTagihan(
-            id_masterTagihan,
-            periode,
-            description,
-            uang_makan,
-            asrama,
-            kas_pondok,
-            sedekah_sukarela,
-            aset_jariyah,
-            uang_tahunan,
-            iuran_kampung
+            id_masterTagihan, namaTagihan, jenjang, jenisTagihan, nominal
           )
-        `
-        )
-        .eq("idSantri", profile.id)
+        `)
+        .eq("idSiswa", profile.id)
         .eq("statusPembayaran", "BELUM BAYAR")
-        .order("createdAt", { ascending: false });
+        .order("tahun", { ascending: false })
+        .order("bulan", { ascending: false });
 
       if (error) {
-        console.error("❌ Supabase error:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-        toast.error("Gagal memuat data tagihan", {
-          description: error.message,
-        });
+        toast.error("Gagal memuat tagihan", { description: error.message });
         throw error;
       }
-
-      console.log("✅ [Query SUCCESS] Retrieved tagihan:", {
-        count: data?.length || 0,
-        data: data,
-      });
-
       return data || [];
     },
   });
 
-  // Fetch data santri untuk dialog
-  const { data: santriData } = useQuery({
-    queryKey: ["santri-detail-payment", profile.id],
-    enabled: !!profile.id,
-    queryFn: async () => {
-      if (!profile.id) return null;
-
-      const result = await supabase.rpc("get_santri_with_details", {
-        search_term: "",
-        page_limit: 1,
-        page_offset: 0,
-      });
-
-      if (result.error) {
-        console.error("Error fetching santri data:", result.error);
-        return null;
-      }
-
-      const currentUserData = result.data?.find(
-        (item: any) => item.id === profile.id
-      );
-
-      console.log("👤 Santri data loaded:", currentUserData);
-      return currentUserData || null;
-    },
-  });
-
-  const handleOpenPaymentDialog = (tagihan: any) => {
-    console.log("💳 Opening payment dialog for tagihan:", tagihan.idTagihanSantri);
+  const handleOpenDialog = (tagihan: any) => {
     setSelectedTagihan(tagihan);
-    setShowPaymentDialog(true);
+    setShowDialog(true);
   };
 
   const handlePayment = async () => {
     if (!selectedTagihan) return;
-
     try {
-      const jumlahTagihan = parseFloat(selectedTagihan.jumlahTagihan || 0);
+      const jumlah = parseFloat(selectedTagihan.jumlahTagihan || 0);
 
-      console.log("💰 Processing payment:", {
-        tagihanId: selectedTagihan.idTagihanSantri,
-        amount: jumlahTagihan,
-        hasToken: !!selectedTagihan.paymentToken,
+      // Jika sudah ada token, langsung buka snap
+      if (selectedTagihan.paymentToken) {
+        window.snap.pay(selectedTagihan.paymentToken, {
+          onSuccess: () => { refetch(); setShowDialog(false); },
+          onError: () => toast.error("Pembayaran gagal"),
+          onClose: () => {},
+        });
+        setShowDialog(false);
+        return;
+      }
+
+      // Buat token baru
+      const res = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: selectedTagihan.idTagihanSiswa,
+          gross_amount: jumlah,
+          customer_name: siswaData?.namaSiswa || profile.name || "Siswa",
+        }),
       });
 
-      if (selectedTagihan.paymentToken) {
-        // Jika sudah ada token, langsung buka snap
-        console.log("🎫 Using existing payment token");
-        window.snap.pay(selectedTagihan.paymentToken);
-        setShowPaymentDialog(false);
-      } else {
-        console.log("🎫 Generating new payment token...");
-        // Generate payment token
-        const response = await fetch("/api/payment/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            order_id: selectedTagihan.idTagihanSantri,
-            gross_amount: jumlahTagihan,
-            customer_name: santriData?.name || profile.name,
-          }),
-        });
+      const result = await res.json();
 
-        const result = await response.json();
-        console.log("🎫 Payment token generated:", result);
-
-        if (result.token) {
-          // Update payment token di database
-          const { error: updateError } = await supabase
-            .from("tagihan_santri")
-            .update({ paymentToken: result.token })
-            .eq("idTagihanSantri", selectedTagihan.idTagihanSantri);
-
-          if (updateError) {
-            console.error("❌ Failed to update payment token:", updateError);
-          }
-
-          // Buka Snap payment
-          console.log("🚀 Opening Snap payment UI");
-          window.snap.pay(result.token);
-          setShowPaymentDialog(false);
-        } else {
-          console.error("❌ No token in response:", result);
-          toast.error("Gagal membuat pembayaran");
-        }
+      if (!result.token) {
+        toast.error("Gagal membuat pembayaran", { description: result.error });
+        return;
       }
-    } catch (error) {
-      console.error("💥 Payment error:", error);
-      toast.error("Terjadi kesalahan saat memproses pembayaran");
+
+      // Simpan token ke database
+      await supabase
+        .from("tagihan_siswa")
+        .update({ paymentToken: result.token })
+        .eq("idTagihanSiswa", selectedTagihan.idTagihanSiswa);
+
+      // Buka Snap
+      window.snap.pay(result.token, {
+        onSuccess: () => { refetch(); setShowDialog(false); },
+        onError: () => toast.error("Pembayaran gagal"),
+        onClose: () => {},
+      });
+      setShowDialog(false);
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan", { description: err.message });
     }
   };
 
-  const getJenisTagihan = (masterTagihan: any): string[] => {
-    if (!masterTagihan) return [];
-
-    const items = [];
-    if (masterTagihan.uang_makan > 0)
-      items.push(`Uang Makan: ${convertIDR(masterTagihan.uang_makan)}`);
-    if (masterTagihan.asrama > 0)
-      items.push(`Asrama: ${convertIDR(masterTagihan.asrama)}`);
-    if (masterTagihan.kas_pondok > 0)
-      items.push(`Kas Pondok: ${convertIDR(masterTagihan.kas_pondok)}`);
-    if (masterTagihan.sedekah_sukarela > 0)
-      items.push(`Shodaqoh: ${convertIDR(masterTagihan.sedekah_sukarela)}`);
-    if (masterTagihan.aset_jariyah > 0)
-      items.push(`Jariyah SB: ${convertIDR(masterTagihan.aset_jariyah)}`);
-    if (masterTagihan.uang_tahunan > 0)
-      items.push(`Uang Tahunan: ${convertIDR(masterTagihan.uang_tahunan)}`);
-    if (masterTagihan.iuran_kampung > 0)
-      items.push(`Iuran Kampung: ${convertIDR(masterTagihan.iuran_kampung)}`);
-
-    return items;
-  };
-
-  // ⭐ Show loading if profile is not ready
   if (!profile.id) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <Loader2 className="animate-spin h-8 w-8 text-teal-500 mx-auto" />
-          <p className="text-muted-foreground">Memuat profil Anda...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="animate-spin h-8 w-8 text-teal-500" />
-      </div>
-    );
-  }
-
-  // ⭐ Show error if query failed
-  if (queryError) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
-              <div>
-                <h3 className="font-semibold text-lg">Gagal Memuat Data</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {queryError.message || "Terjadi kesalahan saat memuat tagihan"}
-                </p>
-              </div>
-              <Button onClick={() => refetch()}>Coba Lagi</Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Loader2 className="animate-spin h-8 w-8 text-green-600" />
       </div>
     );
   }
@@ -285,128 +148,91 @@ export default function TagihanSantri() {
 
       <div className="w-full space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Tagihan SPP</h1>
-          <p className="text-muted-foreground">
-            Daftar tagihan SPP yang harus dibayar
-          </p>
+          <h1 className="text-2xl font-bold">Tagihan Pembayaran</h1>
+          <p className="text-sm text-muted-foreground">Daftar tagihan yang belum dibayar</p>
         </div>
 
-        {!tagihanList || tagihanList.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="animate-spin h-8 w-8 text-green-600" />
+          </div>
+        ) : !tagihanList?.length ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+              <AlertCircle className="h-12 w-12 text-green-500 mb-4" />
               <p className="text-lg font-medium">Tidak ada tagihan</p>
-              <p className="text-sm text-muted-foreground">
-                Anda tidak memiliki tagihan yang belum dibayar
-              </p>
+              <p className="text-sm text-muted-foreground">Semua tagihan sudah lunas 🎉</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 whitespace-nowrap">No</th>
-                  <th className="text-left p-3 whitespace-nowrap">Nama</th>
-                  <th className="text-center p-3 whitespace-nowrap">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tagihanList.map((tagihan: any, index: number) => (
-                  <tr
-                    key={tagihan.idTagihanSantri}
-                    className="border-b hover:bg-muted/50"
+          <div className="space-y-3">
+            {tagihanList.map((tagihan: any) => (
+              <Card key={tagihan.idTagihanSiswa} className="hover:shadow-md transition-shadow">
+                <CardContent className="flex items-center justify-between p-5">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded text-xs font-medium">
+                        Belum Bayar
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        #{tagihan.idTagihanSiswa}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-base">{tagihan.master_tagihan?.namaTagihan || "-"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {BULAN_NAMA[tagihan.bulan]} {tagihan.tahun} · {tagihan.master_tagihan?.jenjang} · {tagihan.master_tagihan?.jenisTagihan}
+                    </p>
+                    <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">
+                      {convertIDR(parseFloat(tagihan.jumlahTagihan || 0))}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => handleOpenDialog(tagihan)}
+                    className="bg-green-600 hover:bg-green-700 ml-4"
                   >
-                    <td className="p-3 whitespace-nowrap">{index + 1}</td>
-                    <td className="p-3">
-                      <div>
-                        <p className="font-semibold">
-                          {tagihan.master_tagihan?.periode || "-"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {tagihan.master_tagihan?.description || "-"}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex justify-center">
-                        <Button
-                          onClick={() => handleOpenPaymentDialog(tagihan)}
-                          className="bg-teal-500 hover:bg-teal-600"
-                        >
-                          Bayar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    Bayar
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      {/* Dialog Detail Pembayaran */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-teal-500" />
-              Detail Pembayaran
+              <Receipt className="h-5 w-5 text-green-600" />
+              Konfirmasi Pembayaran
             </DialogTitle>
             <DialogDescription>
-              Periksa detail pembayaran sebelum melanjutkan
+              Periksa detail sebelum melanjutkan ke pembayaran
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Data Pribadi */}
+            {/* Data Siswa */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Data Pribadi</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Data Siswa</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <User className="w-4 h-4 text-teal-500 mt-1" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Nama Lengkap
-                    </p>
-                    <p className="font-medium">
-                      {santriData?.name || profile.name}
-                    </p>
-                  </div>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Nama:</span>
+                  <span className="font-medium">{siswaData?.namaSiswa || profile.name}</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-teal-500 mt-1" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Tempat Lahir
-                    </p>
-                    <p className="font-medium">
-                      {santriData?.tempatLahir || "-"}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Kelas:</span>
+                  <span>{siswaData?.kelas || "-"}</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-4 h-4 text-teal-500 mt-1" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Tanggal Lahir
-                    </p>
-                    <p className="font-medium">
-                      {santriData?.tanggalLahir
-                        ? new Date(santriData.tanggalLahir).toLocaleDateString(
-                            "id-ID",
-                            {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            }
-                          )
-                        : "-"}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Wali:</span>
+                  <span>{siswaData?.namaWali || "-"}</span>
                 </div>
               </CardContent>
             </Card>
@@ -414,40 +240,30 @@ export default function TagihanSantri() {
             {/* Detail Tagihan */}
             {selectedTagihan && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Detail Tagihan</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Detail Tagihan</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Periode</p>
-                    <p className="font-semibold">
-                      {selectedTagihan.master_tagihan?.periode}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedTagihan.master_tagihan?.description}
-                    </p>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Jenis Tagihan:</span>
+                    <span className="font-medium">{selectedTagihan.master_tagihan?.namaTagihan}</span>
                   </div>
-
-                  <div className="border-t pt-3">
-                    <p className="text-sm font-medium mb-2">Rincian:</p>
-                    <div className="space-y-1">
-                      {getJenisTagihan(selectedTagihan.master_tagihan).map(
-                        (item, idx) => (
-                          <p
-                            key={idx}
-                            className="text-sm text-muted-foreground"
-                          >
-                            • {item}
-                          </p>
-                        )
-                      )}
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Periode:</span>
+                    <span>{BULAN_NAMA[selectedTagihan.bulan]} {selectedTagihan.tahun}</span>
                   </div>
-
-                  <div className="border-t pt-3 flex justify-between items-center">
-                    <span className="font-bold">Total:</span>
-                    <span className="text-xl font-bold text-teal-600">
-                      {convertIDR(parseFloat(selectedTagihan.jumlahTagihan))}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Jenjang:</span>
+                    <span>{selectedTagihan.master_tagihan?.jenjang}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Jenis:</span>
+                    <span>{selectedTagihan.master_tagihan?.jenisTagihan}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2 font-bold">
+                    <span>Total Pembayaran:</span>
+                    <span className="text-green-700 dark:text-green-400 text-base">
+                      {convertIDR(parseFloat(selectedTagihan.jumlahTagihan || 0))}
                     </span>
                   </div>
                 </CardContent>
@@ -456,16 +272,8 @@ export default function TagihanSantri() {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowPaymentDialog(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={handlePayment}
-              className="bg-teal-500 hover:bg-teal-600"
-            >
+            <Button variant="outline" onClick={() => setShowDialog(false)}>Batal</Button>
+            <Button onClick={handlePayment} className="bg-green-600 hover:bg-green-700">
               Bayar Sekarang
             </Button>
           </DialogFooter>

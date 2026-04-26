@@ -1,10 +1,10 @@
-// src/app/(dashboard)/admin/tagihan/_components/dialog-edit-tagihan-santri.tsx
-// VERSI YANG SUDAH DIPERBAIKI
+"use client";
+
 import { Dialog } from "@radix-ui/react-dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { updateTagihanSantri } from "../actions";
+import { updateTagihanSiswa } from "../actions";
 import { toast } from "sonner";
 import FormSelect from "@/components/common/form-select";
 import { Button } from "@/components/ui/button";
@@ -18,35 +18,24 @@ import {
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Loader2, AlertTriangle } from "lucide-react";
-import z from "zod";
-import { createClient } from "@/lib/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { z } from "zod";
 import { convertIDR } from "@/lib/utils";
 
-const editTagihanSchema = z.object({
-  id_master_tagihan: z.string().min(1, "Periode tagihan wajib diisi"),
-  status_pembayaran: z.string().min(1, "Status pembayaran wajib diisi"),
+const schema = z.object({
+  statusPembayaran: z.string().min(1, "Status wajib diisi"),
 });
 
-type EditTagihanForm = z.infer<typeof editTagihanSchema>;
-
-const INITIAL_STATE = {
-  status: "idle",
-  errors: {
-    id_master_tagihan: [],
-    jumlah_tagihan: [],
-    status_pembayaran: [],
-    _form: [],
-  },
-};
+type FormType = z.infer<typeof schema>;
 
 const STATUS_OPTIONS = [
   { value: "BELUM BAYAR", label: "Belum Bayar" },
-  { value: "LUNAS", label: "Lunas" },
+  { value: "LUNAS", label: "Lunas (Pembayaran Offline)" },
   { value: "KADALUARSA", label: "Kadaluarsa" },
 ];
 
-export default function DialogEditTagihan({
+const INITIAL_STATE = { status: "idle", errors: { _form: [] } };
+
+export default function DialogEditTagihanSiswa({
   refetch,
   currentData,
   open,
@@ -57,267 +46,92 @@ export default function DialogEditTagihan({
   open?: boolean;
   handleChangeAction?: (open: boolean) => void;
 }) {
-  const supabase = createClient();
-  const form = useForm<EditTagihanForm>({
-    resolver: zodResolver(editTagihanSchema),
-  });
-
-  const [updateState, updateAction, isPending] = useActionState(
-    updateTagihanSantri,
-    INITIAL_STATE
-  );
-
-  // Fetch master tagihan list - DIPERBAIKI: Gunakan nama kolom yang benar
-  const { data: masterTagihanList, isLoading: loadingMasterTagihan } = useQuery({
-    queryKey: ["master-tagihan-list"],
-    queryFn: async () => {
-      const result = await supabase
-        .from("master_tagihan")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (result.error) {
-        console.error("Error fetching master tagihan:", result.error);
-        toast.error("Gagal memuat daftar tagihan");
-        return [];
-      }
-      
-      return result.data || [];
-    },
-  });
-
-  const [selectedMaster, setSelectedMaster] = useState<any>(null);
-
-  // Update nominal otomatis saat periode berubah
-  useEffect(() => {
-    const masterId = form.watch("id_master_tagihan");
-    if (masterId && masterTagihanList) {
-      // DIPERBAIKI: Gunakan id_masterTagihan
-      const master = masterTagihanList.find(
-        (m: any) => m.id_masterTagihan?.toString() === masterId
-      );
-      if (master) {
-        setSelectedMaster(master);
-      }
-    }
-  }, [form.watch("id_master_tagihan"), masterTagihanList]);
+  const form = useForm<FormType>({ resolver: zodResolver(schema) });
+  const [state, action, isPending] = useActionState(updateTagihanSiswa, INITIAL_STATE);
 
   const onSubmit = form.handleSubmit((data) => {
-    // Hitung jumlah tagihan otomatis dari master
-    const master = masterTagihanList?.find(
-      (m: any) => m.id_masterTagihan?.toString() === data.id_master_tagihan
-    );
-
-    const jumlahTagihan = master
-      ? (master.uang_makan || 0) +
-        (master.asrama || 0) +
-        (master.kas_pondok || 0) +
-        (master.sedekah_sukarela || 0) +
-        (master.aset_jariyah || 0) +
-        (master.uang_tahunan || 0) +
-        (master.iuran_kampung || 0)
-      : 0;
-
     const formData = new FormData();
-    formData.append("id_tagihan_santri", currentData?.idTagihanSantri ?? "");
-    formData.append("id_master_tagihan", data.id_master_tagihan);
-    formData.append("jumlah_tagihan", jumlahTagihan.toString());
-    formData.append("status_pembayaran", data.status_pembayaran);
-
-    startTransition(() => {
-      updateAction(formData);
-    });
+    formData.append("idTagihanSiswa", currentData?.idTagihanSiswa?.toString() ?? "");
+    formData.append("statusPembayaran", data.statusPembayaran);
+    startTransition(() => { action(formData); });
   });
 
   useEffect(() => {
-    if (updateState?.status === "error") {
-      toast.error("Gagal Mengubah Tagihan", {
-        description: updateState.errors?._form?.[0],
-      });
-    }
-
-    if (updateState?.status === "success") {
-      toast.success("Tagihan Berhasil Diubah");
-      form.reset();
+    if (state?.status === "error") toast.error("Gagal Mengubah", { description: state.errors?._form?.[0] });
+    if (state?.status === "success") {
+      toast.success("Tagihan berhasil diubah");
       handleChangeAction?.(false);
       refetch();
     }
-  }, [updateState, handleChangeAction, refetch]);
+  }, [state]);
 
   useEffect(() => {
-    if (currentData && masterTagihanList) {
-      // DIPERBAIKI: Gunakan idMasterTagihan
-      form.setValue(
-        "id_master_tagihan",
-        currentData.idMasterTagihan?.toString() || ""
-      );
-      form.setValue(
-        "status_pembayaran",
-        currentData.statusPembayaran || "BELUM BAYAR"
-      );
-
-      // DIPERBAIKI: Gunakan id_masterTagihan untuk mencari
-      const master = masterTagihanList.find(
-        (m: any) => m.id_masterTagihan === currentData.idMasterTagihan
-      );
-      if (master) {
-        setSelectedMaster(master);
-      }
+    if (currentData) {
+      form.setValue("statusPembayaran", currentData.statusPembayaran || "BELUM BAYAR");
     }
-  }, [currentData, masterTagihanList, form]);
+  }, [currentData]);
 
-  // Hitung total nominal dari master yang dipilih
-  const totalNominal = selectedMaster
-    ? (selectedMaster.uang_makan || 0) +
-      (selectedMaster.asrama || 0) +
-      (selectedMaster.kas_pondok || 0) +
-      (selectedMaster.sedekah_sukarela || 0) +
-      (selectedMaster.aset_jariyah || 0) +
-      (selectedMaster.uang_tahunan || 0) +
-      (selectedMaster.iuran_kampung || 0)
-    : 0;
+  const statusVal = form.watch("statusPembayaran");
 
   return (
     <Dialog open={open} onOpenChange={handleChangeAction}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[480px]">
         <Form {...form}>
           <DialogHeader>
-            <DialogTitle>Edit Tagihan Santri</DialogTitle>
+            <DialogTitle>Edit Tagihan Siswa</DialogTitle>
             <DialogDescription>
-              Ubah data tagihan untuk {currentData?.santri?.name}
+              Ubah status tagihan untuk {currentData?.siswa?.namaSiswa || "siswa"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-4 px-1">
-              {/* Info Tagihan - READ ONLY */}
-              <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">ID Tagihan:</span>
-                  <span className="font-mono font-medium">
-                    {currentData?.idTagihanSantri}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Nama Santri:</span>
-                  <span className="font-medium">
-                    {currentData?.santri?.name}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Jumlah Tagihan Saat Ini:
-                  </span>
-                  <span className="font-semibold text-teal-600">
-                    {convertIDR(parseFloat(currentData?.jumlahTagihan) || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tanggal Dibuat:</span>
-                  <span>
-                    {new Date(currentData?.createdAt).toLocaleDateString(
-                      "id-ID",
-                      {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      }
-                    )}
-                  </span>
-                </div>
+            {/* Info tagihan */}
+            <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">ID Tagihan:</span>
+                <span className="font-mono">#{currentData?.idTagihanSiswa}</span>
               </div>
-
-              {/* Pilih Periode - EDITABLE */}
-              <div className="space-y-2">
-                {loadingMasterTagihan ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="animate-spin" />
-                  </div>
-                ) : (
-                  <FormSelect
-                    form={form}
-                    name="id_master_tagihan"
-                    label="Periode Tagihan"
-                    selectItem={
-                      masterTagihanList?.map((m: any) => ({
-                        // DIPERBAIKI: Gunakan id_masterTagihan dan tambahkan optional chaining
-                        value: m.id_masterTagihan?.toString() || "",
-                        label: `${m.periode} - ${m.description}`,
-                      })) || []
-                    }
-                  />
-                )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Nama Siswa:</span>
+                <span className="font-medium">{currentData?.siswa?.namaSiswa || "-"}</span>
               </div>
-
-              {/* Preview Rincian Periode Baru */}
-              {selectedMaster && (
-                <div className="p-4 border rounded-lg space-y-2 bg-blue-50 dark:bg-blue-950">
-                  <p className="text-sm font-semibold">Rincian Tagihan Baru:</p>
-                  <div className="text-xs space-y-1">
-                    {[
-                      { label: "Uang Makan", value: selectedMaster.uang_makan },
-                      { label: "Asrama", value: selectedMaster.asrama },
-                      { label: "Kas Pondok", value: selectedMaster.kas_pondok },
-                      {
-                        label: "Sedekah Sukarela",
-                        value: selectedMaster.sedekah_sukarela,
-                      },
-                      { label: "Aset Jariyah", value: selectedMaster.aset_jariyah },
-                      {
-                        label: "Uang Tahunan",
-                        value: selectedMaster.uang_tahunan,
-                      },
-                      {
-                        label: "Iuran Kampung",
-                        value: selectedMaster.iuran_kampung,
-                      },
-                    ].map((item) => (
-                      <div key={item.label} className="flex justify-between">
-                        <span>{item.label}:</span>
-                        <span className="font-medium">
-                          {convertIDR(item.value || 0)}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="border-t pt-1 flex justify-between font-bold">
-                      <span>Total:</span>
-                      <span className="text-teal-600">
-                        {convertIDR(totalNominal)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Status Pembayaran - EDITABLE */}
-              <FormSelect
-                form={form}
-                name="status_pembayaran"
-                label="Status Pembayaran"
-                selectItem={STATUS_OPTIONS}
-              />
-
-              {/* Warning untuk pembayaran offline */}
-              {form.watch("status_pembayaran") === "LUNAS" && (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-semibold text-amber-800 dark:text-amber-200">
-                      Perhatian!
-                    </p>
-                    <p className="text-amber-700 dark:text-amber-300">
-                      Status &ldquo;LUNAS&rdquo; hanya untuk pembayaran offline.
-                      Pastikan pembayaran sudah diterima.
-                    </p>
-                  </div>
-                </div>
-              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tagihan:</span>
+                <span>{currentData?.master_tagihan?.namaTagihan || "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Periode:</span>
+                <span>{currentData?.bulan}/{currentData?.tahun}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Nominal:</span>
+                <span className="font-semibold text-green-700 dark:text-green-400">
+                  {convertIDR(parseFloat(currentData?.jumlahTagihan) || 0)}
+                </span>
+              </div>
             </div>
+
+            <FormSelect
+              form={form}
+              name="statusPembayaran"
+              label="Status Pembayaran"
+              selectItem={STATUS_OPTIONS}
+            />
+
+            {statusVal === "LUNAS" && (
+              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Status <strong>LUNAS</strong> digunakan untuk pembayaran offline. Pastikan pembayaran sudah diterima secara fisik.
+                </p>
+              </div>
+            )}
+
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline">Batal</Button>
               </DialogClose>
-              <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
-                {isPending ? <Loader2 className="animate-spin" /> : "Update"}
+              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                {isPending ? <Loader2 className="animate-spin" /> : "Simpan"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,186 +1,139 @@
-"use server";
+"use client";
+import Image from "next/image";
+import FormInput from "@/components/common/form-input";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Form } from "@/components/ui/form";
+import {
+  INITIAL_LOGIN_FORM,
+  INITIAL_STATE_LOGIN_FORM,
+} from "@/constants/auth-constant";
+import { LoginForm, loginSchemaForm } from "@/validations/auth-validation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { startTransition, useActionState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { login } from "../actions";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
 
-import { INITIAL_STATE_LOGIN_FORM } from "@/constants/auth-constant";
-import { createClient } from "@/lib/supabase/server";
-import { AuthFormState } from "@/types/auth";
-import { loginSchemaForm } from "@/validations/auth-validation";
-import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-
-export async function login(
-  prevState: AuthFormState,
-  formData: FormData | null
-) {
-  console.log("🚀 Login action started");
-  
-  if (!formData) {
-    console.log("❌ No formData provided");
-    return INITIAL_STATE_LOGIN_FORM;
-  }
-
-  const validatedFields = loginSchemaForm.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
+export default function Login() {
+  const form = useForm<LoginForm>({
+    resolver: zodResolver(loginSchemaForm),
+    defaultValues: INITIAL_LOGIN_FORM,
   });
 
-  if (!validatedFields.success) {
-    console.log("❌ Validation failed:", validatedFields.error);
-    return {
-      status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
-    };
-  }
+  const [loginState, loginAction, isPendingLogin] = useActionState(
+    login,
+    INITIAL_STATE_LOGIN_FORM
+  );
 
-  try {
-    console.log("🔐 Creating Supabase client...");
-    const supabase = await createClient();
-
-    console.log("🔐 Attempting sign in with email:", validatedFields.data.email);
-    const {
-      error,
-      data: { user },
-    } = await supabase.auth.signInWithPassword(validatedFields.data);
-
-    if (error) {
-      console.error("❌ Supabase auth error:", error);
-      return {
-        status: "error",
-        errors: {
-          _form: [error.message],
-        },
-      };
-    }
-
-    if (!user) {
-      console.log("❌ No user returned from auth");
-      return {
-        status: "error",
-        errors: {
-          _form: ["User tidak ditemukan"],
-        },
-      };
-    }
-
-    console.log("✅ User authenticated:", user.id);
-
-    // PENTING: Buat client baru dengan session yang sudah authenticated
-    console.log("🔄 Creating new authenticated client...");
-    const authenticatedSupabase = await createClient();
-
-    // Cek apakah user adalah admin atau santri
-    console.log("🔍 Querying admin table for user:", user.id);
-    const { data: adminData, error: adminError } = await authenticatedSupabase
-      .from("admin")
-      .select("id, nama, jenis_kelamin, noHP")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    console.log("📊 Admin query result:", { 
-      hasData: !!adminData, 
-      data: adminData,
-      error: adminError 
+  const onSubmit = form.handleSubmit(async (data) => {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value);
     });
-
-    console.log("🔍 Querying santri table for user:", user.id);
-    const { data: santriData, error: santriError } = await authenticatedSupabase
-      .from("santri")
-      .select("id, nama, jenisKelamin, avatarUrl")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    console.log("📊 Santri query result:", { 
-      hasData: !!santriData,
-      data: santriData,
-      error: santriError 
+    startTransition(() => {
+      loginAction(formData);
     });
+  });
 
-    let profile = null;
-
-    if (adminData) {
-      console.log("👤 User is ADMIN");
-      profile = {
-        id: adminData.id,
-        name: adminData.nama,
-        role: "admin" as const,
-        avatar_url: null,
-      };
-    } else if (santriData) {
-      console.log("👤 User is SANTRI");
-      profile = {
-        id: santriData.id,
-        name: santriData.nama,
-        role: "santri" as const,
-        avatar_url: santriData.avatarUrl,
-      };
-    } else {
-      console.log("❌ No profile found in admin or santri table");
-      console.log("💡 Checking RLS policies...");
-      
-      // Debug: coba query tanpa filter untuk cek RLS
-      const { data: adminDebug, error: adminDebugError } = await authenticatedSupabase
-        .from("admin")
-        .select("id")
-        .limit(1);
-      
-      console.log("🔍 Admin table access test:", { 
-        hasAccess: !!adminDebug, 
-        error: adminDebugError 
+  useEffect(() => {
+    if (loginState?.status === "error") {
+      toast.error("Login Gagal", {
+        description:
+          loginState.errors?._form?.[0] || "Terjadi kesalahan saat login",
       });
-
-      return {
-        status: "error",
-        errors: {
-          _form: [
-            "User profile tidak ditemukan. Pastikan Anda terdaftar sebagai admin atau santri.",
-          ],
-        },
-      };
     }
+    if (loginState?.status === "success") {
+      toast.success("Login Berhasil");
+      setTimeout(() => {
+        window.location.href = loginState.data?.redirectUrl || "/";
+      }, 500);
+    }
+  }, [loginState]);
 
-    console.log("✅ Profile found:", JSON.stringify(profile, null, 2));
+  return (
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-green-950 p-6">
+      <div className="absolute top-4 right-4 z-50">
+        <DarkmodeToggle />
+      </div>
 
-    // Set cookie
-    console.log("🍪 Setting cookie...");
-    const cookiesStore = await cookies();
-    const profileString = JSON.stringify(profile);
-    console.log("🍪 Cookie content:", profileString);
-    
-    cookiesStore.set("user_profile", profileString, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+      <div className="mb-6">
+        <Image
+          src="/logo_ppm.svg"
+          alt="Logo PAUD Aisyiyah Bustanul Athfal 1 Buduran"
+          width={110}
+          height={110}
+          className="rounded-full shadow-lg"
+          priority
+        />
+      </div>
 
-    console.log("✅ Cookie set successfully");
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">
+          Selamat Datang
+        </h1>
+        <p className="text-green-700 dark:text-green-400 font-semibold text-lg">
+          PAUD Aisyiyah Bustanul Athfal 1 Buduran
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Sistem Informasi Manajemen Pembayaran
+        </p>
+      </div>
 
-    // Revalidate untuk memaksa refresh
-    console.log("🔄 Revalidating path...");
-    revalidatePath("/", "layout");
-    console.log("✅ Path revalidated");
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="text-center space-y-1">
+          <CardTitle className="text-xl">Login</CardTitle>
+          <CardDescription>
+            Masukkan email dan password untuk mengakses sistem
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <FormInput
+                form={form}
+                name="email"
+                label="Email"
+                placeholder="Masukkan email Anda"
+                type="email"
+              />
+              <FormInput
+                form={form}
+                name="password"
+                label="Password"
+                placeholder="••••••••"
+                type="password"
+              />
+              <Button
+                type="submit"
+                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={isPendingLogin}
+              >
+                {isPendingLogin ? (
+                  <>
+                    <Loader2 className="mr-2 animate-spin" />
+                    Sedang masuk...
+                  </>
+                ) : (
+                  "Masuk"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
 
-    const redirectUrl = profile.role === "admin" ? "/admin" : "/santri/info";
-    console.log("🎯 Redirect URL:", redirectUrl);
-
-    return {
-      status: "success",
-      data: {
-        profile,
-        redirectUrl,
-      },
-    };
-  } catch (error: any) {
-    console.error("❌ Login error (caught):", error);
-    console.error("❌ Error stack:", error.stack);
-    return {
-      status: "error",
-      errors: {
-        _form: [error.message || "Terjadi kesalahan saat login"],
-      },
-    };
-  }
+      <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p>© {new Date().getFullYear()} PAUD Aisyiyah Bustanul Athfal 1 Buduran</p>
+      </div>
+    </div>
+  );
 }

@@ -1,12 +1,10 @@
-import TagihanSantri from "./_components/tagihan-santri";
+import TagihanSiswaPage from "./_components/tagihan-siswa";
 
 export const metadata = {
-  title: "PPPM BM | Tagihan SPP",
-  icons: {
-    icon: "/logo_ppm.svg",
-  },
+  title: "PAUD BA 1 Buduran | Tagihan",
+  icons: { icon: "/logo_ppm.svg" },
 };
 
 export default function TagihanPage() {
-  return <TagihanSantri />;
+  return <TagihanSiswaPage />;
 }

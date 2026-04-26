@@ -1,3 +1,4 @@
+// src/constants/auth-constant.ts
 export const INITIAL_LOGIN_FORM = {
   email: "",
   password: "",
@@ -20,18 +21,18 @@ export const INITIAL_STATE_PROFILE = {
 };
 
 export const INITIAL_CREATE_USER_FORM = {
-  name: "",
-  jenis_kelamin: "",
-  tempat_lahir: "",
-  tanggal_lahir: "",
-  nama_ayah: "",
-  pekerjaan_ayah: "",
-  nama_ibu: "",
-  pekerjaan_ibu: "",
-  role: "santri",
-  avatar_url: "",
+  nama_siswa: "",
   email: "",
   password: "",
+  NIS: "",
+  kelas: "",
+  angkatan: "",
+  nama_wali: "",
+  no_wa: "",
+  tempat_lahir: "",
+  tanggal_lahir: "",
+  role: "siswa",
+  avatar_url: "",
 };
 
 export const INITIAL_STATE_CREATE_USER = {
@@ -39,14 +40,14 @@ export const INITIAL_STATE_CREATE_USER = {
   errors: {
     email: [],
     password: [],
-    name: [],
-    jenis_kelamin: [],
+    nama_siswa: [],
+    NIS: [],
+    kelas: [],
+    angkatan: [],
+    nama_wali: [],
+    no_wa: [],
     tempat_lahir: [],
     tanggal_lahir: [],
-    nama_ayah: [],
-    pekerjaan_ayah: [],
-    nama_ibu: [],
-    pekerjaan_ibu: [],
     role: [],
     avatar_url: [],
     _form: [],
@@ -56,14 +57,14 @@ export const INITIAL_STATE_CREATE_USER = {
 export const INITIAL_STATE_UPDATE_USER = {
   status: "idle",
   errors: {
-    name: [],
-    jenis_kelamin: [],
+    nama_siswa: [],
+    NIS: [],
+    kelas: [],
+    angkatan: [],
+    nama_wali: [],
+    no_wa: [],
     tempat_lahir: [],
     tanggal_lahir: [],
-    nama_ayah: [],
-    pekerjaan_ayah: [],
-    nama_ibu: [],
-    pekerjaan_ibu: [],
     role: [],
     avatar_url: [],
     _form: [],
@@ -71,23 +72,17 @@ export const INITIAL_STATE_UPDATE_USER = {
 };
 
 export const ROLE_LIST = [
-  {
-    value: "admin",
-    label: "Admin",
-  },
-  {
-    value: "santri",
-    label: "Santri",
-  },
+  { value: "admin", label: "Admin" },
+  { value: "siswa", label: "Siswa" },
 ];
 
-export const JENIS_KELAMIN_LIST = [
-  {
-    value: "Laki-laki",
-    label: "Laki-laki",
-  },
-  {
-    value: "Perempuan",
-    label: "Perempuan",
-  },
+export const KELAS_LIST = [
+  { value: "KB", label: "Kelompok Bermain (KB)" },
+  { value: "TK A", label: "TK A" },
+  { value: "TK B", label: "TK B" },
+];
+
+export const STATUS_LIST = [
+  { value: "aktif", label: "Aktif" },
+  { value: "tidak aktif", label: "Tidak Aktif" },
 ];

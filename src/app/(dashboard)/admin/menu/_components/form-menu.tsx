@@ -1,5 +1,5 @@
-// src/app/(dashboard)/admin/menu/_components/form-menu.tsx
 import FormInput from "@/components/common/form-input";
+import FormSelect from "@/components/common/form-select";
 import { Button } from "@/components/ui/button";
 import {
   DialogClose,
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
+import { JENJANG_LIST, JENIS_TAGIHAN_LIST } from "@/constants/menu-constant";
 import { Loader2 } from "lucide-react";
 import { FormEvent } from "react";
 import { FieldValues, Path, UseFormReturn } from "react-hook-form";
@@ -26,97 +27,57 @@ export default function FormMenu<T extends FieldValues>({
   type: "Create" | "Update";
 }) {
   return (
-    <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+    <DialogContent className="sm:max-w-[500px]">
       <Form {...form}>
         <DialogHeader>
-          <DialogTitle>{type} Tagihan</DialogTitle>
+          <DialogTitle>{type === "Create" ? "Tambah" : "Edit"} Master Tagihan</DialogTitle>
           <DialogDescription>
             {type === "Create"
-              ? "Tambah tagihan periode baru"
-              : "Ubah data tagihan periode"}
+              ? "Tambah jenis tagihan baru"
+              : "Ubah data jenis tagihan"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-4 max-h-[60vh] px-1 overflow-y-auto">
             <FormInput
               form={form}
-              name={"periode" as Path<T>}
-              label="Periode"
-              placeholder="Contoh: Januari 2024"
+              name={"namaTagihan" as Path<T>}
+              label="Nama Tagihan"
+              placeholder="Contoh: SPP Bulanan TK A Reguler"
+            />
+            <FormSelect
+              form={form}
+              name={"jenjang" as Path<T>}
+              label="Jenjang"
+              selectItem={JENJANG_LIST}
+            />
+            <FormSelect
+              form={form}
+              name={"jenisTagihan" as Path<T>}
+              label="Jenis Tagihan"
+              selectItem={JENIS_TAGIHAN_LIST}
+            />
+            <FormInput
+              form={form}
+              name={"nominal" as Path<T>}
+              label="Nominal (Rp)"
+              placeholder="Contoh: 150000"
+              type="number"
             />
             <FormInput
               form={form}
               name={"description" as Path<T>}
-              label="Keterangan"
-              placeholder="Keterangan periode tagihan"
+              label="Keterangan (Opsional)"
+              placeholder="Keterangan tambahan"
               type="textarea"
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                form={form}
-                name={"uang_makan" as Path<T>}
-                label="Uang Makan"
-                placeholder="0"
-                type="number"
-              />
-              <FormInput
-                form={form}
-                name={"asrama" as Path<T>}
-                label="Asrama"
-                placeholder="0"
-                type="number"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                form={form}
-                name={"kas_pondok" as Path<T>}
-                label="Kas Pondok"
-                placeholder="0"
-                type="number"
-              />
-              <FormInput
-                form={form}
-                name={"sedekah_sukarela" as Path<T>}
-                label="Sedekah Sukarela"
-                placeholder="0"
-                type="number"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                form={form}
-                name={"aset_jariyah" as Path<T>}
-                label="Aset Jariyah"
-                placeholder="0"
-                type="number"
-              />
-              <FormInput
-                form={form}
-                name={"uang_tahunan" as Path<T>}
-                label="Uang Tahunan"
-                placeholder="0"
-                type="number"
-              />
-            </div>
-
-            <FormInput
-              form={form}
-              name={"iuran_kampung" as Path<T>}
-              label="Iuran Kampung"
-              placeholder="0"
-              type="number"
             />
           </div>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Batal</Button>
             </DialogClose>
-            <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
-              {isLoading ? <Loader2 className="animate-spin" /> : type}
+            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              {isLoading ? <Loader2 className="animate-spin" /> : type === "Create" ? "Simpan" : "Update"}
             </Button>
           </DialogFooter>
         </form>

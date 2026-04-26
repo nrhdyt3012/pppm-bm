@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/menu/_components/dialog-create-menu.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -14,48 +13,29 @@ export default function DialogCreateMenu({ refetch }: { refetch: () => void }) {
     defaultValues: INITIAL_MENU,
   });
 
-  const [createMenuState, createMenuAction, isPendingCreateMenu] =
-    useActionState(createMenu, INITIAL_STATE_MENU);
+  const [state, action, isPending] = useActionState(createMenu, INITIAL_STATE_MENU);
 
   const onSubmit = form.handleSubmit((data) => {
-  const formData = new FormData();
-  // Pastikan semua key sesuai schema
-  formData.append("periode", data.periode);
-  formData.append("description", data.description);
-  formData.append("uang_makan", data.uang_makan);
-  formData.append("asrama", data.asrama);
-  formData.append("kas_pondok", data.kas_pondok);
-  formData.append("sedekah_sukarela", data.sedekah_sukarela); // ✅
-  formData.append("aset_jariyah", data.aset_jariyah);         // ✅
-  formData.append("uang_tahunan", data.uang_tahunan);
-  formData.append("iuran_kampung", data.iuran_kampung);
-
-  startTransition(() => {
-    createMenuAction(formData);
+    const formData = new FormData();
+    formData.append("namaTagihan", data.namaTagihan);
+    formData.append("jenjang", data.jenjang);
+    formData.append("jenisTagihan", data.jenisTagihan);
+    formData.append("nominal", data.nominal);
+    formData.append("description", data.description || "");
+    startTransition(() => { action(formData); });
   });
-});
 
   useEffect(() => {
-    if (createMenuState?.status === "error") {
-      toast.error("Gagal Membuat Tagihan", {
-        description: createMenuState.errors?._form?.[0],
-      });
+    if (state?.status === "error") {
+      toast.error("Gagal Menyimpan", { description: state.errors?._form?.[0] });
     }
-
-    if (createMenuState?.status === "success") {
-      toast.success("Tagihan Berhasil Dibuat");
+    if (state?.status === "success") {
+      toast.success("Master tagihan berhasil ditambahkan");
       form.reset();
       document.querySelector<HTMLButtonElement>('[data-state="open"]')?.click();
       refetch();
     }
-  }, [createMenuState]);
+  }, [state]);
 
-  return (
-    <FormMenu
-      form={form}
-      onSubmit={onSubmit}
-      isLoading={isPendingCreateMenu}
-      type="Create"
-    />
-  );
+  return <FormMenu form={form} onSubmit={onSubmit} isLoading={isPending} type="Create" />;
 }

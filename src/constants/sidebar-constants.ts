@@ -1,3 +1,4 @@
+// src/constants/sidebar-constants.ts
 import {
   FileText,
   LayoutDashboard,
@@ -27,35 +28,35 @@ export const SIDEBAR_MENU_LIST = {
       icon: AlertCircle,
     },
     {
-      title: "Tagihan Santri",
+      title: "Tagihan Siswa",
       url: "/admin/tagihan",
       icon: Receipt,
     },
     {
-      title: "Kelola Tagihan",
+      title: "Master Tagihan",
       url: "/admin/menu",
       icon: FileText,
     },
     {
-      title: "Data Santri",
+      title: "Data Siswa",
       url: "/admin/user",
       icon: Users,
     },
   ],
-  santri: [
+  siswa: [
     {
-      title: "Info Santri",
-      url: "/santri/info",
+      title: "Info Siswa",
+      url: "/siswa/info",
       icon: UserCircle,
     },
     {
-      title: "Tagihan SPP",
-      url: "/santri/tagihan",
+      title: "Tagihan",
+      url: "/siswa/tagihan",
       icon: Receipt,
     },
     {
       title: "Riwayat Pembayaran",
-      url: "/santri/riwayat",
+      url: "/siswa/riwayat",
       icon: History,
     },
   ],

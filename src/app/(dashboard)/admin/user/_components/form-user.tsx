@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { JENIS_KELAMIN_LIST } from "@/constants/auth-constant";
+import { KELAS_LIST } from "@/constants/auth-constant";
 import { Preview } from "@/types/general";
 import { Loader2 } from "lucide-react";
 import { FormEvent } from "react";
@@ -36,37 +36,73 @@ export default function FormUser<T extends FieldValues>({
     <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
       <Form {...form}>
         <DialogHeader>
-          <DialogTitle>{type} Santri</DialogTitle>
+          <DialogTitle>{type === "Create" ? "Tambah" : "Edit"} Data Siswa</DialogTitle>
           <DialogDescription>
-            {type === "Create"
-              ? "Tambah data santri baru"
-              : "Ubah data santri"}
+            {type === "Create" ? "Tambah data siswa baru" : "Ubah data siswa"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-4 max-h-[60vh] px-1 overflow-y-auto">
             <FormInput
               form={form}
-              name={"name" as Path<T>}
-              label="Nama Lengkap"
-              placeholder="Masukkan nama lengkap"
+              name={"nama_siswa" as Path<T>}
+              label="Nama Lengkap Siswa"
+              placeholder="Nama lengkap siswa"
             />
 
             {type === "Create" && (
-              <FormInput
-                form={form}
-                name={"email" as Path<T>}
-                label="Email"
-                placeholder="Masukkan email"
-                type="email"
-              />
+              <>
+                <FormInput
+                  form={form}
+                  name={"email" as Path<T>}
+                  label="Email (untuk login wali)"
+                  placeholder="email@example.com"
+                  type="email"
+                />
+                <FormInput
+                  form={form}
+                  name={"password" as Path<T>}
+                  label="Password"
+                  placeholder="Min. 6 karakter"
+                  type="password"
+                />
+              </>
             )}
 
-            <FormSelect
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput
+                form={form}
+                name={"NIS" as Path<T>}
+                label="NIS (Opsional)"
+                placeholder="Nomor Induk Siswa"
+              />
+              <FormSelect
+                form={form}
+                name={"kelas" as Path<T>}
+                label="Kelas"
+                selectItem={KELAS_LIST}
+              />
+            </div>
+
+            <FormInput
               form={form}
-              name={"jenis_kelamin" as Path<T>}
-              label="Jenis Kelamin"
-              selectItem={JENIS_KELAMIN_LIST}
+              name={"angkatan" as Path<T>}
+              label="Angkatan (Tahun Masuk)"
+              placeholder="Contoh: 2024"
+            />
+
+            <FormInput
+              form={form}
+              name={"nama_wali" as Path<T>}
+              label="Nama Wali Siswa"
+              placeholder="Nama lengkap orang tua/wali"
+            />
+
+            <FormInput
+              form={form}
+              name={"no_wa" as Path<T>}
+              label="Nomor WhatsApp Wali"
+              placeholder="Contoh: 08123456789"
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -85,58 +121,20 @@ export default function FormUser<T extends FieldValues>({
               />
             </div>
 
-            <FormInput
-              form={form}
-              name={"nama_ayah" as Path<T>}
-              label="Nama Ayah"
-              placeholder="Nama lengkap ayah"
-            />
-
-            <FormInput
-              form={form}
-              name={"pekerjaan_ayah" as Path<T>}
-              label="Pekerjaan Ayah"
-              placeholder="Pekerjaan ayah"
-            />
-
-            <FormInput
-              form={form}
-              name={"nama_ibu" as Path<T>}
-              label="Nama Ibu"
-              placeholder="Nama lengkap ibu"
-            />
-
-            <FormInput
-              form={form}
-              name={"pekerjaan_ibu" as Path<T>}
-              label="Pekerjaan Ibu"
-              placeholder="Pekerjaan ibu"
-            />
-
             <FormImage
               form={form}
               name={"avatar_url" as Path<T>}
-              label="Foto Santri"
+              label="Foto Siswa (Opsional)"
               preview={preview}
               setPreview={setPreview}
             />
-
-            {type === "Create" && (
-              <FormInput
-                form={form}
-                name={"password" as Path<T>}
-                label="Password"
-                placeholder="******"
-                type="password"
-              />
-            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Batal</Button>
             </DialogClose>
-            <Button type="submit" className="bg-teal-500 hover:bg-teal-600">
-              {isLoading ? <Loader2 className="animate-spin" /> : type}
+            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              {isLoading ? <Loader2 className="animate-spin" /> : type === "Create" ? "Simpan" : "Update"}
             </Button>
           </DialogFooter>
         </form>

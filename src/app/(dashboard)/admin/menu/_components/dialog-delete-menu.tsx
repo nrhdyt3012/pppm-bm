@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/menu/_components/dialog-delete-menu.tsx
 import DialogDelete from "@/components/common/dialog-delete";
 import { startTransition, useActionState, useEffect } from "react";
 import { deleteMenu } from "../actions";
@@ -17,38 +16,32 @@ export default function DialogDeleteMenu({
   open: boolean;
   handleChangeAction: (open: boolean) => void;
 }) {
-  const [deleteMenuState, deleteMenuAction, isPendingDeleteMenu] =
-    useActionState(deleteMenu, INITIAL_STATE_ACTION);
+  const [state, action, isPending] = useActionState(deleteMenu, INITIAL_STATE_ACTION);
 
   const onSubmit = () => {
     const formData = new FormData();
-    formData.append("id", currentData!.id_masterTagihan!.toString());    
-    startTransition(() => {
-      deleteMenuAction(formData);
-    });
+    formData.append("id", currentData!.id_masterTagihan!.toString());
+    startTransition(() => { action(formData); });
   };
 
   useEffect(() => {
-    if (deleteMenuState?.status === "error") {
-      toast.error("Gagal Menghapus Tagihan", {
-        description: deleteMenuState.errors?._form?.[0],
-      });
+    if (state?.status === "error") {
+      toast.error("Gagal Menghapus", { description: state.errors?._form?.[0] });
     }
-
-    if (deleteMenuState?.status === "success") {
-      toast.success("Tagihan Berhasil Dihapus");
+    if (state?.status === "success") {
+      toast.success("Master tagihan berhasil dihapus");
       handleChangeAction?.(false);
       refetch();
     }
-  }, [deleteMenuState]);
+  }, [state]);
 
   return (
     <DialogDelete
       open={open}
       onOpenChange={handleChangeAction}
-      isLoading={isPendingDeleteMenu}
+      isLoading={isPending}
       onSubmit={onSubmit}
-      title="Tagihan"
+      title="Master Tagihan"
     />
   );
 }

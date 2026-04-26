@@ -7,13 +7,13 @@ export type AuthFormState = {
     name?: string[];
     role?: string[];
     avatar_url?: string[];
-    jenis_kelamin?: string[];
+    NIS?: string[];
+    kelas?: string[];
+    angkatan?: string[];
+    nama_wali?: string[];
+    no_wa?: string[];
     tempat_lahir?: string[];
     tanggal_lahir?: string[];
-    nama_ayah?: string[];
-    pekerjaan_ayah?: string[];
-    nama_ibu?: string[];
-    pekerjaan_ibu?: string[];
     _form?: string[];
   };
   data?: {
@@ -27,20 +27,20 @@ export type Profile = {
   name?: string;
   avatar_url?: string;
   role?: string;
-  // Alias untuk kompatibilitas dengan form (snake_case)
-  jenis_kelamin?: string;
-  tempat_lahir?: string;
-  tanggal_lahir?: string;
-  nama_ayah?: string;
-  pekerjaan_ayah?: string;
-  nama_ibu?: string;
-  pekerjaan_ibu?: string;
-  // Data dari tabel santri (camelCase sesuai database)
-  jenisKelamin?: string;
+  // Data siswa (camelCase sesuai database)
+  NIS?: string;
+  namaSiswa?: string;
+  kelas?: string;
+  angkatan?: string;
+  namaWali?: string;
+  noWa?: string;
   tempatLahir?: string;
   tanggalLahir?: string;
-  namaAyah?: string;
-  namaIbu?: string;
-  pekerjaanAyah?: string;
-  pekerjaanIbu?: string;
+  status?: string;
+  // snake_case alias untuk form
+  nama_siswa?: string;
+  nama_wali?: string;
+  no_wa?: string;
+  tempat_lahir?: string;
+  tanggal_lahir?: string;
 };

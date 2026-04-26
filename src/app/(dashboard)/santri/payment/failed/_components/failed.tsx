@@ -1,4 +1,3 @@
-// src/app/(dashboard)/santri/payment/failed/_components/failed.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -17,41 +16,36 @@ export default function Failed() {
         <CardContent className="pt-6">
           <div className="flex flex-col items-center gap-6 text-center">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
-              <AlertCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
+              <AlertCircle className="w-10 h-10 text-red-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold mb-2">Pembayaran Gagal</h1>
-              <p className="text-muted-foreground">
-                Maaf, pembayaran SPP Anda tidak dapat diproses. Silakan coba
-                lagi.
+              <h1 className="text-xl font-bold mb-2">Pembayaran Gagal</h1>
+              <p className="text-muted-foreground text-sm">
+                Maaf, pembayaran tidak dapat diproses. Silakan coba lagi.
               </p>
             </div>
             {order_id && (
-              <div className="w-full space-y-2 p-4 bg-muted rounded-lg">
-                <div className="flex justify-between text-sm">
+              <div className="w-full p-4 bg-muted rounded-lg text-sm">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">ID Tagihan:</span>
-                  <span className="font-mono font-medium">{order_id}</span>
+                  <span className="font-mono">#{order_id}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between mt-1">
                   <span className="text-muted-foreground">Status:</span>
-                  <span className="text-red-600 dark:text-red-400 font-medium">
-                    Gagal
-                  </span>
+                  <span className="text-red-600 font-medium">Gagal</span>
                 </div>
               </div>
             )}
             <div className="flex flex-col sm:flex-row gap-3 w-full">
-              <Link href="/santri/tagihan" className="flex-1">
-                <Button className="w-full bg-teal-500 hover:bg-teal-600">
+              <Link href="/siswa/tagihan" className="flex-1">
+                <Button className="w-full bg-green-600 hover:bg-green-700">
                   Kembali ke Tagihan
                 </Button>
               </Link>
             </div>
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Jika masalah berlanjut, silakan hubungi bagian administrasi.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Jika masalah berlanjut, hubungi admin/bendahara PAUD.
+            </p>
           </div>
         </CardContent>
       </Card>

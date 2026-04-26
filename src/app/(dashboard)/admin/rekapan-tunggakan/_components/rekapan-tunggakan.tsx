@@ -9,302 +9,189 @@ import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import * as XLSX from "xlsx";
 
+const BULAN_NAMA = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
 export default function RekapanTunggakan() {
   const supabase = createClient();
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const currentMonthStr = useMemo(() => {
-    return selectedMonth.toISOString().slice(0, 7);
-  }, [selectedMonth]);
-
-  // ✅ FIXED: Query dari tagihan_santri dengan join ke santri dan master_tagihan
   const { data: tunggakanData, isLoading } = useQuery({
-    queryKey: ["tunggakan-data", currentMonthStr],
+    queryKey: ["rekapan-tunggakan", selectedMonth, selectedYear],
     queryFn: async () => {
-      const { data: tagihanBelumBayar, error } = await supabase
-        .from("tagihan_santri")
+      const { data, error } = await supabase
+        .from("tagihan_siswa")
         .select(`
-          idTagihanSantri,
+          idTagihanSiswa,
           jumlahTagihan,
           statusPembayaran,
+          bulan,
+          tahun,
           createdAt,
-          santri:santri!idSantri(id, nama),
-          master_tagihan:master_tagihan!idMasterTagihan(periode, description)
+          siswa:siswa!idSiswa(id, namaSiswa, kelas, noWa),
+          master_tagihan:master_tagihan!idMasterTagihan(namaTagihan, jenjang, jenisTagihan)
         `)
         .eq("statusPembayaran", "BELUM BAYAR")
+        .eq("bulan", selectedMonth)
+        .eq("tahun", selectedYear)
         .order("createdAt", { ascending: false });
 
       if (error) {
-        console.error("Error fetching tunggakan:", error);
-        toast.error("Gagal memuat data tunggakan", {
-          description: error.message,
-        });
+        toast.error("Gagal memuat data", { description: error.message });
         return [];
       }
-
-      // Transform ke format yang diharapkan
-      return tagihanBelumBayar?.map((item: any) => ({
-        id_rekapan_tunggakan: item.idTagihanSantri,
-        nama_santri: item.santri?.nama || "-",
-        periode: item.master_tagihan?.periode || "-",
-        jenis_tagihan: item.master_tagihan?.description || "-",
-        jumlah_tunggakan: item.jumlahTagihan,
-        tanggal_tagihan: item.createdAt,
-      })) || [];
+      return data || [];
     },
   });
 
-  // Query untuk grafik 6 bulan terakhir
   const { data: chartData } = useQuery({
     queryKey: ["chart-tunggakan"],
     queryFn: async () => {
-      const months = [];
+      const results = [];
       for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const monthStr = date.toISOString().slice(0, 7);
-        months.push(monthStr);
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const m = d.getMonth() + 1;
+        const y = d.getFullYear();
+        const { count } = await supabase
+          .from("tagihan_siswa")
+          .select("*", { count: "exact", head: true })
+          .eq("statusPembayaran", "BELUM BAYAR")
+          .eq("bulan", m)
+          .eq("tahun", y);
+        results.push({ name: `${BULAN_NAMA[m].slice(0, 3)} ${y.toString().slice(2)}`, total: count || 0 });
       }
-
-      const result = await Promise.all(
-        months.map(async (month) => {
-          const { count } = await supabase
-            .from("tagihan_santri")
-            .select("idTagihanSantri", { count: "exact", head: true })
-            .eq("statusPembayaran", "BELUM BAYAR")
-            .gte("createdAt", `${month}-01`)
-            .lt("createdAt", getNextMonth(month));
-
-          return {
-            name: formatMonthName(month),
-            total: count || 0,
-          };
-        })
-      );
-
-      return result;
+      return results;
     },
   });
 
-  const totalNominal = useMemo(() => {
-    if (!tunggakanData) return 0;
-    return tunggakanData.reduce((sum: number, item: any) => {
-      return sum + parseFloat(item.jumlah_tunggakan || 0);
-    }, 0);
-  }, [tunggakanData]);
+  const totalNominal = useMemo(() =>
+    tunggakanData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahTagihan || 0), 0) || 0,
+    [tunggakanData]
+  );
 
   const handlePrevMonth = () => {
-    setSelectedMonth((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() - 1);
-      return newDate;
-    });
+    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
   };
 
   const handleNextMonth = () => {
-    setSelectedMonth((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() + 1);
-      return newDate;
-    });
+    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
   };
 
-  const handleExportExcel = () => {
-    if (!tunggakanData || tunggakanData.length === 0) {
-      toast.error("Tidak ada data untuk diekspor");
-      return;
-    }
-
-    const exportData = tunggakanData.map((item: any, index: number) => {
-      return {
-        No: index + 1,
-        "ID Tunggakan": item.id_rekapan_tunggakan,
-        "Nama Santri": item.nama_santri || "-",
-        Periode: item.periode || "-",
-        "Jenis Tagihan": item.jenis_tagihan || "-",
-        "Jumlah Tunggakan": parseFloat(item.jumlah_tunggakan || 0),
-        "Tanggal Tagihan": new Date(item.tanggal_tagihan).toLocaleDateString(
-          "id-ID"
-        ),
-      };
-    });
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
+  const handleExport = () => {
+    if (!tunggakanData?.length) { toast.error("Tidak ada data"); return; }
+    const rows = tunggakanData.map((item: any, i: number) => ({
+      No: i + 1,
+      "ID Tagihan": item.idTagihanSiswa,
+      "Nama Siswa": item.siswa?.namaSiswa || "-",
+      "Kelas": item.siswa?.kelas || "-",
+      "No. WA Wali": item.siswa?.noWa || "-",
+      "Nama Tagihan": item.master_tagihan?.namaTagihan || "-",
+      "Jenjang": item.master_tagihan?.jenjang || "-",
+      "Bulan": BULAN_NAMA[item.bulan],
+      "Tahun": item.tahun,
+      "Jumlah Tunggakan": parseFloat(item.jumlahTagihan || 0),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Tunggakan");
-
-    const fileName = `Tunggakan_${currentMonthStr}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    toast.success("Data berhasil diekspor ke Excel");
+    XLSX.writeFile(wb, `Tunggakan_${BULAN_NAMA[selectedMonth]}_${selectedYear}.xlsx`);
+    toast.success("Data berhasil diekspor");
   };
 
   return (
     <div className="w-full space-y-6">
       <h1 className="text-2xl font-bold">Rekapan Tunggakan</h1>
 
-      {/* Grafik */}
       <Card>
-        <CardHeader>
-          <CardTitle>Grafik Tunggakan SPP (6 Bulan Terakhir)</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Grafik Tunggakan (6 Bulan Terakhir)</CardTitle></CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis />
+              <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total" fill="#ef4444" name="Jumlah Tunggakan" />
+              <Bar dataKey="total" fill="#dc2626" name="Jumlah Tunggakan" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Navigasi Bulan & Export */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-semibold">
-            {selectedMonth.toLocaleDateString("id-ID", {
-              month: "long",
-              year: "numeric",
-            })}
-          </h2>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+          <h2 className="text-lg font-semibold">{BULAN_NAMA[selectedMonth]} {selectedYear}</h2>
+          <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-        <Button
-          onClick={handleExportExcel}
-          disabled={!tunggakanData || tunggakanData.length === 0}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export to Excel
+        <Button onClick={handleExport} disabled={!tunggakanData?.length} className="bg-green-600 hover:bg-green-700">
+          <Download className="mr-2 h-4 w-4" />Export Excel
         </Button>
       </div>
 
-      {/* Summary Card */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Total Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">
-              {tunggakanData?.length || 0} Santri
-            </p>
-          </CardContent>
+          <CardHeader><CardTitle className="text-sm">Jumlah Tunggakan</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-red-600">{tunggakanData?.length || 0} Siswa</p></CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle>Total Nominal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-red-600">
-              {convertIDR(totalNominal)}
-            </p>
-          </CardContent>
+          <CardHeader><CardTitle className="text-sm">Total Nominal Tunggakan</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold text-red-600">{convertIDR(totalNominal)}</p></CardContent>
         </Card>
       </div>
 
-      {/* Tabel Data */}
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Santri yang Belum Membayar</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Daftar Siswa Belum Bayar</CardTitle></CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Memuat data...</div>
-          ) : !tunggakanData || tunggakanData.length === 0 ? (
+          ) : !tunggakanData?.length ? (
             <div className="text-center py-8 text-muted-foreground">
-              Tidak ada data tunggakan
+              Tidak ada tunggakan untuk periode ini 🎉
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[1200px]">
+              <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 whitespace-nowrap w-[50px]">
-                      No
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[100px]">
-                      ID Tunggakan
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[200px]">
-                      Nama Santri
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
-                      Periode
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[250px]">
-                      Jenis Tagihan
-                    </th>
-                    <th className="text-right p-3 whitespace-nowrap w-[150px]">
-                      Jumlah Tunggakan
-                    </th>
-                    <th className="text-center p-3 whitespace-nowrap w-[130px]">
-                      Status
-                    </th>
+                    <th className="text-left p-3">No</th>
+                    <th className="text-left p-3">Nama Siswa</th>
+                    <th className="text-left p-3">Kelas</th>
+                    <th className="text-left p-3">No. WA Wali</th>
+                    <th className="text-left p-3">Tagihan</th>
+                    <th className="text-right p-3">Nominal</th>
+                    <th className="text-center p-3">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tunggakanData.map((item: any, index: number) => (
-                    <tr
-                      key={item.id_rekapan_tunggakan}
-                      className="border-b hover:bg-muted/50"
-                    >
-                      <td className="p-3 whitespace-nowrap">{index + 1}</td>
-                      <td className="p-3 font-mono text-sm whitespace-nowrap">
-                        {item.id_rekapan_tunggakan}
-                      </td>
-                      <td className="p-3 font-medium whitespace-nowrap">
-                        {item.nama_santri || "-"}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {item.periode || "-"}
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="max-w-[250px]">
-                          {item.jenis_tagihan || "-"}
-                        </div>
-                      </td>
-                      <td className="p-3 text-right font-semibold whitespace-nowrap">
-                        {convertIDR(parseFloat(item.jumlah_tunggakan || 0))}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-center">
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 whitespace-nowrap inline-block">
-                            Belum Bayar
-                          </span>
-                        </div>
+                  {tunggakanData.map((item: any, i: number) => (
+                    <tr key={item.idTagihanSiswa} className="border-b hover:bg-muted/50">
+                      <td className="p-3">{i + 1}</td>
+                      <td className="p-3 font-medium">{item.siswa?.namaSiswa || "-"}</td>
+                      <td className="p-3">{item.siswa?.kelas || "-"}</td>
+                      <td className="p-3">{item.siswa?.noWa || "-"}</td>
+                      <td className="p-3">{item.master_tagihan?.namaTagihan || "-"}</td>
+                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahTagihan || 0))}</td>
+                      <td className="p-3 text-center">
+                        <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
+                          Belum Bayar
+                        </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 font-bold bg-muted/30">
-                    <td colSpan={5} className="p-3 text-right">
-                      Total:
-                    </td>
-                    <td className="p-3 text-right text-red-600 whitespace-nowrap">
-                      {convertIDR(totalNominal)}
-                    </td>
+                    <td colSpan={5} className="p-3 text-right">Total:</td>
+                    <td className="p-3 text-right text-red-600">{convertIDR(totalNominal)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -315,30 +202,4 @@ export default function RekapanTunggakan() {
       </Card>
     </div>
   );
-}
-
-// Helper functions
-function getNextMonth(monthStr: string): string {
-  const date = new Date(monthStr + "-01");
-  date.setMonth(date.getMonth() + 1);
-  return date.toISOString().slice(0, 7) + "-01";
-}
-
-function formatMonthName(monthStr: string): string {
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mei",
-    "Jun",
-    "Jul",
-    "Agu",
-    "Sep",
-    "Okt",
-    "Nov",
-    "Des",
-  ];
-  const [year, month] = monthStr.split("-");
-  return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
 }

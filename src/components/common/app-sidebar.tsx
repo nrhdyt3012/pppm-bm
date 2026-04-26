@@ -1,6 +1,6 @@
 "use client";
 
-import { School2, EllipsisVertical } from "lucide-react";
+import { GraduationCap, EllipsisVertical } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -44,10 +44,12 @@ export default function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <div className="font-semibold">
-                <div className="bg-teal-500 flex p-2 items-center justify-center rounded-md">
-                  <School2 className="size-4" />
+                <div className="bg-green-600 flex p-2 items-center justify-center rounded-md">
+                  <GraduationCap className="size-4 text-white" />
                 </div>
-                PPPM BAITUL MAKMUR
+                <span className="text-xs leading-tight">
+                  PAUD Aisyiyah BA 1 Buduran
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -64,7 +66,7 @@ export default function AppSidebar() {
                       <a
                         href={item.url}
                         className={cn("px-4 py-3 h-auto", {
-                          "bg-teal-500 text-white hover:bg-teal-500 hover:text-white":
+                          "bg-green-600 text-white hover:bg-green-600 hover:text-white":
                             pathname === item.url,
                         })}
                       >
@@ -112,10 +114,7 @@ export default function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage
-                        src={profile.avatar_url}
-                        alt={profile.name}
-                      />
+                      <AvatarImage src={profile.avatar_url} alt={profile.name} />
                       <AvatarFallback className="rounded-lg">
                         {profile.name?.charAt(0)}
                       </AvatarFallback>

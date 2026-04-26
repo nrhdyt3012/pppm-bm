@@ -1,51 +1,49 @@
+// src/validations/auth-validation.ts
 import z from "zod";
 
 export const loginSchemaForm = z.object({
   email: z
     .string()
-    .min(1, "Email is required")
-    .email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+    .min(1, "Email wajib diisi")
+    .email("Format email tidak valid"),
+  password: z.string().min(1, "Password wajib diisi"),
 });
 
 export const createUserSchema = z.object({
   email: z
     .string()
-    .min(1, "Email is required")
-    .email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
-  name: z.string().min(1, "Nama lengkap wajib diisi"),
-  jenis_kelamin: z.string().min(1, "Jenis kelamin wajib diisi"),
-  tempat_lahir: z.string().min(1, "Tempat lahir wajib diisi"),
-  tanggal_lahir: z.string().min(1, "Tanggal lahir wajib diisi"),
-  nama_ayah: z.string().min(1, "Nama ayah wajib diisi"),
-  pekerjaan_ayah: z.string().min(1, "Pekerjaan ayah wajib diisi"),
-  nama_ibu: z.string().min(1, "Nama ibu wajib diisi"),
-  pekerjaan_ibu: z.string().min(1, "Pekerjaan ibu wajib diisi"),
-  role: z.string().min(1, "Role is required"),
+    .min(1, "Email wajib diisi")
+    .email("Format email tidak valid"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
+  nama_siswa: z.string().min(1, "Nama siswa wajib diisi"),
+  NIS: z.string().optional(),
+  kelas: z.string().min(1, "Kelas wajib diisi"),
+  angkatan: z.string().optional(),
+  nama_wali: z.string().min(1, "Nama wali wajib diisi"),
+  no_wa: z.string().min(1, "Nomor WhatsApp wajib diisi"),
+  tempat_lahir: z.string().optional(),
+  tanggal_lahir: z.string().optional(),
+  role: z.string().min(1, "Role wajib diisi"),
   avatar_url: z.union([
-    z.string().min(1, "Foto santri wajib diisi"),
+    z.string(),
     z.instanceof(File),
-  ]),
-  // Field ini dihapus karena tidak ada di database
-  // jurusan: z.string().optional(),
-  // universitas: z.string().optional(),
+  ]).optional(),
 });
 
 export const updateUserSchema = z.object({
-  name: z.string().min(1, "Nama lengkap wajib diisi"),
-  jenis_kelamin: z.string().min(1, "Jenis kelamin wajib diisi"),
-  tempat_lahir: z.string().min(1, "Tempat lahir wajib diisi"),
-  tanggal_lahir: z.string().min(1, "Tanggal lahir wajib diisi"),
-  nama_ayah: z.string().min(1, "Nama ayah wajib diisi"),
-  pekerjaan_ayah: z.string().min(1, "Pekerjaan ayah wajib diisi"),
-  nama_ibu: z.string().min(1, "Nama ibu wajib diisi"),
-  pekerjaan_ibu: z.string().min(1, "Pekerjaan ibu wajib diisi"),
-  role: z.string().min(1, "Role is required"),
+  nama_siswa: z.string().min(1, "Nama siswa wajib diisi"),
+  NIS: z.string().optional(),
+  kelas: z.string().min(1, "Kelas wajib diisi"),
+  angkatan: z.string().optional(),
+  nama_wali: z.string().min(1, "Nama wali wajib diisi"),
+  no_wa: z.string().min(1, "Nomor WhatsApp wajib diisi"),
+  tempat_lahir: z.string().optional(),
+  tanggal_lahir: z.string().optional(),
+  role: z.string().min(1, "Role wajib diisi"),
   avatar_url: z.union([
-    z.string().min(1, "Foto santri wajib diisi"),
+    z.string(),
     z.instanceof(File),
-  ]),
+  ]).optional(),
 });
 
 export type LoginForm = z.infer<typeof loginSchemaForm>;

@@ -9,340 +9,186 @@ import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import * as XLSX from "xlsx";
 
+const BULAN_NAMA = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
 export default function RekapanPembayaran() {
   const supabase = createClient();
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const currentMonthStr = useMemo(() => {
-    return selectedMonth.toISOString().slice(0, 7);
-  }, [selectedMonth]);
-
-  // ✅ FIXED: Query dari tagihan_santri dengan join ke santri dan master_tagihan
-  const {
-    data: pembayaranData,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["pembayaran-data", currentMonthStr],
+  const { data: pembayaranData, isLoading } = useQuery({
+    queryKey: ["rekapan-pembayaran", selectedMonth, selectedYear],
     queryFn: async () => {
-      const { data: tagihanLunas, error } = await supabase
-        .from("tagihan_santri")
+      const { data, error } = await supabase
+        .from("tagihan_siswa")
         .select(`
-          idTagihanSantri,
+          idTagihanSiswa,
           jumlahTagihan,
           statusPembayaran,
+          bulan,
+          tahun,
           updatedAt,
-          createdAt,
-          santri:santri!idSantri(id, nama),
-          master_tagihan:master_tagihan!idMasterTagihan(
-            id_masterTagihan,
-            periode,
-            description,
-            uang_makan,
-            asrama,
-            kas_pondok,
-            sedekah_sukarela,
-            aset_jariyah,
-            uang_tahunan,
-            iuran_kampung
-          )
+          siswa:siswa!idSiswa(id, namaSiswa, kelas),
+          master_tagihan:master_tagihan!idMasterTagihan(namaTagihan, jenjang, jenisTagihan)
         `)
         .eq("statusPembayaran", "LUNAS")
-        .gte("updatedAt", `${currentMonthStr}-01`)
-        .lt("updatedAt", getNextMonth(currentMonthStr))
+        .eq("bulan", selectedMonth)
+        .eq("tahun", selectedYear)
         .order("updatedAt", { ascending: false });
 
       if (error) {
-        console.error("Error fetching pembayaran:", error);
-        toast.error("Gagal memuat data pembayaran", {
-          description: error.message,
-        });
+        toast.error("Gagal memuat data", { description: error.message });
         return [];
       }
-
-      // Transform ke format yang diharapkan
-      return tagihanLunas?.map((item: any) => ({
-        id_rekapan_pembayaran: item.idTagihanSantri,
-        nama_santri: item.santri?.nama || "-",
-        periode: item.master_tagihan?.periode || "-",
-        jenis_tagihan: item.master_tagihan?.description || "-",
-        jumlah_dibayar: item.jumlahTagihan,
-        tanggal_pembayaran: item.updatedAt,
-        metode_pembayaran: "Online Payment", // Default untuk payment yang lunas
-        // Detail rincian untuk export
-        detail_tagihan: {
-          uang_makan: item.master_tagihan?.uang_makan || 0,
-          asrama: item.master_tagihan?.asrama || 0,
-          kas_pondok: item.master_tagihan?.kas_pondok || 0,
-          sedekah_sukarela: item.master_tagihan?.sedekah_sukarela || 0,
-          aset_jariyah: item.master_tagihan?.aset_jariyah || 0,
-          uang_tahunan: item.master_tagihan?.uang_tahunan || 0,
-          iuran_kampung: item.master_tagihan?.iuran_kampung || 0,
-        },
-      })) || [];
+      return data || [];
     },
   });
 
-  // Query untuk grafik 6 bulan terakhir
+  // Grafik 6 bulan terakhir
   const { data: chartData } = useQuery({
     queryKey: ["chart-pembayaran"],
     queryFn: async () => {
-      const months = [];
+      const results = [];
       for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const monthStr = date.toISOString().slice(0, 7);
-        months.push(monthStr);
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const m = d.getMonth() + 1;
+        const y = d.getFullYear();
+        const { count } = await supabase
+          .from("tagihan_siswa")
+          .select("*", { count: "exact", head: true })
+          .eq("statusPembayaran", "LUNAS")
+          .eq("bulan", m)
+          .eq("tahun", y);
+        results.push({ name: `${BULAN_NAMA[m].slice(0, 3)} ${y.toString().slice(2)}`, total: count || 0 });
       }
-
-      const result = await Promise.all(
-        months.map(async (month) => {
-          const { count } = await supabase
-            .from("tagihan_santri")
-            .select("idTagihanSantri", { count: "exact", head: true })
-            .eq("statusPembayaran", "LUNAS")
-            .gte("updatedAt", `${month}-01`)
-            .lt("updatedAt", getNextMonth(month));
-
-          return {
-            name: formatMonthName(month),
-            total: count || 0,
-          };
-        })
-      );
-
-      return result;
+      return results;
     },
   });
 
-  const totalNominal = useMemo(() => {
-    if (!pembayaranData) return 0;
-    return pembayaranData.reduce((sum: number, item: any) => {
-      return sum + parseFloat(item.jumlah_dibayar || 0);
-    }, 0);
-  }, [pembayaranData]);
+  const totalNominal = useMemo(() =>
+    pembayaranData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahTagihan || 0), 0) || 0,
+    [pembayaranData]
+  );
 
   const handlePrevMonth = () => {
-    setSelectedMonth((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() - 1);
-      return newDate;
-    });
+    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
   };
 
   const handleNextMonth = () => {
-    setSelectedMonth((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(newDate.getMonth() + 1);
-      return newDate;
-    });
+    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
   };
 
-  const handleExportExcel = () => {
-    if (!pembayaranData || pembayaranData.length === 0) {
-      toast.error("Tidak ada data untuk diekspor");
-      return;
-    }
-
-    const exportData = pembayaranData.map((item: any, index: number) => {
-      return {
-        No: index + 1,
-        "ID Pembayaran": item.id_rekapan_pembayaran,
-        "Nama Santri": item.nama_santri || "-",
-        Periode: item.periode || "-",
-        "Jenis Tagihan": item.jenis_tagihan || "-",
-        "Uang Makan": parseFloat(item.detail_tagihan?.uang_makan || 0),
-        Asrama: parseFloat(item.detail_tagihan?.asrama || 0),
-        "Kas Pondok": parseFloat(item.detail_tagihan?.kas_pondok || 0),
-        "Sedekah Sukarela": parseFloat(item.detail_tagihan?.sedekah_sukarela || 0),
-        "Aset Jariyah": parseFloat(item.detail_tagihan?.aset_jariyah || 0),
-        "Uang Tahunan": parseFloat(item.detail_tagihan?.uang_tahunan || 0),
-        "Iuran Kampung": parseFloat(item.detail_tagihan?.iuran_kampung || 0),
-        "Jumlah Dibayar": parseFloat(item.jumlah_dibayar || 0),
-        "Metode Pembayaran": item.metode_pembayaran || "-",
-        "Tanggal Pembayaran": new Date(item.tanggal_pembayaran).toLocaleDateString("id-ID"),
-      };
-    });
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
+  const handleExport = () => {
+    if (!pembayaranData?.length) { toast.error("Tidak ada data"); return; }
+    const rows = pembayaranData.map((item: any, i: number) => ({
+      No: i + 1,
+      "ID Tagihan": item.idTagihanSiswa,
+      "Nama Siswa": item.siswa?.namaSiswa || "-",
+      "Kelas": item.siswa?.kelas || "-",
+      "Nama Tagihan": item.master_tagihan?.namaTagihan || "-",
+      "Jenjang": item.master_tagihan?.jenjang || "-",
+      "Jenis": item.master_tagihan?.jenisTagihan || "-",
+      "Bulan": BULAN_NAMA[item.bulan],
+      "Tahun": item.tahun,
+      "Jumlah Dibayar": parseFloat(item.jumlahTagihan || 0),
+      "Tanggal Lunas": new Date(item.updatedAt).toLocaleDateString("id-ID"),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pembayaran");
-
-    const fileName = `Pembayaran_${currentMonthStr}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    toast.success("Data berhasil diekspor ke Excel");
+    XLSX.writeFile(wb, `Pembayaran_${BULAN_NAMA[selectedMonth]}_${selectedYear}.xlsx`);
+    toast.success("Data berhasil diekspor");
   };
 
   return (
     <div className="w-full space-y-6">
       <h1 className="text-2xl font-bold">Rekapan Pembayaran</h1>
 
-      {/* Grafik */}
       <Card>
-        <CardHeader>
-          <CardTitle>Grafik Pembayaran SPP (6 Bulan Terakhir)</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Grafik Pembayaran (6 Bulan Terakhir)</CardTitle></CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis />
+              <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total" fill="#14b8a6" name="Jumlah Pembayaran" />
+              <Bar dataKey="total" fill="#16a34a" name="Jumlah Tagihan Lunas" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Navigasi Bulan & Export */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-semibold">
-            {selectedMonth.toLocaleDateString("id-ID", {
-              month: "long",
-              year: "numeric",
-            })}
-          </h2>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+          <h2 className="text-lg font-semibold">{BULAN_NAMA[selectedMonth]} {selectedYear}</h2>
+          <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-        <Button
-          onClick={handleExportExcel}
-          disabled={!pembayaranData || pembayaranData.length === 0}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export to Excel
+        <Button onClick={handleExport} disabled={!pembayaranData?.length} className="bg-green-600 hover:bg-green-700">
+          <Download className="mr-2 h-4 w-4" />Export Excel
         </Button>
       </div>
 
-      {/* Summary Card */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Total Data</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">
-              {pembayaranData?.length || 0} Transaksi
-            </p>
-          </CardContent>
+          <CardHeader><CardTitle className="text-sm">Total Transaksi</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold">{pembayaranData?.length || 0} Tagihan</p></CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle>Total Nominal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-teal-600">
-              {convertIDR(totalNominal)}
-            </p>
-          </CardContent>
+          <CardHeader><CardTitle className="text-sm">Total Nominal</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold text-green-600">{convertIDR(totalNominal)}</p></CardContent>
         </Card>
       </div>
 
-      {/* Tabel Data */}
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Pembayaran SPP</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Daftar Pembayaran Lunas</CardTitle></CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Memuat data...</div>
-          ) : !pembayaranData || pembayaranData.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Tidak ada data untuk bulan ini
-            </div>
+          ) : !pembayaranData?.length ? (
+            <div className="text-center py-8 text-muted-foreground">Tidak ada data untuk periode ini</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[1200px]">
+              <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 whitespace-nowrap w-[50px]">
-                      No
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[100px]">
-                      ID Pembayaran
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[200px]">
-                      Nama Santri
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
-                      Periode
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[250px]">
-                      Jenis Tagihan
-                    </th>
-                    <th className="text-right p-3 whitespace-nowrap w-[150px]">
-                      Nominal
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
-                      Metode
-                    </th>
-                    <th className="text-left p-3 whitespace-nowrap w-[150px]">
-                      Tanggal Pembayaran
-                    </th>
+                    <th className="text-left p-3">No</th>
+                    <th className="text-left p-3">Nama Siswa</th>
+                    <th className="text-left p-3">Kelas</th>
+                    <th className="text-left p-3">Tagihan</th>
+                    <th className="text-left p-3">Jenis</th>
+                    <th className="text-right p-3">Nominal</th>
+                    <th className="text-left p-3">Tanggal</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pembayaranData.map((item: any, index: number) => (
-                    <tr
-                      key={item.id_rekapan_pembayaran}
-                      className="border-b hover:bg-muted/50"
-                    >
-                      <td className="p-3 whitespace-nowrap">{index + 1}</td>
-                      <td className="p-3 font-mono text-sm whitespace-nowrap">
-                        {item.id_rekapan_pembayaran}
-                      </td>
-                      <td className="p-3 font-medium whitespace-nowrap">
-                        {item.nama_santri || "-"}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {item.periode || "-"}
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="max-w-[250px]">
-                          {item.jenis_tagihan || "-"}
-                        </div>
-                      </td>
-                      <td className="p-3 text-right font-semibold whitespace-nowrap">
-                        {convertIDR(parseFloat(item.jumlah_dibayar || 0))}
-                      </td>
-                      <td className="p-3 text-sm whitespace-nowrap">
-                        {item.metode_pembayaran || "-"}
-                      </td>
-                      <td className="p-3 text-sm whitespace-nowrap">
-                        {new Date(item.tanggal_pembayaran).toLocaleDateString("id-ID")}
-                      </td>
+                  {pembayaranData.map((item: any, i: number) => (
+                    <tr key={item.idTagihanSiswa} className="border-b hover:bg-muted/50">
+                      <td className="p-3">{i + 1}</td>
+                      <td className="p-3 font-medium">{item.siswa?.namaSiswa || "-"}</td>
+                      <td className="p-3">{item.siswa?.kelas || "-"}</td>
+                      <td className="p-3">{item.master_tagihan?.namaTagihan || "-"}</td>
+                      <td className="p-3">{item.master_tagihan?.jenisTagihan || "-"}</td>
+                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahTagihan || 0))}</td>
+                      <td className="p-3">{new Date(item.updatedAt).toLocaleDateString("id-ID")}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 font-bold bg-muted/30">
-                    <td colSpan={5} className="p-3 text-right">
-                      Total:
-                    </td>
-                    <td className="p-3 text-right text-teal-600 whitespace-nowrap">
-                      {convertIDR(totalNominal)}
-                    </td>
-                    <td colSpan={2}></td>
+                    <td colSpan={5} className="p-3 text-right">Total:</td>
+                    <td className="p-3 text-right text-green-600">{convertIDR(totalNominal)}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
@@ -352,30 +198,4 @@ export default function RekapanPembayaran() {
       </Card>
     </div>
   );
-}
-
-// Helper functions
-function getNextMonth(monthStr: string): string {
-  const date = new Date(monthStr + "-01");
-  date.setMonth(date.getMonth() + 1);
-  return date.toISOString().slice(0, 7) + "-01";
-}
-
-function formatMonthName(monthStr: string): string {
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mei",
-    "Jun",
-    "Jul",
-    "Agu",
-    "Sep",
-    "Okt",
-    "Nov",
-    "Des",
-  ];
-  const [year, month] = monthStr.split("-");
-  return `${months[parseInt(month) - 1]} ${year.slice(2)}`;
 }

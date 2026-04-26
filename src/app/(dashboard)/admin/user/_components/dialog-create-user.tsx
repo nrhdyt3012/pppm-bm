@@ -1,11 +1,5 @@
-import {
-  INITIAL_CREATE_USER_FORM,
-  INITIAL_STATE_CREATE_USER,
-} from "@/constants/auth-constant";
-import {
-  CreateUserForm,
-  createUserSchema,
-} from "@/validations/auth-validation";
+import { INITIAL_CREATE_USER_FORM, INITIAL_STATE_CREATE_USER } from "@/constants/auth-constant";
+import { CreateUserForm, createUserSchema } from "@/validations/auth-validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -20,46 +14,33 @@ export default function DialogCreateUser({ refetch }: { refetch: () => void }) {
     defaultValues: INITIAL_CREATE_USER_FORM,
   });
 
-  const [createUserState, createUserAction, isPendingCreateUser] =
-    useActionState(createUser, INITIAL_STATE_CREATE_USER);
-
+  const [state, action, isPending] = useActionState(createUser, INITIAL_STATE_CREATE_USER);
   const [preview, setPreview] = useState<Preview | undefined>(undefined);
 
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, key === "avatar_url" ? preview!.file ?? "" : value);
+      if (key === "avatar_url" && preview?.file) {
+        formData.append(key, preview.file);
+      } else {
+        formData.append(key, value as string || "");
+      }
     });
-
-    startTransition(() => {
-      createUserAction(formData);
-    });
+    startTransition(() => { action(formData); });
   });
 
   useEffect(() => {
-    if (createUserState?.status === "error") {
-      toast.error("Create User Failed", {
-        description: createUserState.errors?._form?.[0],
-      });
+    if (state?.status === "error") {
+      toast.error("Gagal Menambah Siswa", { description: state.errors?._form?.[0] });
     }
-
-    if (createUserState?.status === "success") {
-      toast.success("Create User Success");
+    if (state?.status === "success") {
+      toast.success("Data siswa berhasil ditambahkan");
       form.reset();
       setPreview(undefined);
       document.querySelector<HTMLButtonElement>('[data-state="open"]')?.click();
       refetch();
     }
-  }, [createUserState]);
+  }, [state]);
 
-  return (
-    <FormUser
-      form={form}
-      onSubmit={onSubmit}
-      isLoading={isPendingCreateUser}
-      type="Create"
-      preview={preview}
-      setPreview={setPreview}
-    />
-  );
+  return <FormUser form={form} onSubmit={onSubmit} isLoading={isPending} type="Create" preview={preview} setPreview={setPreview} />;
 }

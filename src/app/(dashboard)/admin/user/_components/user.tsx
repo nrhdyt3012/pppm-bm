@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/user/_components/user.tsx
 "use client";
 
 import DataTable from "@/components/common/data-table";
@@ -10,7 +9,7 @@ import { HEADER_TABLE_USER } from "@/constants/user-constant";
 import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import DialogCreateUser from "./dialog-create-user";
@@ -20,142 +19,93 @@ import DialogDeleteUser from "./dialog-delete-user";
 
 export default function UserManagement() {
   const supabase = createClient();
-  const {
-    currentPage,
-    currentLimit,
-    currentSearch,
-    handleChangePage,
-    handleChangeLimit,
-    handleChangeSearch,
-  } = useDataTable();
+  const { currentPage, currentLimit, currentSearch, handleChangePage, handleChangeLimit, handleChangeSearch } = useDataTable();
 
-  const {
-    data: users,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["users", currentPage, currentLimit, currentSearch],
+  const { data: users, isLoading, refetch } = useQuery({
+    queryKey: ["siswa-list", currentPage, currentLimit, currentSearch],
     queryFn: async () => {
-      // Gunakan RPC function untuk fetch data yang sudah flat
-      const result = await supabase.rpc('get_santri_with_details', {
-        search_term: currentSearch,
-        page_limit: currentLimit,
-        page_offset: (currentPage - 1) * currentLimit
-      });
+      let query = supabase
+        .from("siswa")
+        .select("*", { count: "exact" })
+        .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
+        .order("namaSiswa");
 
-      if (result.error) {
-        console.error("Supabase error:", result.error);
-        toast.error("Get User data failed", {
-          description: result.error.message,
-        });
-        return { data: [], count: 0 };
+      if (currentSearch) {
+        query = query.or(
+          `namaSiswa.ilike.%${currentSearch}%,NIS.ilike.%${currentSearch}%,namaWali.ilike.%${currentSearch}%`
+        );
       }
 
-      console.log("Fetched users data:", result.data); // Debug log
-      
-      // Hitung total count
-      const { count } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'santri')
-        .ilike('name', `%${currentSearch}%`);
-
-      return { data: result.data || [], count: count || 0 };
+      const result = await query;
+      if (result.error) {
+        toast.error("Gagal memuat data siswa", { description: result.error.message });
+      }
+      return result;
     },
   });
 
-  const [selectedAction, setSelectedAction] = useState<{
-    data: Profile;
-    type: "update" | "delete";
-  } | null>(null);
-
-  const handleChangeAction = (open: boolean) => {
-    if (!open) setSelectedAction(null);
-  };
+  const [selectedAction, setSelectedAction] = useState<{ data: Profile; type: "update" | "delete" } | null>(null);
+  const handleChangeAction = (open: boolean) => { if (!open) setSelectedAction(null); };
 
   const filteredData = useMemo(() => {
     if (!users?.data) return [];
-
-    return users.data.map((user: any, index) => {
-      // Data sudah flat dari RPC function, langsung akses dari user object
-      console.log("User data:", user); // Debug log
-
-      return [
-        currentLimit * (currentPage - 1) + index + 1,
-        user.name || "-",
-        user.jenisKelamin || "-",
-        user.tempatLahir || "-",
-        user.tanggalLahir
-          ? new Date(user.tanggalLahir).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })
-          : "-",
-        user.namaAyah || "-",
-        user.pekerjaanAyah || "-",
-        user.namaIbu || "-",
-        user.pekerjaanIbu || "-",
-        <DropdownAction
-          key={`action-${user.id}`}
-          menu={[
-            {
-              label: (
-                <span className="flex item-center gap-2">
-                  <Pencil />
-                  Edit
-                </span>
-              ),
-              action: () => {
-                setSelectedAction({
-                  data: {
-                    ...user,
-                    // Map camelCase ke snake_case untuk form
-                    jenis_kelamin: user.jenisKelamin,
-                    tempat_lahir: user.tempatLahir,
-                    tanggal_lahir: user.tanggalLahir,
-                    nama_ayah: user.namaAyah,
-                    nama_ibu: user.namaIbu,
-                    pekerjaan_ayah: user.pekerjaanAyah,
-                    pekerjaan_ibu: user.pekerjaanIbu,
-                  },
-                  type: "update",
-                });
-              },
-            },
-            {
-              label: (
-                <span className="flex item-center gap-2">
-                  <Trash2 className="text-red-400" />
-                  Delete
-                </span>
-              ),
-              variant: "destructive",
-              action: () => {
-                setSelectedAction({
-                  data: user,
-                  type: "delete",
-                });
-              },
-            },
-          ]}
-        />,
-      ];
-    });
+    return users.data.map((user: any, index: number) => [
+      currentLimit * (currentPage - 1) + index + 1,
+      <div key={`nama-${user.id}`}>
+        <p className="font-medium">{user.namaSiswa}</p>
+      </div>,
+      user.NIS || "-",
+      <span key={`kelas-${user.id}`} className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+        {user.kelas || "-"}
+      </span>,
+      user.angkatan || "-",
+      user.namaWali || "-",
+      user.noWa || "-",
+      <span
+        key={`status-${user.id}`}
+        className={`px-2 py-1 rounded-full text-xs font-medium ${
+          user.status === "aktif"
+            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+        }`}
+      >
+        {user.status || "aktif"}
+      </span>,
+      <DropdownAction
+        key={`action-${user.id}`}
+        menu={[
+          {
+            label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit</span>,
+            action: () => setSelectedAction({ data: { ...user, name: user.namaSiswa }, type: "update" }),
+          },
+          {
+            label: <span className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-400" />Hapus</span>,
+            variant: "destructive",
+            action: () => setSelectedAction({ data: { ...user, name: user.namaSiswa }, type: "delete" }),
+          },
+        ]}
+      />,
+    ]);
   }, [users, currentLimit, currentPage]);
+
+  const totalPages = useMemo(() => {
+    return users?.count ? Math.ceil(users.count / currentLimit) : 0;
+  }, [users, currentLimit]);
 
   return (
     <div className="w-full">
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
-        <h1 className="text-2xl font-bold">Data Santri</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Data Siswa</h1>
+          <p className="text-sm text-muted-foreground">Kelola data siswa PAUD</p>
+        </div>
         <div className="flex gap-2">
-          <Input
-            placeholder="Cari nama santri..."
-            onChange={(e) => handleChangeSearch(e.target.value)}
-          />
+          <Input placeholder="Cari nama, NIS, atau wali..." onChange={(e) => handleChangeSearch(e.target.value)} />
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline">Tambah Santri</Button>
+              <Button className="bg-green-600 hover:bg-green-700">
+                <Plus className="w-4 h-4 mr-2" />Tambah Siswa
+              </Button>
             </DialogTrigger>
             <DialogCreateUser refetch={refetch} />
           </Dialog>
@@ -165,24 +115,20 @@ export default function UserManagement() {
         header={HEADER_TABLE_USER}
         data={filteredData}
         isLoading={isLoading}
-        totalPages={
-          users && users.count !== null
-            ? Math.ceil(users.count / currentLimit)
-            : 0
-        }
+        totalPages={totalPages}
         currentPage={currentPage}
         currentLimit={currentLimit}
         onChangePage={handleChangePage}
         onChangeLimit={handleChangeLimit}
       />
       <DialogUpdateUser
-        open={selectedAction !== null && selectedAction.type === "update"}
+        open={selectedAction?.type === "update"}
         refetch={refetch}
         currentData={selectedAction?.data}
         handleChangeAction={handleChangeAction}
       />
       <DialogDeleteUser
-        open={selectedAction !== null && selectedAction.type === "delete"}
+        open={selectedAction?.type === "delete"}
         refetch={refetch}
         currentData={selectedAction?.data}
         handleChangeAction={handleChangeAction}

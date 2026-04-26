@@ -1,18 +1,11 @@
-// src/app/(dashboard)/admin/tagihan/_components/dialog-delete-tagihan.tsx
 import DialogDelete from "@/components/common/dialog-delete";
 import { startTransition, useActionState, useEffect } from "react";
-import { deleteTagihanSantri } from "../actions";
+import { deleteTagihanSiswa } from "../actions";
 import { toast } from "sonner";
 
-type DeleteActionState =
-  | { status: "idle" | "success"; errors?: undefined }
-  | { status: "error"; errors: { _form: string[] } };
+const INITIAL_STATE = { status: "idle", errors: { _form: [] } };
 
-const INITIAL_DELETE_STATE: DeleteActionState = {
-  status: "idle",
-};
-
-export default function DialogDeleteTagihan({
+export default function DialogDeleteTagihanSiswa({
   open,
   refetch,
   currentData,
@@ -23,35 +16,22 @@ export default function DialogDeleteTagihan({
   open: boolean;
   handleChangeAction: (open: boolean) => void;
 }) {
-  const [deleteState, deleteAction, isPending] = useActionState(
-    deleteTagihanSantri,
-    INITIAL_DELETE_STATE
-  );
+  const [state, action, isPending] = useActionState(deleteTagihanSiswa, INITIAL_STATE);
 
   const onSubmit = () => {
     const formData = new FormData();
-    formData.append(
-      "id_tagihan_santri",
-      currentData?.id_tagihan_santri as string
-    );
-    startTransition(() => {
-      deleteAction(formData);
-    });
+    formData.append("idTagihanSiswa", currentData?.idTagihanSiswa?.toString() ?? "");
+    startTransition(() => { action(formData); });
   };
 
   useEffect(() => {
-    if (deleteState?.status === "error") {
-      toast.error("Gagal Menghapus Tagihan", {
-        description: deleteState.errors?._form?.[0],
-      });
-    }
-
-    if (deleteState?.status === "success") {
-      toast.success("Tagihan Berhasil Dihapus");
+    if (state?.status === "error") toast.error("Gagal Menghapus", { description: state.errors?._form?.[0] });
+    if (state?.status === "success") {
+      toast.success("Tagihan berhasil dihapus");
       handleChangeAction(false);
       refetch();
     }
-  }, [deleteState, handleChangeAction, refetch]);
+  }, [state]);
 
   return (
     <DialogDelete
@@ -59,7 +39,7 @@ export default function DialogDeleteTagihan({
       onOpenChange={handleChangeAction}
       isLoading={isPending}
       onSubmit={onSubmit}
-      title={`Tagihan ${currentData?.santri?.name || ""}`}
+      title={`Tagihan #${currentData?.idTagihanSiswa} — ${currentData?.siswa?.namaSiswa || ""}`}
     />
   );
 }

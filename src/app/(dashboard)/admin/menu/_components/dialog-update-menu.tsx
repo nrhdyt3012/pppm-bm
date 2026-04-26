@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/menu/_components/dialog-update-menu.tsx
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -20,75 +19,45 @@ export default function DialogUpdateMenu({
   open?: boolean;
   handleChangeAction?: (open: boolean) => void;
 }) {
-  const form = useForm<MenuForm>({
-    resolver: zodResolver(menuFormSchema),
-  });
-
-  const [updateMenuState, updateMenuAction, isPendingUpdateMenu] =
-    useActionState(updateMenu, INITIAL_STATE_MENU);
+  const form = useForm<MenuForm>({ resolver: zodResolver(menuFormSchema) });
+  const [state, action, isPending] = useActionState(updateMenu, INITIAL_STATE_MENU);
 
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
-
-    // Append semua field dari form
-    formData.append("periode", data.periode);
-    formData.append("description", data.description);
-    formData.append("uang_makan", data.uang_makan);
-    formData.append("asrama", data.asrama);
-    formData.append("kas_pondok", data.kas_pondok);
-    formData.append("sedekah_sukarela", data.sedekah_sukarela);
-    formData.append("aset_jariyah", data.aset_jariyah);
-    formData.append("uang_tahunan", data.uang_tahunan);
-    formData.append("iuran_kampung", data.iuran_kampung);
-
-    // Append id secara eksplisit dari currentData
     formData.append("id", currentData!.id_masterTagihan!.toString());
-
-    startTransition(() => {
-      updateMenuAction(formData);
-    });
+    formData.append("namaTagihan", data.namaTagihan);
+    formData.append("jenjang", data.jenjang);
+    formData.append("jenisTagihan", data.jenisTagihan);
+    formData.append("nominal", data.nominal);
+    formData.append("description", data.description || "");
+    startTransition(() => { action(formData); });
   });
 
   useEffect(() => {
-    if (updateMenuState?.status === "error") {
-      toast.error("Gagal Mengubah Tagihan", {
-        description: updateMenuState.errors?._form?.[0],
-      });
+    if (state?.status === "error") {
+      toast.error("Gagal Mengubah", { description: state.errors?._form?.[0] });
     }
-
-    if (updateMenuState?.status === "success") {
-      toast.success("Tagihan Berhasil Diubah");
+    if (state?.status === "success") {
+      toast.success("Master tagihan berhasil diubah");
       form.reset();
       handleChangeAction?.(false);
       refetch();
     }
-  }, [updateMenuState]);
+  }, [state]);
 
   useEffect(() => {
     if (currentData) {
-      form.setValue("periode", currentData.periode);
-      form.setValue("description", currentData.description);
-      form.setValue("uang_makan", currentData.uang_makan.toString());
-      form.setValue("asrama", currentData.asrama.toString());
-      form.setValue("kas_pondok", currentData.kas_pondok.toString());
-      form.setValue(
-        "sedekah_sukarela",
-        currentData.sedekah_sukarela.toString()
-      );
-      form.setValue("aset_jariyah", currentData.aset_jariyah.toString());
-      form.setValue("uang_tahunan", currentData.uang_tahunan.toString());
-      form.setValue("iuran_kampung", currentData.iuran_kampung.toString());
+      form.setValue("namaTagihan", currentData.namaTagihan || "");
+      form.setValue("jenjang", currentData.jenjang || "");
+      form.setValue("jenisTagihan", currentData.jenisTagihan || "");
+      form.setValue("nominal", currentData.nominal?.toString() || "");
+      form.setValue("description", currentData.description || "");
     }
   }, [currentData]);
 
   return (
     <Dialog open={open} onOpenChange={handleChangeAction}>
-      <FormMenu
-        form={form}
-        onSubmit={onSubmit}
-        isLoading={isPendingUpdateMenu}
-        type="Update"
-      />
+      <FormMenu form={form} onSubmit={onSubmit} isLoading={isPending} type="Update" />
     </Dialog>
   );
 }

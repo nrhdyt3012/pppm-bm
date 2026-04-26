@@ -1,3 +1,4 @@
+// src/stores/auth-store.ts
 import { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { Profile } from "@/types/auth";
