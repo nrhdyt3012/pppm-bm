@@ -33,9 +33,20 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAuthPage = pathname === "/login";
 
-  // Halaman publik yang bisa diakses tanpa login
-  const publicPages = ["/login"];
-  const isPublicPage = publicPages.some(
+// Halaman publik yang bisa diakses tanpa login
+const publicPages = [
+  "/login",
+  "/beranda",
+  "/profil",
+  "/fasilitas",
+  "/info-sekolah",
+  "/kontak",
+  "/ppdb",
+  "/berita",
+];
+const isPublicPage =
+  pathname === "/" ||
+  publicPages.some(
     (page) => pathname === page || pathname.startsWith(page + "/")
   );
 
