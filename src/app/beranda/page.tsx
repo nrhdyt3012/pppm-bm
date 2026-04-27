@@ -1,7 +1,7 @@
 import Homepage from "./_components/homepage";
 
 export const metadata = {
-  title: "PPPM BM | Beranda",
+  title: "PAUD ABA 1 Buduran | Beranda",
   icons: {
     icon: "/logo_ppm.svg",
   },

@@ -2,8 +2,8 @@
 import InfoSekolahPage from "./_components/info-sekolah";
 
 export const metadata = {
-  title: "Info Sekolah | PP Baitul Makmur",
-  description: "Informasi Program Pendidikan Pondok Pesantren Baitul Makmur",
+  title: "PAUD ABA 1 Buduran | Info Sekolah",
+  description: "Informasi Program Pendidikan PAUD ABA 1 Buduran",
   icons: {
     icon: "/logo_ppm.svg",
   },

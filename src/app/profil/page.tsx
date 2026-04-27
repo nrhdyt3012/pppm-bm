@@ -2,8 +2,8 @@
 import ProfilPage from "./_components/profil";
 
 export const metadata = {
-  title: "Profil | PP Baitul Makmur",
-  description: "Profil Pondok Pesantren Baitul Makmur",
+  title: "PAUD ABA 1 Buduran | Profil",
+  description: "Profil PAUD ABA 1 Buduran",
   icons: {
     icon: "/logo_ppm.svg",
   },

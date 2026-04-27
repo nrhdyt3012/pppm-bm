@@ -2,8 +2,8 @@
 import FasilitasPage from "./_components/fasilitas";
 
 export const metadata = {
-  title: "Fasilitas | PP Baitul Makmur",
-  description: "Fasilitas Pondok Pesantren Baitul Makmur",
+  title: "PAUD ABA 1 Buduran | Fasilitas",
+  description: "Fasilitas PAUD ABA 1 Buduran",
   icons: {
     icon: "/logo_ppm.svg",
   },

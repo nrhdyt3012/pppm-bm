@@ -229,8 +229,8 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* Berita & Kegiatan */}
-      <BeritaTerbaru />
+      {/* Berita & Kegiatan
+      <BeritaTerbaru /> */}
 
       {/* Video Profil */}
       <section className="py-20 px-6 bg-white dark:bg-gray-800">
@@ -246,7 +246,7 @@ export default function Homepage() {
           <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl">
             <iframe
               className="w-full h-full"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              src="https://www.youtube.com/embed/_lxLnQ_eZxU"
               title="Profil KB TK Aisyiyah Bustanul Athfal 1 Buduran"
               allowFullScreen
             />
@@ -278,8 +278,8 @@ export default function Homepage() {
             <Link href="/kontak">
               <Button
                 size="lg"
-                variant="outline"
-                className="px-8 py-6 text-lg text-white border-white hover:bg-white hover:text-teal-600"
+                variant="secondary"
+                className="px-8 py-6 text-lg"
               >
                 Hubungi Kami
               </Button>

@@ -2,8 +2,8 @@
 import PPDBPage from "./_components/ppdb-page";
 
 export const metadata = {
-  title: "PPDB 2025/2026 | PP Baitul Makmur",
-  description: "Penerimaan Peserta Didik Baru Pondok Pesantren Baitul Makmur",
+  title: "PAUD ABA 1 Buduran | PPDB",
+  description: "Penerimaan Peserta Didik Baru PAUD ABA 1 Buduran",
   icons: {
     icon: "/logo_ppm.svg",
   },

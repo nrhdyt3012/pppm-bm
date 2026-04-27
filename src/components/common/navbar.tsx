@@ -11,134 +11,35 @@ import { cn } from "@/lib/utils";
 type NavItem = {
   title: string;
   href: string;
-  description: string;
-  sections?: {
-    id: string;
-    title: string;
-    description: string;
-  }[];
 };
 
 const navigation: NavItem[] = [
   {
+    title: "Beranda",
+    href: "/beranda",
+  },{
     title: "Profil",
     href: "/profil",
-    description: "Tentang Pondok Pesantren Baitul Makmur",
-    sections: [
-      {
-        id: "sejarah",
-        title: "Sejarah",
-        description: "Perjalanan berdirinya pesantren",
-      },
-      {
-        id: "visi-misi",
-        title: "Visi & Misi",
-        description: "Tujuan dan cita-cita pesantren",
-      },
-      {
-        id: "struktur",
-        title: "Struktur Organisasi",
-        description: "Pengurus dan pengasuh pesantren",
-      },
-    ],
   },
   {
     title: "Fasilitas",
     href: "/fasilitas",
-    description: "Sarana dan prasarana pesantren",
-    sections: [
-      {
-        id: "asrama",
-        title: "Asrama",
-        description: "Tempat tinggal santri",
-      },
-      {
-        id: "masjid",
-        title: "Masjid",
-        description: "Tempat ibadah dan kajian",
-      },
-      {
-        id: "perpustakaan",
-        title: "Perpustakaan",
-        description: "Koleksi buku dan referensi",
-      },
-      {
-        id: "kelas",
-        title: "Ruang Kelas",
-        description: "Fasilitas belajar mengajar",
-      },
-    ],
   },
   {
     title: "Info Sekolah",
     href: "/info-sekolah",
-    description: "Informasi program dan kegiatan",
-    sections: [
-      {
-        id: "program",
-        title: "Program Pendidikan",
-        description: "Kurikulum dan metode belajar",
-      },
-      {
-        id: "ekstrakurikuler",
-        title: "Ekstrakurikuler",
-        description: "Kegiatan pengembangan bakat",
-      },
-      {
-        id: "prestasi",
-        title: "Prestasi",
-        description: "Pencapaian santri",
-      },
-    ],
   },
   {
     title: "PPDB",
     href: "/ppdb",
-    description: "Penerimaan Peserta Didik Baru",
-    sections: [
-      {
-        id: "syarat",
-        title: "Syarat Pendaftaran",
-        description: "Persyaratan calon santri",
-      },
-      {
-        id: "jadwal",
-        title: "Jadwal",
-        description: "Timeline pendaftaran",
-      },
-      {
-        id: "biaya",
-        title: "Biaya",
-        description: "Informasi biaya pendidikan",
-      },
-    ],
   },
   {
     title: "Kontak Kami",
     href: "/kontak",
-    description: "Hubungi kami untuk informasi lebih lanjut",
-    sections: [
-      {
-        id: "alamat",
-        title: "Alamat",
-        description: "Lokasi pesantren",
-      },
-      {
-        id: "telepon",
-        title: "Telepon",
-        description: "Nomor yang bisa dihubungi",
-      },
-      {
-        id: "email",
-        title: "Email",
-        description: "Surel pesantren",
-      },
-    ],
   },
 ];
 
 export default function Navbar() {
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (

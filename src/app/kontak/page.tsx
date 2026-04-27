@@ -1,9 +1,9 @@
-// src/app/ppdb/page.tsx
+// src/app/kontak/page.tsx
 import KontakPage from "./_components/kontak-page";
 
 export const metadata = {
-  title: "Kontak | PP Baitul Makmur",
-  description: "Informasi Kontak Pondok Pesantren Baitul Makmur",
+  title: "PAUD ABA 1 Buduran | Kontak",
+  description: "Informasi Kontak PAUD ABA 1 Buduran",
   icons: {
     icon: "/logo_ppm.svg",
   },
