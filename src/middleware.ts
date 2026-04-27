@@ -36,6 +36,8 @@ export async function middleware(request: NextRequest) {
 // Halaman publik yang bisa diakses tanpa login
 const publicPages = [
   "/login",
+    "/forgot-password",   // tambah ini
+  "/reset-password",
   "/beranda",
   "/profil",
   "/fasilitas",

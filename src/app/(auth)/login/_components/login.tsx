@@ -19,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { login } from "../actions";
-import { Loader2 } from "lucide-react";
+import { Link, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
 import { useRouter } from "next/navigation";
@@ -120,6 +120,11 @@ export default function Login() {
                 placeholder="••••••••"
                 type="password"
               />
+<div className="text-right">
+  <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+    Lupa password?
+  </Link>
+</div>
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"

@@ -30,7 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
-import LogoutDialog from "./logout-dialog";
+import SidebarAccountActions from "./logout-dialog";
 
 export default function AppSidebar() {
   const { isMobile } = useSidebar();
@@ -55,6 +55,7 @@ export default function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent className="flex flex-col gap-2">
@@ -81,6 +82,7 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -105,16 +107,21 @@ export default function AppSidebar() {
                   <EllipsisVertical className="ml-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
+
               <DropdownMenuContent
                 className="min-w-56 rounded-lg"
                 side={isMobile ? "bottom" : "right"}
                 align="end"
                 sideOffset={4}
               >
+                {/* Info profil di header dropdown */}
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src={profile.avatar_url} alt={profile.name} />
+                      <AvatarImage
+                        src={profile.avatar_url}
+                        alt={profile.name}
+                      />
                       <AvatarFallback className="rounded-lg">
                         {profile.name?.charAt(0)}
                       </AvatarFallback>
@@ -127,10 +134,13 @@ export default function AppSidebar() {
                     </div>
                   </div>
                 </DropdownMenuLabel>
+
                 <DropdownMenuSeparator />
+
+                {/* Ganti Password + Logout */}
                 <DropdownMenuGroup>
                   <DropdownMenuItem asChild>
-                    <LogoutDialog />
+                    <SidebarAccountActions />
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
