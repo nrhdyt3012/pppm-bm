@@ -11,28 +11,46 @@ import {
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 
+// Map path segment ke label yang lebih bersih
+const PATH_LABELS: Record<string, string> = {
+  admin: "Admin",
+  siswa: "Siswa",
+  tagihan: "Tagihan",
+  riwayat: "Riwayat Pembayaran",
+  info: "Info Siswa",
+  menu: "Master Tagihan",
+  user: "Data Siswa",
+  "rekapan-pembayaran": "Rekapan Pembayaran",
+  "rekapan-tunggakan": "Rekapan Tunggakan",
+  payment: "Pembayaran",
+  success: "Berhasil",
+  failed: "Gagal",
+};
+
 export default function DashboardBreadcrumb() {
   const pathname = usePathname();
-  const paths = pathname.split("/").slice(1);
+  const paths = pathname.split("/").filter(Boolean);
+
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {paths.map((path, index) => (
-          <Fragment key={`path-${path}`}>
-            <BreadcrumbItem className="capitalize">
-              {index < paths.length - 1 ? (
-                <BreadcrumbLink
-                  href={`/${paths.slice(0, index + 1).join("/")}`}
-                >
-                  {path}
-                </BreadcrumbLink>
-              ) : (
-                <BreadcrumbPage>{path}</BreadcrumbPage>
-              )}
-            </BreadcrumbItem>
-            {index < paths.length - 1 && <BreadcrumbSeparator />}
-          </Fragment>
-        ))}
+        {paths.map((path, index) => {
+          const label = PATH_LABELS[path] || path.charAt(0).toUpperCase() + path.slice(1);
+          return (
+            <Fragment key={`path-${path}-${index}`}>
+              <BreadcrumbItem className="capitalize">
+                {index < paths.length - 1 ? (
+                  <BreadcrumbLink href={`/${paths.slice(0, index + 1).join("/")}`}>
+                    {label}
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbPage>{label}</BreadcrumbPage>
+                )}
+              </BreadcrumbItem>
+              {index < paths.length - 1 && <BreadcrumbSeparator />}
+            </Fragment>
+          );
+        })}
       </BreadcrumbList>
     </Breadcrumb>
   );

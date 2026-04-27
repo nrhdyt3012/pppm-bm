@@ -1,7 +1,7 @@
 // src/components/common/footer.tsx
 import Image from "next/image";
 import Link from "next/link";
-import { Instagram, Mail, MapPin, Phone, Facebook, Youtube } from "lucide-react";
+import { Instagram, Mail, MapPin, Phone } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -19,16 +19,18 @@ export default function Footer() {
                 className="rounded-full"
               />
               <div>
-                <h3 className="font-bold text-lg">PP Baitul Makmur</h3>
-                <p className="text-xs text-gray-400">
-                  Pendidikan Islam Berkualitas
-                </p>
+                <h3 className="font-bold text-lg">KB TK Aisyiyah</h3>
+                <p className="text-xs text-gray-400">Bustanul Athfal 1 Buduran</p>
               </div>
             </div>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              Pondok Pesantren yang mengedepankan pendidikan Islam dengan
-              metode modern dan tradisional.
+            <p className="text-sm text-gray-400 leading-relaxed mb-4">
+              Pendidikan anak usia dini dengan metode Ramah Otak Anak yang
+              mengoptimalkan tumbuh kembang anak.
             </p>
+            <div className="text-sm">
+              <p className="font-semibold text-teal-400 mb-1">Motto:</p>
+              <p className="italic">"Sholih, Ceria, Mandiri"</p>
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -56,7 +58,7 @@ export default function Footer() {
                   href="/info-sekolah"
                   className="text-gray-400 hover:text-teal-400 transition-colors"
                 >
-                  Info Sekolah
+                  Program & Gallery
                 </Link>
               </li>
               <li>
@@ -64,7 +66,15 @@ export default function Footer() {
                   href="/ppdb"
                   className="text-gray-400 hover:text-teal-400 transition-colors"
                 >
-                  PPDB
+                  PPDB 2026/2027
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/kontak"
+                  className="text-gray-400 hover:text-teal-400 transition-colors"
+                >
+                  Kontak
                 </Link>
               </li>
             </ul>
@@ -77,75 +87,73 @@ export default function Footer() {
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
                 <span className="text-gray-400">
-                  Jl. Lorem Ipsum No. 123
+                  Jl. Kavling Persada Asri C-37
                   <br />
-                  Surabaya, Jawa Timur
+                  Damarsi, Buduran, Sidoarjo
                 </span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="w-5 h-5 text-teal-400 shrink-0" />
-                <span className="text-gray-400">+62 XXX XXXX XXXX</span>
+                <div>
+                  <p className="text-gray-400">Ust. Aminah</p>
+                  <p className="text-gray-400">0815 5336 6321</p>
+                </div>
               </li>
               <li className="flex items-center gap-2">
-                <Mail className="w-5 h-5 text-teal-400 shrink-0" />
-                <span className="text-gray-400">info@baitul-makmur.com</span>
+                <Instagram className="w-5 h-5 text-teal-400 shrink-0" />
+                <span className="text-gray-400">@abasatubuduran</span>
               </li>
             </ul>
           </div>
 
-          {/* Social Media */}
+          {/* Program Unggulan */}
           <div>
-            <h4 className="font-semibold mb-4">Ikuti Kami</h4>
-            <div className="flex gap-3">
-              <Link
-                href="https://instagram.com"
-                target="_blank"
-                className="p-3 bg-gray-800 rounded-lg hover:bg-teal-600 transition-colors"
-              >
-                <Instagram className="w-5 h-5" />
-              </Link>
-              <Link
-                href="https://facebook.com"
-                target="_blank"
-                className="p-3 bg-gray-800 rounded-lg hover:bg-teal-600 transition-colors"
-              >
-                <Facebook className="w-5 h-5" />
-              </Link>
-              <Link
-                href="https://youtube.com"
-                target="_blank"
-                className="p-3 bg-gray-800 rounded-lg hover:bg-teal-600 transition-colors"
-              >
-                <Youtube className="w-5 h-5" />
-              </Link>
-            </div>
-            <div className="mt-6">
-              <h4 className="font-semibold mb-2 text-sm">Newsletter</h4>
-              <p className="text-xs text-gray-400 mb-3">
-                Dapatkan info terbaru dari kami
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="Email Anda"
-                  className="flex-1 px-3 py-2 bg-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-                <button className="px-4 py-2 bg-teal-500 hover:bg-teal-600 rounded-lg text-sm font-medium transition-colors">
-                  Kirim
-                </button>
-              </div>
-            </div>
+            <h4 className="font-semibold mb-4">Program Unggulan</h4>
+            <ul className="space-y-2 text-sm text-gray-400">
+              <li className="flex items-start gap-2">
+                <span className="text-teal-400">•</span>
+                <span>Mengaji & Tahfidz Metode UMMI</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-teal-400">•</span>
+                <span>Do'a dan Hadist</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-teal-400">•</span>
+                <span>Petualangan Maharaja</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-teal-400">•</span>
+                <span>Berkemandirian & Karakter Islami</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-teal-400">•</span>
+                <span>Tuntas Toilet Training</span>
+              </li>
+            </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} Pondok Pesantren Baitul Makmur. All
-            rights reserved.
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Developed by Dwi Nurhidayat – Universitas Negeri Surabaya
-          </p>
+        <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="grid md:grid-cols-2 gap-4 text-center md:text-left">
+            <div>
+              <p className="text-sm text-gray-400">
+                © {new Date().getFullYear()} KB TK 'Aisyiyah Bustanul Athfal 1
+                Buduran
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                All rights reserved.
+              </p>
+            </div>
+            <div className="text-sm text-gray-400 md:text-right">
+              <p className="italic">
+                "Diuruk karena menarik, disuka karena beda"
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                Developed by Dwi Nurhidayat – Universitas Negeri Surabaya
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

@@ -1,4 +1,3 @@
-// src/components/common/logout-dialog.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -30,31 +29,22 @@ export default function LogoutDialog() {
         className="flex w-full items-center gap-2 px-1 py-1.5 text-sm hover:bg-accent rounded-sm transition-colors"
       >
         <LogOut className="w-4 h-4" />
-        Logout
+        Keluar
       </button>
 
-      <Dialog
-        open={open}
-        onOpenChange={(value) => !isLoading && setOpen(value)}
-      >
+      <Dialog open={open} onOpenChange={(v) => !isLoading && setOpen(v)}>
         <DialogContent className="sm:max-w-md" showCloseButton={!isLoading}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <LogOut className="w-6 h-6 text-red-500" />
-              Konfirmasi Logout
+              <LogOut className="w-5 h-5 text-red-500" />
+              Konfirmasi Keluar
             </DialogTitle>
             <DialogDescription className="text-base pt-2">
               Apakah Anda yakin ingin keluar dari sistem?
-              <br />
-              <span className="text-muted-foreground text-sm">
-                Anda harus login kembali untuk mengakses sistem.
-              </span>
             </DialogDescription>
           </DialogHeader>
-
-          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+          <DialogFooter className="gap-2 mt-4">
             <Button
-              type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={isLoading}
@@ -63,22 +53,15 @@ export default function LogoutDialog() {
               Batal
             </Button>
             <Button
-              type="button"
               variant="destructive"
               onClick={handleLogout}
               disabled={isLoading}
               className="flex-1 sm:flex-none gap-2"
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Keluar...
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" />Keluar...</>
               ) : (
-                <>
-                  <LogOut className="w-4 h-4" />
-                  Ya, Keluar
-                </>
+                <><LogOut className="w-4 h-4" />Ya, Keluar</>
               )}
             </Button>
           </DialogFooter>

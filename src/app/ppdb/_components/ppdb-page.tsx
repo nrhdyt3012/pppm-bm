@@ -12,9 +12,9 @@ import {
   DollarSign,
   CheckCircle,
   Users,
-  School,
   Clock,
-  MapPin,
+  Gift,
+  Baby,
 } from "lucide-react";
 
 export default function PPDBPage() {
@@ -22,90 +22,118 @@ export default function PPDBPage() {
     "Fotokopi Akta Kelahiran (2 lembar)",
     "Fotokopi Kartu Keluarga (2 lembar)",
     "Fotokopi KTP Orang Tua (2 lembar)",
-    "Pas Foto 3x4 (6 lembar)",
+    "Pas Foto 3x4 (4 lembar)",
     "Surat Keterangan Sehat dari Dokter",
-    "Fotokopi Ijazah/SKHUN terakhir (2 lembar)",
-    "Surat Kelakuan Baik dari Sekolah asal",
-    "Surat pernyataan sanggup mengikuti peraturan pesantren",
+    "Fotokopi Kartu Imunisasi",
+    "Formulir Pendaftaran yang sudah diisi",
   ];
 
-  const biayaPendaftaran = [
-    { item: "Formulir Pendaftaran", biaya: "Rp 100.000" },
-    { item: "Biaya Tes Masuk", biaya: "Rp 200.000" },
+  const jadwalPendaftaran = [
+    {
+      gelombang: "Gelombang 1",
+      periode: "Desember 2025 - Februari 2026",
+      tanggalMulai: "6 Desember 2025",
+      tanggalAkhir: "28 Februari 2026",
+      status: "Segera Dibuka",
+      benefit: "Bonus souvenir cantik untuk yang melunasi maks Juni 2026",
+    },
+    {
+      gelombang: "Gelombang 2",
+      periode: "Maret 2026 - Juni 2026",
+      tanggalMulai: "1 Maret 2026",
+      tanggalAkhir: "30 Juni 2026",
+      status: "Belum Dibuka",
+      benefit: "Masih bisa mendaftar dengan biaya sesuai gelombang 2",
+    },
   ];
 
-  const biayaAwal = [
-    { item: "Uang Pangkal", biaya: "Rp 5.000.000" },
-    { item: "Seragam & Perlengkapan", biaya: "Rp 2.000.000" },
-    { item: "Buku & Kitab", biaya: "Rp 1.500.000" },
-    { item: "Matras & Lemari", biaya: "Rp 1.000.000" },
-  ];
+  const biayaAdministrasi = {
+    gelombang1: {
+      kb: {
+        spp: 145000,
+        seragam: 600000,
+        sarana: 300000,
+        peralatan: 250000,
+        kegiatan: 750000,
+        infaq: 600000,
+        total: 2645000,
+      },
+      tk: {
+        spp: 205000,
+        seragam: 750000,
+        sarana: 300000,
+        peralatan: 250000,
+        kegiatan: 900000,
+        infaq: 600000,
+        total: 3005000,
+      },
+    },
+    gelombang2: {
+      kb: {
+        spp: 145000,
+        seragam: 600000,
+        sarana: 300000,
+        peralatan: 250000,
+        kegiatan: 750000,
+        infaq: 750000,
+        total: 2795000,
+      },
+      tk: {
+        spp: 205000,
+        seragam: 750000,
+        sarana: 300000,
+        peralatan: 250000,
+        kegiatan: 900000,
+        infaq: 750000,
+        total: 3155000,
+      },
+    },
+  };
 
-  const biayaBulanan = [
-    { item: "SPP", biaya: "Rp 800.000" },
-    { item: "Uang Makan", biaya: "Rp 600.000" },
-    { item: "Asrama", biaya: "Rp 300.000" },
-    { item: "Kegiatan Ekstrakurikuler", biaya: "Rp 100.000" },
-  ];
-
-  const jadwalPPDB = [
-    {
-      fase: "Pendaftaran Gelombang 1",
-      tanggal: "1 Januari - 31 Maret 2025",
-      status: "Buka",
-    },
-    {
-      fase: "Pendaftaran Gelombang 2",
-      tanggal: "1 April - 31 Mei 2025",
-      status: "Segera",
-    },
-    {
-      fase: "Tes Seleksi",
-      tanggal: "5-10 Juni 2025",
-      status: "Segera",
-    },
-    {
-      fase: "Pengumuman Kelulusan",
-      tanggal: "15 Juni 2025",
-      status: "Segera",
-    },
-    {
-      fase: "Daftar Ulang",
-      tanggal: "16-30 Juni 2025",
-      status: "Segera",
-    },
-    {
-      fase: "Masa Orientasi Santri",
-      tanggal: "1-7 Juli 2025",
-      status: "Segera",
-    },
-  ];
+  const jadwalPembelajaran = {
+    kb: [
+      {
+        hari: "Senin - Jum'at",
+        waktu: "07.00 - 10.00",
+      },
+    ],
+    tk: [
+      {
+        hari: "Senin - Kamis",
+        waktu: "07.00 - 11.30",
+      },
+      {
+        hari: "Jum'at",
+        waktu: "07.00 - 10.00",
+      },
+    ],
+  };
 
   const alurPendaftaran = [
     {
       step: 1,
       title: "Pengisian Formulir",
-      desc: "Isi formulir pendaftaran online atau datang langsung",
+      desc: "Isi formulir pendaftaran dan lengkapi berkas persyaratan",
     },
     {
       step: 2,
-      title: "Pembayaran Pendaftaran",
-      desc: "Bayar biaya pendaftaran dan dapatkan nomor peserta",
+      title: "Pembayaran Formulir",
+      desc: "Bayar biaya formulir Rp 100.000 di sekolah atau transfer",
     },
     {
       step: 3,
-      title: "Tes Seleksi",
-      desc: "Tes tulis, baca Al-Quran, dan wawancara",
+      title: "Verifikasi Berkas",
+      desc: "Tim sekolah akan memverifikasi kelengkapan berkas",
     },
     {
       step: 4,
-      title: "Pengumuman",
-      desc: "Pengumuman kelulusan melalui website dan papan pengumuman",
+      title: "Pembayaran SPMB",
+      desc: "Lakukan pembayaran biaya administrasi sesuai pilihan gelombang",
     },
     {
       step: 5,
-      title: "Daftar Ulang",
-      desc: "Melengkapi berkas dan pembayaran uang pangkal",
+      title: "Pengambilan Seragam",
+      desc: "Ambil seragam dan perlengkapan sekolah",
     },
   ];
 
@@ -120,11 +148,13 @@ export default function PPDBPage() {
             Penerimaan Peserta Didik Baru
           </h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
-            Tahun Ajaran 2025/2026
+            Tahun Ajaran 2026/2027
           </p>
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full">
             <Calendar className="w-5 h-5" />
-            <span className="font-semibold">Pendaftaran Dibuka!</span>
+            <span className="font-semibold">
+              Pendaftaran Mulai 6 Desember 2025
+            </span>
           </div>
         </div>
       </section>
@@ -137,37 +167,55 @@ export default function PPDBPage() {
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <Clock className="w-16 h-16 mx-auto text-teal-500 mb-4" />
-            <h2 className="text-4xl font-bold mb-4">Jadwal PPDB 2025/2026</h2>
+            <h2 className="text-4xl font-bold mb-4">Jadwal Pendaftaran</h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Timeline lengkap proses penerimaan santri baru
+              Pilih gelombang pendaftaran sesuai dengan waktu Anda
             </p>
           </div>
 
-          <div className="space-y-4">
-            {jadwalPPDB.map((item, index) => (
-              <Card key={index} className="hover:shadow-xl transition-all">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-teal-600 dark:text-teal-400 mb-2">
-                        {item.fase}
-                      </h3>
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Calendar className="w-4 h-4" />
-                        <span>{item.tanggal}</span>
-                      </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            {jadwalPendaftaran.map((jadwal, index) => (
+              <Card
+                key={index}
+                className="hover:shadow-xl transition-all border-2 hover:border-teal-500"
+              >
+                <CardHeader className="bg-gradient-to-br from-teal-50 to-blue-50 dark:from-teal-950 dark:to-blue-950">
+                  <CardTitle className="text-2xl text-center">
+                    {jadwal.gelombang}
+                  </CardTitle>
+                  <p className="text-center text-teal-600 dark:text-teal-400 font-semibold">
+                    {jadwal.periode}
+                  </p>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Mulai:
+                    </span>
+                    <span className="font-semibold">{jadwal.tanggalMulai}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Berakhir:
+                    </span>
+                    <span className="font-semibold">{jadwal.tanggalAkhir}</span>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <div
+                      className={`px-4 py-2 rounded-full text-sm font-medium text-center ${
+                        index === 0
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                          : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+                      }`}
+                    >
+                      {jadwal.status}
                     </div>
-                    <div>
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-medium ${
-                          item.status === "Buka"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                            : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
+                  </div>
+                  <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-start gap-2">
+                      <Gift className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <span>{jadwal.benefit}</span>
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -182,7 +230,7 @@ export default function PPDBPage() {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">Alur Pendaftaran</h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Langkah-langkah mudah untuk menjadi santri
+              Langkah-langkah mudah untuk mendaftar
             </p>
           </div>
 
@@ -226,96 +274,395 @@ export default function PPDBPage() {
                   </div>
                 ))}
               </div>
+              <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Catatan:</strong> Biaya formulir pendaftaran Rp
+                  100.000 (belum termasuk dalam biaya administrasi)
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* Biaya */}
-      <section
-        id="biaya"
-        className="py-20 px-6 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 scroll-mt-32"
-      >
+      {/* Jadwal Pembelajaran */}
+      <section className="py-20 px-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-12">
-            <DollarSign className="w-16 h-16 mx-auto text-teal-500 mb-4" />
-            <h2 className="text-4xl font-bold mb-4">Informasi Biaya</h2>
+            <h2 className="text-4xl font-bold mb-4">Jadwal Pembelajaran</h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Rincian biaya pendidikan di pesantren
+              Waktu belajar untuk KB dan TK
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Biaya Pendaftaran */}
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* KB */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Biaya Pendaftaran</CardTitle>
+              <CardHeader className="bg-gradient-to-br from-blue-100 to-teal-100 dark:from-blue-950 dark:to-teal-950">
+                <div className="flex items-center justify-center gap-3">
+                  <Baby className="w-8 h-8 text-blue-600" />
+                  <CardTitle className="text-2xl">Kelompok Bermain (KB)</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {biayaPendaftaran.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span className="text-sm">{item.item}</span>
-                      <span className="font-semibold">{item.biaya}</span>
+              <CardContent className="p-6">
+                {jadwalPembelajaran.kb.map((jadwal, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-4 rounded-lg mb-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-teal-500" />
+                      <span className="font-medium">{jadwal.hari}</span>
                     </div>
-                  ))}
-                  <div className="border-t pt-3 flex justify-between font-bold text-teal-600">
-                    <span>Total</span>
-                    <span>Rp 300.000</span>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-teal-500" />
+                      <span className="text-teal-600 font-semibold">
+                        {jadwal.waktu}
+                      </span>
+                    </div>
                   </div>
+                ))}
+                <div className="mt-6 space-y-2">
+                  <h4 className="font-semibold">Kegiatan Harian:</h4>
+                  <ul className="space-y-1 text-sm">
+                    <li>• Happy morning</li>
+                    <li>• Mengaji</li>
+                    <li>• Bekal sehat & bermain</li>
+                    <li>• Pembelajaran</li>
+                    <li>• Pulang</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Biaya Awal */}
+            {/* TK */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Biaya Awal Masuk</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {biayaAwal.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span className="text-sm">{item.item}</span>
-                      <span className="font-semibold">{item.biaya}</span>
-                    </div>
-                  ))}
-                  <div className="border-t pt-3 flex justify-between font-bold text-teal-600">
-                    <span>Total</span>
-                    <span>Rp 9.500.000</span>
-                  </div>
+              <CardHeader className="bg-gradient-to-br from-teal-100 to-green-100 dark:from-teal-950 dark:to-green-950">
+                <div className="flex items-center justify-center gap-3">
+                  <Users className="w-8 h-8 text-teal-600" />
+                  <CardTitle className="text-2xl">Taman Kanak-kanak (TK)</CardTitle>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Biaya Bulanan */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Biaya Bulanan</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {biayaBulanan.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span className="text-sm">{item.item}</span>
-                      <span className="font-semibold">{item.biaya}</span>
+              <CardContent className="p-6">
+                {jadwalPembelajaran.tk.map((jadwal, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-4 rounded-lg mb-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-teal-500" />
+                      <span className="font-medium">{jadwal.hari}</span>
                     </div>
-                  ))}
-                  <div className="border-t pt-3 flex justify-between font-bold text-teal-600">
-                    <span>Total</span>
-                    <span>Rp 1.800.000</span>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-teal-500" />
+                      <span className="text-teal-600 font-semibold">
+                        {jadwal.waktu}
+                      </span>
+                    </div>
                   </div>
+                ))}
+                <div className="mt-6 space-y-2">
+                  <h4 className="font-semibold">Kegiatan Harian:</h4>
+                  <ul className="space-y-1 text-sm">
+                    <li>• Happy morning</li>
+                    <li>• Mengaji</li>
+                    <li>• Bekal sehat & bermain</li>
+                    <li>• Pembelajaran</li>
+                    <li>• Pulang</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
           </div>
+        </div>
+      </section>
 
+      {/* Biaya Administrasi */}
+      <section
+        id="biaya"
+        className="py-20 px-6 bg-white dark:bg-gray-800 scroll-mt-32"
+      >
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <DollarSign className="w-16 h-16 mx-auto text-teal-500 mb-4" />
+            <h2 className="text-4xl font-bold mb-4">
+              Biaya Administrasi Pendaftaran Siswa Baru
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Tahun Ajaran 2026-2027
+            </p>
+          </div>
+
+          {/* Gelombang 1 */}
+          <div className="mb-12">
+            <h3 className="text-2xl font-bold mb-6 text-center text-teal-600">
+              Gelombang 1 (Desember 2025 - Februari 2026)
+            </h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* KB Gelombang 1 */}
+              <Card>
+                <CardHeader className="bg-blue-50 dark:bg-blue-950">
+                  <CardTitle className="text-center">
+                    Kelompok Bermain (KB)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <table className="w-full">
+                    <tbody className="space-y-2">
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">SPP bulan Juli 2026</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 145.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Seragam (KB 3 stel)</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 600.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Sarana Prasarana</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 300.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Peralatan</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 250.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Kegiatan 1 tahun</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 750.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Infaq Pembangunan</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 600.000
+                        </td>
+                      </tr>
+                      <tr className="bg-teal-50 dark:bg-teal-950">
+                        <td className="py-3 font-bold">TOTAL</td>
+                        <td className="py-3 text-right font-bold text-teal-600 text-lg">
+                          Rp 2.645.000
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              {/* TK Gelombang 1 */}
+              <Card>
+                <CardHeader className="bg-teal-50 dark:bg-teal-950">
+                  <CardTitle className="text-center">
+                    Taman Kanak-kanak (TK)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <table className="w-full">
+                    <tbody className="space-y-2">
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">SPP bulan Juli 2026</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 205.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Seragam (TK 4 stel)</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 750.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Sarana Prasarana</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 300.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Peralatan</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 250.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Kegiatan 1 tahun</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 900.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Infaq Pembangunan</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 600.000
+                        </td>
+                      </tr>
+                      <tr className="bg-teal-50 dark:bg-teal-950">
+                        <td className="py-3 font-bold">TOTAL</td>
+                        <td className="py-3 text-right font-bold text-teal-600 text-lg">
+                          Rp 3.005.000
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Gelombang 2 */}
+          <div>
+            <h3 className="text-2xl font-bold mb-6 text-center text-blue-600">
+              Gelombang 2 (Maret 2026 - Juni 2026)
+            </h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* KB Gelombang 2 */}
+              <Card>
+                <CardHeader className="bg-blue-50 dark:bg-blue-950">
+                  <CardTitle className="text-center">
+                    Kelompok Bermain (KB)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <table className="w-full">
+                    <tbody className="space-y-2">
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">SPP bulan Juli 2026</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 145.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Seragam (KB 3 stel)</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 600.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Sarana Prasarana</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 300.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Peralatan</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 250.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Kegiatan 1 tahun</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 750.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Infaq Pembangunan</td>
+                        <td className="py-2 text-right font-semibold text-red-600">
+                          Rp 750.000
+                        </td>
+                      </tr>
+                      <tr className="bg-blue-50 dark:bg-blue-950">
+                        <td className="py-3 font-bold">TOTAL</td>
+                        <td className="py-3 text-right font-bold text-blue-600 text-lg">
+                          Rp 2.795.000
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              {/* TK Gelombang 2 */}
+              <Card>
+                <CardHeader className="bg-teal-50 dark:bg-teal-950">
+                  <CardTitle className="text-center">
+                    Taman Kanak-kanak (TK)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <table className="w-full">
+                    <tbody className="space-y-2">
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">SPP bulan Juli 2026</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 205.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Seragam (TK 4 stel)</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 750.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Sarana Prasarana</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 300.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Peralatan</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 250.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Kegiatan 1 tahun</td>
+                        <td className="py-2 text-right font-semibold">
+                          Rp 900.000
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 text-sm">Infaq Pembangunan</td>
+                        <td className="py-2 text-right font-semibold text-red-600">
+                          Rp 750.000
+                        </td>
+                      </tr>
+                      <tr className="bg-blue-50 dark:bg-blue-950">
+                        <td className="py-3 font-bold">TOTAL</td>
+                        <td className="py-3 text-right font-bold text-blue-600 text-lg">
+                          Rp 3.155.000
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Catatan */}
           <div className="mt-8 p-6 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              <strong>Catatan:</strong> Biaya dapat berubah sewaktu-waktu. Untuk
-              informasi lebih detail dan beasiswa, silakan hubungi bagian
-              administrasi pesantren.
-            </p>
+            <h4 className="font-bold mb-3 text-amber-800 dark:text-amber-200">
+              Catatan Penting:
+            </h4>
+            <ul className="space-y-2 text-sm text-amber-800 dark:text-amber-200">
+              <li className="flex items-start gap-2">
+                <span>•</span>
+                <span>
+                  Belum termasuk formulir pendaftaran Rp 100.000
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span>•</span>
+                <span>
+                  Bonus souvenir cantik bagi yang melunasi maksimal bulan Juni
+                  2026
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span>•</span>
+                <span>
+                  Perbedaan biaya Gelombang 1 dan 2 ada pada Infaq Pembangunan
+                </span>
+              </li>
+            </ul>
           </div>
         </div>
       </section>
@@ -326,8 +673,8 @@ export default function PPDBPage() {
           <Users className="w-16 h-16 mx-auto mb-6" />
           <h2 className="text-4xl font-bold mb-4">Siap Bergabung?</h2>
           <p className="text-xl mb-8">
-            Daftarkan putra-putri Anda sekarang dan raih masa depan yang cerah
-            dengan pendidikan Islam berkualitas
+            Daftarkan putra-putri Anda sekarang dan dapatkan bonus souvenir
+            cantik untuk pendaftar awal!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">

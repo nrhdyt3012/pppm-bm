@@ -16,6 +16,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const metadata = {
+  title: "PAUD Aisyiyah Bustanul Athfal 1 Buduran",
+  description: "Sistem Informasi Manajemen Pembayaran PAUD Aisyiyah Bustanul Athfal 1 Buduran",
+  icons: { icon: "/logo_ppm.svg" },
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -23,22 +29,17 @@ export default async function RootLayout({
 }>) {
   const cookiesStore = await cookies();
   const userProfileCookie = cookiesStore.get("user_profile");
-  
+
   let profile = {};
-  
   try {
     profile = userProfileCookie?.value ? JSON.parse(userProfileCookie.value) : {};
-  } catch (error) {
-    console.error("❌ Error parsing user_profile in layout:", error);
+  } catch {
+    profile = {};
   }
 
-  console.log("📄 Layout - Profile:", profile);
-
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="id" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ReactQueryProvider>
           <AuthStoreProvider profile={profile}>
             <ThemeProvider

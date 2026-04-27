@@ -13,9 +13,7 @@ import {
   Phone,
   Mail,
   Clock,
-  Facebook,
   Instagram,
-  Youtube,
   Send,
   MessageCircle,
 } from "lucide-react";
@@ -33,7 +31,6 @@ export default function KontakPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Di production, ini akan mengirim ke backend/email
     toast.success("Pesan Terkirim!", {
       description: "Kami akan menghubungi Anda segera. Terima kasih!",
     });
@@ -60,87 +57,54 @@ export default function KontakPage() {
       icon: <MapPin className="w-8 h-8 text-teal-500" />,
       title: "Alamat",
       content: [
-        "Jl. Raya Pesantren No. 123",
-        "Kelurahan Contoh, Kecamatan Sample",
-        "Surabaya, Jawa Timur 60111",
+        "Jl. Kavling Persada Asri C-37",
+        "Damarsi, Buduran, Sidoarjo",
+        "Jawa Timur, Indonesia",
       ],
     },
     {
       icon: <Phone className="w-8 h-8 text-teal-500" />,
-      title: "Telepon",
+      title: "Telepon / WhatsApp",
       content: [
-        "+62 31 1234 5678 (Kantor)",
-        "+62 812 3456 7890 (Admin PPDB)",
-        "+62 813 4567 8901 (Pengasuh)",
+        "Ust. Aminah",
+        "0815 5336 6321",
       ],
     },
     {
-      icon: <Mail className="w-8 h-8 text-teal-500" />,
-      title: "Email",
+      icon: <Instagram className="w-8 h-8 text-teal-500" />,
+      title: "Media Sosial",
       content: [
-        "info@ppbaitulmakmur.ac.id",
-        "ppdb@ppbaitulmakmur.ac.id",
-        "admin@ppbaitulmakmur.ac.id",
+        "@abasatubuduran",
+        "Instagram KB TK Aisyiyah",
       ],
     },
     {
       icon: <Clock className="w-8 h-8 text-teal-500" />,
       title: "Jam Operasional",
       content: [
-        "Senin - Jumat: 08.00 - 16.00 WIB",
-        "Sabtu: 08.00 - 13.00 WIB",
-        "Minggu & Libur Nasional: Tutup",
+        "Senin - Kamis: 07.00 - 12.00 WIB",
+        "Jum'at: 07.00 - 11.00 WIB",
+        "Sabtu & Minggu: Tutup",
       ],
-    },
-  ];
-
-  const socialMedia = [
-    {
-      name: "Facebook",
-      icon: <Facebook className="w-6 h-6" />,
-      url: "https://facebook.com/ppbaitulmakmur",
-      handle: "@ppbaitulmakmur",
-      color: "hover:bg-blue-600",
-    },
-    {
-      name: "Instagram",
-      icon: <Instagram className="w-6 h-6" />,
-      url: "https://instagram.com/ppbaitulmakmur",
-      handle: "@ppbaitulmakmur",
-      color: "hover:bg-pink-600",
-    },
-    {
-      name: "YouTube",
-      icon: <Youtube className="w-6 h-6" />,
-      url: "https://youtube.com/@ppbaitulmakmur",
-      handle: "PP Baitul Makmur",
-      color: "hover:bg-red-600",
-    },
-    {
-      name: "WhatsApp",
-      icon: <MessageCircle className="w-6 h-6" />,
-      url: "https://wa.me/6281234567890",
-      handle: "+62 812 3456 7890",
-      color: "hover:bg-green-600",
     },
   ];
 
   const faq = [
     {
-      q: "Apakah bisa berkunjung ke pesantren sebelum mendaftar?",
-      a: "Tentu bisa! Kami menyambut calon santri dan orang tua untuk berkunjung. Silakan hubungi kami terlebih dahulu untuk mengatur jadwal kunjungan.",
+      q: "Apakah bisa berkunjung ke sekolah sebelum mendaftar?",
+      a: "Tentu bisa! Kami menyambut calon orang tua murid untuk berkunjung dan melihat langsung fasilitas sekolah. Silakan hubungi kami terlebih dahulu untuk mengatur jadwal kunjungan.",
     },
     {
-      q: "Bagaimana cara mendaftar santri baru?",
-      a: "Anda dapat mendaftar online melalui website kami atau datang langsung ke kantor sekretariat pesantren dengan membawa berkas persyaratan.",
+      q: "Bagaimana cara mendaftar siswa baru?",
+      a: "Anda dapat mendaftar dengan datang langsung ke sekolah atau menghubungi kontak kami. Bawa berkas persyaratan dan isi formulir pendaftaran.",
     },
     {
       q: "Apakah tersedia program beasiswa?",
-      a: "Ya, kami menyediakan beasiswa prestasi dan beasiswa tidak mampu. Informasi lengkap dapat ditanyakan saat pendaftaran.",
+      a: "Untuk informasi mengenai program keringanan biaya atau beasiswa, silakan konsultasi langsung dengan pihak sekolah melalui kontak yang tersedia.",
     },
     {
-      q: "Berapa lama masa pendidikan di pesantren?",
-      a: "Program pendidikan kami setara dengan SMP (3 tahun) dan SMA (3 tahun). Total 6 tahun untuk santri yang masuk dari tingkat SMP.",
+      q: "Berapa lama masa pendidikan di KB dan TK?",
+      a: "KB untuk anak usia 2-4 tahun (1-2 tahun), TK untuk usia 4-6 tahun (2 tahun). Total masa pendidikan di lembaga kami bisa 3-4 tahun tergantung usia masuk.",
     },
   ];
 
@@ -153,8 +117,8 @@ export default function KontakPage() {
         <div className="container mx-auto text-center">
           <h1 className="text-5xl font-bold mb-4">Hubungi Kami</h1>
           <p className="text-xl max-w-2xl mx-auto">
-            Kami siap membantu menjawab pertanyaan Anda tentang Pondok
-            Pesantren Baitul Makmur
+            Kami siap membantu menjawab pertanyaan Anda tentang KB TK 'Aisyiyah
+            Bustanul Athfal 1 Buduran
           </p>
         </div>
       </section>
@@ -227,7 +191,7 @@ export default function KontakPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone">Nomor Telepon</Label>
+                    <Label htmlFor="phone">Nomor Telepon / WhatsApp</Label>
                     <Input
                       id="phone"
                       name="phone"
@@ -272,80 +236,107 @@ export default function KontakPage() {
               </CardContent>
             </Card>
 
-            {/* Map */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">Lokasi Kami</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-video rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
-                  <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126748.60803046968!2d112.63033!3d-7.27574!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7fbf8381ac47f%3A0x3027a76e352be40!2sSurabaya%2C%20East%20Java!5e0!3m2!1sen!2sid!4v1234567890"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Lokasi Pondok Pesantren Baitul Makmur"
-                  />
-                </div>
-                <div className="mt-4 space-y-2">
-                  <h4 className="font-semibold">Petunjuk Arah:</h4>
-                  <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <li>• Dari Terminal Bungurasih: 20 menit (10 km)</li>
-                    <li>• Dari Stasiun Gubeng: 25 menit (12 km)</li>
-                    <li>• Dari Bandara Juanda: 45 menit (30 km)</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Map & WhatsApp */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl">Lokasi Kami</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-video rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
+                    <iframe
+                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3957.2!2d112.7!3d-7.4!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zN8KwMjQnMDAuMCJTIDExMsKwNDInMDAuMCJF!5e0!3m2!1sen!2sid!4v1234567890"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Lokasi KB TK Aisyiyah Bustanul Athfal 1 Buduran"
+                    />
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <h4 className="font-semibold">Alamat Lengkap:</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Jl. Kavling Persada Asri C-37, Damarsi, Buduran, Sidoarjo,
+                      Jawa Timur
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* WhatsApp Quick Contact */}
+              <Card className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-950 dark:to-teal-950">
+                <CardContent className="p-6">
+                  <div className="text-center space-y-4">
+                    <MessageCircle className="w-16 h-16 mx-auto text-green-600" />
+                    <h3 className="text-xl font-bold">Hubungi Via WhatsApp</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Butuh informasi cepat? Chat langsung dengan kami melalui
+                      WhatsApp
+                    </p>
+                    <a
+                      href="https://wa.me/6281553366321"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button className="w-full bg-green-600 hover:bg-green-700">
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat WhatsApp
+                      </Button>
+                    </a>
+                    <p className="text-xs text-gray-500">
+                      Ust. Aminah - 0815 5336 6321
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Social Media */}
       <section
-        id="telepon"
+        id="social"
         className="py-20 px-6 bg-white dark:bg-gray-800 scroll-mt-32"
       >
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-4xl font-bold mb-4">Ikuti Media Sosial Kami</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-12">
-            Dapatkan update terbaru dan informasi seputar pesantren
+            Dapatkan update terbaru dan informasi seputar kegiatan sekolah
           </p>
 
-          <div className="grid md:grid-cols-4 gap-6">
-            {socialMedia.map((social, index) => (
-              <a
-                key={index}
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-              >
-                <Card className="hover:shadow-xl transition-all">
-                  <CardContent className="p-6">
-                    <div
-                      className={`w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center transition-colors ${social.color} group-hover:text-white`}
-                    >
-                      {social.icon}
-                    </div>
-                    <h3 className="font-bold mb-2">{social.name}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {social.handle}
-                    </p>
-                  </CardContent>
-                </Card>
-              </a>
-            ))}
+          <div className="flex justify-center">
+            <a
+              href="https://instagram.com/abasatubuduran"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group"
+            >
+              <Card className="hover:shadow-xl transition-all w-80">
+                <CardContent className="p-8">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110">
+                    <Instagram className="w-12 h-12 text-white" />
+                  </div>
+                  <h3 className="font-bold text-xl mb-2">Instagram</h3>
+                  <p className="text-teal-600 dark:text-teal-400 font-semibold mb-2">
+                    @abasatubuduran
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Follow Instagram kami untuk melihat kegiatan harian dan
+                    prestasi anak-anak
+                  </p>
+                </CardContent>
+              </Card>
+            </a>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
       <section
-        id="email"
+        id="faq"
         className="py-20 px-6 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 scroll-mt-32"
       >
         <div className="container mx-auto max-w-4xl">
@@ -354,7 +345,7 @@ export default function KontakPage() {
               Pertanyaan yang Sering Diajukan
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Beberapa pertanyaan umum dari calon santri dan orang tua
+              Beberapa pertanyaan umum dari calon orang tua murid
             </p>
           </div>
 
@@ -377,11 +368,69 @@ export default function KontakPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               Masih ada pertanyaan lain?
             </p>
-            <Button className="bg-teal-500 hover:bg-teal-600">
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Chat dengan Admin
-            </Button>
+            <a
+              href="https://wa.me/6281553366321"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button className="bg-teal-500 hover:bg-teal-600">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat dengan Kami
+              </Button>
+            </a>
           </div>
+        </div>
+      </section>
+
+      {/* Jam Kunjungan */}
+      <section className="py-20 px-6 bg-white dark:bg-gray-800">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-12">
+            <Clock className="w-16 h-16 mx-auto text-teal-500 mb-4" />
+            <h2 className="text-4xl font-bold mb-4">Jam Kunjungan</h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Waktu terbaik untuk berkunjung dan konsultasi
+            </p>
+          </div>
+
+          <Card>
+            <CardContent className="p-8">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-teal-500" />
+                    <span className="font-semibold">Senin - Kamis</span>
+                  </div>
+                  <span className="text-teal-600 font-semibold">
+                    07.00 - 12.00 WIB
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-teal-500" />
+                    <span className="font-semibold">Jum'at</span>
+                  </div>
+                  <span className="text-teal-600 font-semibold">
+                    07.00 - 11.00 WIB
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-red-500" />
+                    <span className="font-semibold">Sabtu & Minggu</span>
+                  </div>
+                  <span className="text-red-600 font-semibold">Tutup</span>
+                </div>
+              </div>
+              <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Catatan:</strong> Untuk kunjungan, sebaiknya membuat
+                  janji terlebih dahulu melalui telepon atau WhatsApp agar kami
+                  dapat melayani Anda dengan lebih baik.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
