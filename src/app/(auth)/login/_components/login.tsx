@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import FormInput from "@/components/common/form-input";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { login } from "../actions";
-import { Link, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
 import { useRouter } from "next/navigation";
@@ -76,7 +77,7 @@ export default function Login() {
       <div className="mb-8">
         <Image
           src="/logo_ppm.svg"
-          alt="Logo PPPM Baitul Makmur"
+          alt="Logo PAUD ABA 1 Buduran"
           width={120}
           height={120}
           className="rounded-full shadow-lg"
@@ -89,10 +90,10 @@ export default function Login() {
           Selamat Datang
         </h1>
         <p className="text-gray-600 dark:text-gray-300 max-w-md">
-          Sistem Informasi Pondok Pesantren Baitul Makmur
+          KB TK Aisyiyah Bustanul Athfal 1 Buduran
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          Portal untuk Wali Santri dan Administrator
+          Portal untuk Wali Siswa dan Administrator
         </p>
       </div>
 
@@ -120,11 +121,14 @@ export default function Login() {
                 placeholder="••••••••"
                 type="password"
               />
-<div className="text-right">
-  <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
-    Lupa password?
-  </Link>
-</div>
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Lupa password?
+                </Link>
+              </div>
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
@@ -145,7 +149,7 @@ export default function Login() {
       </Card>
 
       <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>© 2024 Pondok Pesantren Baitul Makmur</p>
+        <p>© {new Date().getFullYear()} KB TK Aisyiyah Bustanul Athfal 1 Buduran</p>
         <p className="mt-1">Semua hak cipta dilindungi</p>
       </div>
     </div>

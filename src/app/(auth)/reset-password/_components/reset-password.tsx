@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
-import { Loader2, Lock, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { Loader2, Lock, CheckCircle, Eye, EyeOff, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -22,17 +22,28 @@ export default function ResetPassword() {
   const [isPending, setIsPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isValidSession, setIsValidSession] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
-  // Supabase otomatis handle token dari URL hash
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setIsValidSession(true);
-    });
 
-    // Listen untuk auth state change (ketika user klik link dari email)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setIsValidSession(true);
+    // Cek session yang ada (token dari URL hash ditangani otomatis oleh Supabase)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsValidSession(true);
+      }
+      setIsChecking(false);
+    };
+
+    checkSession();
+
+    // Listen untuk auth state change saat user klik link reset dari email
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        setIsValidSession(true);
+        setIsChecking(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -46,7 +57,7 @@ export default function ResetPassword() {
       return;
     }
     if (password !== confirmPassword) {
-      toast.error("Password tidak cocok");
+      toast.error("Konfirmasi password tidak cocok");
       return;
     }
 
@@ -71,6 +82,19 @@ export default function ResetPassword() {
     }, 3000);
   };
 
+  // Loading state saat cek session
+  if (isChecking) {
+    return (
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+          <p className="text-muted-foreground text-sm">Memvalidasi sesi...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika berhasil reset password
   if (isSuccess) {
     return (
       <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
@@ -96,6 +120,41 @@ export default function ResetPassword() {
     );
   }
 
+  // Jika sesi tidak valid (link kadaluarsa / tidak ada token)
+  if (!isValidSession) {
+    return (
+      <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
+        <div className="absolute top-4 right-4"><DarkmodeToggle /></div>
+        <Card className="w-full max-w-md shadow-xl">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold mb-2">Link Tidak Valid atau Kadaluarsa</h2>
+                <p className="text-muted-foreground text-sm">
+                  Link reset password ini sudah tidak berlaku. Silakan minta link baru.
+                </p>
+              </div>
+              <Link href="/forgot-password" className="w-full">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  Minta Link Baru
+                </Button>
+              </Link>
+              <Link href="/login" className="w-full">
+                <Button variant="outline" className="w-full">
+                  Kembali ke Login
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Form reset password
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
       <div className="absolute top-4 right-4"><DarkmodeToggle /></div>
@@ -123,9 +182,14 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isPending}
                 />
-                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -138,18 +202,36 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  disabled={isPending}
                 />
-                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowConfirm(!showConfirm)}>
-                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                >
+                  {showConfirm ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
               </div>
               {confirmPassword && password !== confirmPassword && (
                 <p className="text-xs text-red-500">Password tidak cocok</p>
               )}
             </div>
-            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isPending || !isValidSession}>
-              {isPending ? <><Loader2 className="mr-2 animate-spin" />Menyimpan...</> : "Simpan Password Baru"}
+            <Button
+              type="submit"
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={isPending || !password || !confirmPassword || password !== confirmPassword}
+            >
+              {isPending ? (
+                <><Loader2 className="mr-2 animate-spin" />Menyimpan...</>
+              ) : (
+                "Simpan Password Baru"
+              )}
             </Button>
+            <Link href="/login" className="block">
+              <Button variant="ghost" className="w-full" type="button">
+                Kembali ke Login
+              </Button>
+            </Link>
           </form>
         </CardContent>
       </Card>

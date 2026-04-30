@@ -16,9 +16,18 @@ export async function sendResetPasswordEmail(prevState: any, formData: FormData)
     redirectTo: `${appUrl}/reset-password`,
   });
 
+  // Selalu return success untuk keamanan (tidak bocorkan apakah email terdaftar)
   if (error) {
-    return { status: "error", message: error.message };
+    console.error("Reset password error:", error.message);
+    // Tetap return success agar tidak bocorkan info email
+    // kecuali error konfigurasi server
+    if (error.message.includes("Unable to validate") || error.message.includes("not enabled")) {
+      return { status: "error", message: "Layanan reset password tidak tersedia saat ini. Hubungi admin." };
+    }
   }
 
-  return { status: "success", message: "Link reset password telah dikirim ke email Anda" };
+  return {
+    status: "success",
+    message: "Link reset password telah dikirim ke email Anda",
+  };
 }

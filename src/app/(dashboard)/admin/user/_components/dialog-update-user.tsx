@@ -54,7 +54,7 @@ export default function DialogUpdateUser({
   useEffect(() => {
     if (currentData) {
       form.setValue("nama_siswa", (currentData.namaSiswa || currentData.name || "") as string);
-      form.setValue("NIS", (currentData.NIS || "") as string);
+      form.setValue("NIS", (currentData.nis || "") as string);
       form.setValue("kelas", (currentData.kelas || "") as string);
       form.setValue("angkatan", (currentData.angkatan || "") as string);
       form.setValue("nama_wali", (currentData.namaWali || "") as string);

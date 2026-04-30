@@ -5,6 +5,7 @@ import DropdownAction from "@/components/common/dropdown-action";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HEADER_TABLE_USER } from "@/constants/user-constant";
 import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
@@ -28,11 +29,12 @@ export default function UserManagement() {
         .from("siswa")
         .select("*", { count: "exact" })
         .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
-        .order("namaSiswa");
+        .order("namasiswa");
 
       if (currentSearch) {
+        // Gunakan nama kolom lowercase sesuai database PostgreSQL
         query = query.or(
-          `namaSiswa.ilike.%${currentSearch}%,NIS.ilike.%${currentSearch}%,namaWali.ilike.%${currentSearch}%`
+          `namasiswa.ilike.%${currentSearch}%,nis.ilike.%${currentSearch}%,namawali.ilike.%${currentSearch}%`
         );
       }
 
@@ -51,16 +53,44 @@ export default function UserManagement() {
     if (!users?.data) return [];
     return users.data.map((user: any, index: number) => [
       currentLimit * (currentPage - 1) + index + 1,
+      <Avatar key={`foto-${user.id}`} className="h-9 w-9">
+        <AvatarImage
+          src={user.avatarUrl || user.avatarurl}
+          alt={user.namaSiswa || user.namasiswa}
+          className="object-cover"
+        />
+        <AvatarFallback className="text-xs bg-green-100 text-green-700">
+          {((user.namaSiswa || user.namasiswa) || "?").charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>,
       <div key={`nama-${user.id}`}>
-        <p className="font-medium">{user.namaSiswa}</p>
+        <p className="font-medium">{user.namaSiswa || user.namasiswa || "-"}</p>
       </div>,
-      user.NIS || "-",
+      <span key={`nis-${user.id}`} className="text-sm text-muted-foreground font-mono">
+        {user.NIS || user.nis || "-"}
+      </span>,
       <span key={`kelas-${user.id}`} className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
         {user.kelas || "-"}
       </span>,
-      user.angkatan || "-",
-      user.namaWali || "-",
-      user.noWa || "-",
+      <span key={`angkatan-${user.id}`} className="text-sm">
+        {user.angkatan || "-"}
+      </span>,
+      <span key={`wali-${user.id}`} className="text-sm">
+        {user.namaWali || user.namawali || "-"}
+      </span>,
+      <span key={`nowa-${user.id}`} className="text-sm">
+        {user.noWa || user.nowa || "-"}
+      </span>,
+      <span key={`tl-${user.id}`} className="text-sm">
+        {user.tempatLahir || user.tempatlahir || "-"}
+      </span>,
+      <span key={`ttl-${user.id}`} className="text-sm">
+        {(user.tanggalLahir || user.tanggallahir)
+          ? new Date(user.tanggalLahir || user.tanggallahir).toLocaleDateString("id-ID", {
+              day: "numeric", month: "short", year: "numeric",
+            })
+          : "-"}
+      </span>,
       <span
         key={`status-${user.id}`}
         className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -76,12 +106,32 @@ export default function UserManagement() {
         menu={[
           {
             label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit</span>,
-            action: () => setSelectedAction({ data: { ...user, name: user.namaSiswa }, type: "update" }),
+            action: () => setSelectedAction({
+              data: {
+                ...user,
+                name: user.namaSiswa || user.namasiswa,
+                namaSiswa: user.namaSiswa || user.namasiswa,
+                NIS: user.NIS || user.nis,
+                namaWali: user.namaWali || user.namawali,
+                noWa: user.noWa || user.nowa,
+                tempatLahir: user.tempatLahir || user.tempatlahir,
+                tanggalLahir: user.tanggalLahir || user.tanggallahir,
+                avatar_url: user.avatarUrl || user.avatarurl,
+              },
+              type: "update"
+            }),
           },
           {
             label: <span className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-400" />Hapus</span>,
             variant: "destructive",
-            action: () => setSelectedAction({ data: { ...user, name: user.namaSiswa }, type: "delete" }),
+            action: () => setSelectedAction({
+              data: {
+                ...user,
+                name: user.namaSiswa || user.namasiswa,
+                avatar_url: user.avatarUrl || user.avatarurl,
+              },
+              type: "delete"
+            }),
           },
         ]}
       />,
@@ -100,7 +150,10 @@ export default function UserManagement() {
           <p className="text-sm text-muted-foreground">Kelola data siswa PAUD</p>
         </div>
         <div className="flex gap-2">
-          <Input placeholder="Cari nama, NIS, atau wali..." onChange={(e) => handleChangeSearch(e.target.value)} />
+          <Input
+            placeholder="Cari nama, NIS, atau wali..."
+            onChange={(e) => handleChangeSearch(e.target.value)}
+          />
           <Dialog>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">

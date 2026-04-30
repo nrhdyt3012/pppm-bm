@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/user/actions.ts
 "use server";
 
 import { deleteFile, uploadFile } from "@/actions/storage-action";
@@ -6,6 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { AuthFormState } from "@/types/auth";
 import { createUserSchema, updateUserSchema } from "@/validations/auth-validation";
 import { revalidatePath } from "next/cache";
+
+async function detectColumnNames(supabase: any): Promise<"camel" | "lower"> {
+  const { data } = await supabase.from("siswa").select("*").limit(1);
+  if (data && data[0]) {
+    if ("namaSiswa" in data[0]) return "camel";
+    if ("namasiswa" in data[0]) return "lower";
+  }
+  return "camel";
+}
 
 export async function createUser(prevState: AuthFormState, formData: FormData) {
   const validatedFields = createUserSchema.safeParse({
@@ -26,26 +34,15 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
   if (!validatedFields.success) {
     return {
       status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
+      errors: { ...validatedFields.error.flatten().fieldErrors, _form: [] },
     };
   }
 
-  // Upload avatar jika berupa file
-  let avatarUrl = validatedFields.data.avatar_url as string || "";
+  let avatarUrl = (validatedFields.data.avatar_url as string) || "";
   if (validatedFields.data.avatar_url instanceof File && validatedFields.data.avatar_url.size > 0) {
-    const uploadResult = await uploadFile(
-      "images",
-      "siswa",
-      validatedFields.data.avatar_url
-    );
+    const uploadResult = await uploadFile("images", "siswa", validatedFields.data.avatar_url);
     if (uploadResult.status === "error") {
-      return {
-        status: "error",
-        errors: { ...prevState.errors, _form: ["Gagal upload foto"] },
-      };
+      return { status: "error", errors: { ...prevState.errors, _form: ["Gagal upload foto"] } };
     }
     avatarUrl = uploadResult.data?.url || "";
   }
@@ -59,40 +56,50 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     user_metadata: {
       role: validatedFields.data.role,
       nama_siswa: validatedFields.data.nama_siswa,
-      NIS: validatedFields.data.NIS,
-      kelas: validatedFields.data.kelas,
-      angkatan: validatedFields.data.angkatan,
-      nama_wali: validatedFields.data.nama_wali,
-      no_wa: validatedFields.data.no_wa,
-      tempat_lahir: validatedFields.data.tempat_lahir,
-      tanggal_lahir: validatedFields.data.tanggal_lahir,
-      avatar_url: avatarUrl,
     },
   });
 
   if (authError) {
-    return {
-      status: "error",
-      errors: { ...prevState.errors, _form: [authError.message] },
-    };
+    return { status: "error", errors: { ...prevState.errors, _form: [authError.message] } };
   }
 
-  // Insert langsung ke tabel siswa jika trigger tidak aktif
   if (data?.user) {
-    await supabase.from("siswa").upsert({
-      id: data.user.id,
-      email: validatedFields.data.email,
-      namaSiswa: validatedFields.data.nama_siswa,
-      NIS: validatedFields.data.NIS || null,
-      kelas: validatedFields.data.kelas,
-      angkatan: validatedFields.data.angkatan || null,
-      namaWali: validatedFields.data.nama_wali,
-      noWa: validatedFields.data.no_wa,
-      tempatLahir: validatedFields.data.tempat_lahir || null,
-      tanggalLahir: validatedFields.data.tanggal_lahir || null,
-      avatarUrl: avatarUrl || null,
-      status: "aktif",
-    });
+    const colType = await detectColumnNames(supabase);
+
+    const payload = colType === "camel"
+      ? {
+          id: data.user.id,
+          email: validatedFields.data.email,
+          namaSiswa: validatedFields.data.nama_siswa,
+          NIS: validatedFields.data.NIS || null,
+          kelas: validatedFields.data.kelas,
+          angkatan: validatedFields.data.angkatan || null,
+          namaWali: validatedFields.data.nama_wali,
+          noWa: validatedFields.data.no_wa,
+          tempatLahir: validatedFields.data.tempat_lahir || null,
+          tanggalLahir: validatedFields.data.tanggal_lahir || null,
+          avatarUrl: avatarUrl || null,
+          status: "aktif",
+        }
+      : {
+          id: data.user.id,
+          email: validatedFields.data.email,
+          namasiswa: validatedFields.data.nama_siswa,
+          nis: validatedFields.data.NIS || null,
+          kelas: validatedFields.data.kelas,
+          angkatan: validatedFields.data.angkatan || null,
+          namawali: validatedFields.data.nama_wali,
+          nowa: validatedFields.data.no_wa,
+          tempatlahir: validatedFields.data.tempat_lahir || null,
+          tanggallahir: validatedFields.data.tanggal_lahir || null,
+          avatarurl: avatarUrl || null,
+          status: "aktif",
+        };
+
+    const { error: insertError } = await supabase.from("siswa").upsert(payload);
+    if (insertError) {
+      console.error("Insert siswa error:", insertError.message);
+    }
   }
 
   revalidatePath("/admin/user");
@@ -116,27 +123,19 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
   if (!validatedFields.success) {
     return {
       status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
+      errors: { ...validatedFields.error.flatten().fieldErrors, _form: [] },
     };
   }
 
-  let avatarUrl = validatedFields.data.avatar_url as string || "";
+  let avatarUrl = (validatedFields.data.avatar_url as string) || "";
   if (validatedFields.data.avatar_url instanceof File && validatedFields.data.avatar_url.size > 0) {
     const oldAvatarUrl = formData.get("old_avatar_url") as string;
     const uploadResult = await uploadFile(
-      "images",
-      "siswa",
-      validatedFields.data.avatar_url,
+      "images", "siswa", validatedFields.data.avatar_url,
       oldAvatarUrl?.split("/images/")[1]
     );
     if (uploadResult.status === "error") {
-      return {
-        status: "error",
-        errors: { ...prevState.errors, _form: ["Gagal upload foto"] },
-      };
+      return { status: "error", errors: { ...prevState.errors, _form: ["Gagal upload foto"] } };
     }
     avatarUrl = uploadResult.data?.url || "";
   }
@@ -144,20 +143,40 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
   const supabase = await createClient({ isAdmin: true });
   const userId = formData.get("id") as string;
 
+  const colType = await detectColumnNames(supabase);
+
+  const payloadCamel: Record<string, any> = {
+    namaSiswa: validatedFields.data.nama_siswa,
+    NIS: validatedFields.data.NIS || null,
+    kelas: validatedFields.data.kelas,
+    angkatan: validatedFields.data.angkatan || null,
+    namaWali: validatedFields.data.nama_wali,
+    noWa: validatedFields.data.no_wa,
+    tempatLahir: validatedFields.data.tempat_lahir || null,
+    tanggalLahir: validatedFields.data.tanggal_lahir || null,
+    // Kolom trigger — pakai key persis seperti di DB (case-sensitive)
+    updatedat: new Date().toISOString(),
+  };
+  if (avatarUrl) payloadCamel.avatarUrl = avatarUrl;
+
+  const payloadLower: Record<string, any> = {
+    namasiswa: validatedFields.data.nama_siswa,
+    nis: validatedFields.data.NIS || null,
+    kelas: validatedFields.data.kelas,
+    angkatan: validatedFields.data.angkatan || null,
+    namawali: validatedFields.data.nama_wali,
+    nowa: validatedFields.data.no_wa,
+    tempatlahir: validatedFields.data.tempat_lahir || null,
+    tanggallahir: validatedFields.data.tanggal_lahir || null,
+    updatedat: new Date().toISOString(),
+  };
+  if (avatarUrl) payloadLower.avatarurl = avatarUrl;
+
+  const payload = colType === "camel" ? payloadCamel : payloadLower;
+
   const { error: siswaError } = await supabase
     .from("siswa")
-    .update({
-      namaSiswa: validatedFields.data.nama_siswa,
-      NIS: validatedFields.data.NIS || null,
-      kelas: validatedFields.data.kelas,
-      angkatan: validatedFields.data.angkatan || null,
-      namaWali: validatedFields.data.nama_wali,
-      noWa: validatedFields.data.no_wa,
-      tempatLahir: validatedFields.data.tempat_lahir || null,
-      tanggalLahir: validatedFields.data.tanggal_lahir || null,
-      avatarUrl: avatarUrl || undefined,
-      updatedAt: new Date().toISOString(),
-    })
+    .update(payload)
     .eq("id", userId);
 
   if (siswaError) {
@@ -183,10 +202,7 @@ export async function deleteUser(prevState: AuthFormState, formData: FormData) {
   const { error } = await supabase.auth.admin.deleteUser(userId);
 
   if (error) {
-    return {
-      status: "error",
-      errors: { ...prevState.errors, _form: [error.message] },
-    };
+    return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
 
   revalidatePath("/admin/user");
