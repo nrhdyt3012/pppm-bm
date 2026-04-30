@@ -3,6 +3,7 @@
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { environment } from "@/configs/environtment";
+import { revalidatePath } from "next/cache";
 
 // Gunakan plain supabase-js client dengan service role key
 // createServerClient dari @supabase/ssr TIDAK bypass RLS meski pakai service role
@@ -31,9 +32,9 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
 
   // Step 1: Ambil data tagihan
   const { data: tagihan, error: fetchError } = await supabase
-    .from("tagihan_santri")
-    .select("idTagihanSantri, idSantri, statusPembayaran, jumlahTagihan")
-    .eq("idTagihanSantri", tagihanId)
+    .from("tagihan_siswa")
+    .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan")
+    .eq("idtagihansiswa", tagihanId)
     .single();
 
   if (fetchError || !tagihan) {
@@ -45,19 +46,19 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
   console.log("📊 [confirmPayment] tagihan:", tagihan);
 
   // Step 2: Jika sudah LUNAS, langsung return sukses
-  if (tagihan.statusPembayaran === "LUNAS") {
+  if (tagihan.statuspembayaran === "LUNAS") {
     console.log("✅ [confirmPayment] already LUNAS");
     return { status: "success", message: "already_lunas" };
   }
 
-  // Step 3: Update tagihan_santri → LUNAS
+  // Step 3: Update tagihan_siswa → LUNAS
   const { error: updateError } = await supabase
-    .from("tagihan_santri")
+    .from("tagihan_siswa")
     .update({
-      statusPembayaran: "LUNAS",
-      updatedAt: new Date().toISOString(),
+      statuspembayaran: "LUNAS",
+      updatedat: new Date().toISOString(),
     })
-    .eq("idTagihanSantri", tagihanId);
+    .eq("idtagihansiswa", tagihanId);
 
   if (updateError) {
     console.error("❌ [confirmPayment] update error:", updateError);
@@ -72,21 +73,21 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
   // Step 4: Cek apakah record pembayaran sudah ada (idempotent)
   const { data: existingPembayaran } = await supabase
     .from("pembayaran")
-    .select("id_pembayaran")
-    .eq("id_tagihan_santri", parseInt(tagihanId))
+    .select("idpembayaran")
+    .eq("idtagihansiswa", parseInt(tagihanId))
     .maybeSingle();
 
-  let pembayaranId: number | null = existingPembayaran?.id_pembayaran ?? null;
+  let pembayaranId: number | null = existingPembayaran?.idpembayaran ?? null;
 
   if (!existingPembayaran) {
     // Step 5: Insert ke tabel pembayaran
     const insertPayload = {
-      id_tagihan_santri: parseInt(tagihanId),
-      id_santri: tagihan.idSantri,
-      jumlah_dibayar: parseFloat(tagihan.jumlahTagihan),
-      tanggal_pembayaran: new Date().toISOString(),
-      metode_pembayaran: "midtrans_online",
-      status_pembayaran: "SUCCESS",
+      idtagihansiswa: parseInt(tagihanId),
+      idsiswa: tagihan.idsiswa,
+      jumlahdibayar: parseFloat(tagihan.jumlahtagihan),
+      tanggalpembayaran: new Date().toISOString(),
+      metodepembayaran: "midtrans_online",
+      statuspembayaran: "SUCCESS",
     };
 
     console.log("📝 [confirmPayment] inserting pembayaran:", insertPayload);
@@ -94,7 +95,7 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
     const { data: newPembayaran, error: insertError } = await supabase
       .from("pembayaran")
       .insert(insertPayload)
-      .select("id_pembayaran")
+      .select("idpembayaran")
       .single();
 
     if (insertError) {
@@ -106,11 +107,11 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
       });
       // Tidak fatal — tagihan sudah LUNAS
     } else {
-      pembayaranId = newPembayaran.id_pembayaran;
+      pembayaranId = newPembayaran.idpembayaran;
       console.log("✅ [confirmPayment] pembayaran inserted, id:", pembayaranId);
     }
   } else {
-    console.log("ℹ️ [confirmPayment] pembayaran exists:", existingPembayaran.id_pembayaran);
+    console.log("ℹ️ [confirmPayment] pembayaran exists:", existingPembayaran.idpembayaran);
   }
 
   // Step 6: Insert ke payment_gateway_log
@@ -118,10 +119,10 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
     const { error: logError } = await supabase
       .from("payment_gateway_log")
       .insert({
-        id_pembayaran: pembayaranId,
-        order_id: rawOrderId,
-        transaction_status_midtrans: "settlement",
-        raw_response_midtrans: {
+        idpembayaran: pembayaranId,
+        orderid: rawOrderId,
+        transactionstatusmidtrans: "settlement",
+        rawresponsemidtrans: {
           note: "Confirmed from success callback page",
           raw_order_id: rawOrderId,
           tagihan_id: tagihanId,
@@ -135,6 +136,10 @@ export async function confirmPayment(tagihanId: string, rawOrderId: string) {
       console.log("✅ [confirmPayment] payment_gateway_log inserted");
     }
   }
+
+  // Revalidate cache untuk halaman tagihan
+  revalidatePath("/siswa/tagihan");
+  revalidatePath("/siswa/riwayat");
 
   return { status: "success" };
 }

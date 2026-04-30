@@ -19,7 +19,7 @@ export type TagihanSiswa = {
   jumlahTagihan: number;
   jumlahTerbayar: number;
   sisa: number;
-  statusPembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
+  statuspembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA";
   paymentToken: string | null;
   createdAt: string;
   updatedAt: string;

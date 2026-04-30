@@ -15,17 +15,17 @@ const BULAN_NAMA = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 type TagihanItem = {
-  idTagihanSiswa: number;
-  jumlahTagihan: string;
-  statusPembayaran: string;
+  idtagihansiswa: number;
+  jumlahtagihan: string;
+  statuspembayaran: string;
   bulan: number;
   tahun: number;
-  createdAt: string;
-  updatedAt: string;
+  createdat: string;
+  updatedat: string;
   master_tagihan: {
-    namaTagihan: string;
+    namatagihan: string;
     jenjang: string;
-    jenisTagihan: string;
+    jenistagihan: string;
     nominal: number;
   };
 };
@@ -50,18 +50,18 @@ export default function RiwayatPembayaran() {
       const { data, error } = await supabase
         .from("tagihan_siswa")
         .select(`
-          idTagihanSiswa,
-          jumlahTagihan,
-          statusPembayaran,
+          idtagihansiswa,
+          jumlahtagihan,
+          statuspembayaran,
           bulan,
           tahun,
-          createdAt,
-          updatedAt,
-          master_tagihan:master_tagihan!idMasterTagihan(
-            namaTagihan, jenjang, jenisTagihan, nominal
+          createdat,
+          updatedat,
+          master_tagihan:master_tagihan!idmastertagihan(
+            namatagihan, jenjang, jenistagihan, nominal
           )
         `)
-        .eq("idSiswa", profile.id)
+        .eq("idsiswa", profile.id)
         .order("tahun", { ascending: false })
         .order("bulan", { ascending: false });
 
@@ -130,20 +130,20 @@ export default function RiwayatPembayaran() {
                 </thead>
                 <tbody>
                   {riwayatList.map((item, index) => (
-                    <tr key={item.idTagihanSiswa} className="border-b hover:bg-muted/50">
+                    <tr key={item.idtagihansiswa} className="border-b hover:bg-muted/50">
                       <td className="p-3">{index + 1}</td>
-                      <td className="p-3 font-mono">#{item.idTagihanSiswa}</td>
+                      <td className="p-3 font-mono">#{item.idtagihansiswa}</td>
                       <td className="p-3">
-                        <p className="font-medium">{item.master_tagihan?.namaTagihan || "-"}</p>
-                        <p className="text-xs text-muted-foreground">{item.master_tagihan?.jenjang} · {item.master_tagihan?.jenisTagihan}</p>
+                        <p className="font-medium">{item.master_tagihan?.namatagihan || "-"}</p>
+                        <p className="text-xs text-muted-foreground">{item.master_tagihan?.jenjang} · {item.master_tagihan?.jenistagihan}</p>
                       </td>
                       <td className="p-3">{BULAN_NAMA[item.bulan]} {item.tahun}</td>
                       <td className="p-3 text-right font-semibold">
-                        {convertIDR(parseFloat(item.jumlahTagihan))}
+                        {convertIDR(parseFloat(item.jumlahtagihan))}
                       </td>
-                      <td className="p-3 text-center">{getStatusBadge(item.statusPembayaran)}</td>
+                      <td className="p-3 text-center">{getStatusBadge(item.statuspembayaran)}</td>
                       <td className="p-3 text-center">
-                        {item.statusPembayaran === "LUNAS" ? (
+                        {item.statuspembayaran === "LUNAS" ? (
                           <PrintButton item={item} siswaData={siswaData} />
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -165,7 +165,7 @@ function PrintButton({ item, siswaData }: { item: TagihanItem; siswaData: any })
   const contentRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Kwitansi-${item.idTagihanSiswa}`,
+    documentTitle: `Kwitansi-${item.idtagihansiswa}`,
   });
 
   return (
@@ -190,11 +190,11 @@ function PrintButton({ item, siswaData }: { item: TagihanItem; siswaData: any })
           <div className="space-y-2 mb-6 text-sm">
             <div className="flex justify-between">
               <span className="font-medium">No. Kwitansi:</span>
-              <span>#{item.idTagihanSiswa}</span>
+              <span>#{item.idtagihansiswa}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Tanggal:</span>
-              <span>{new Date(item.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+              <span>{new Date(item.updatedat).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Nama Siswa:</span>
@@ -221,7 +221,7 @@ function PrintButton({ item, siswaData }: { item: TagihanItem; siswaData: any })
             </thead>
             <tbody>
               <tr className="border-b border-gray-300">
-                <td className="py-2">{item.master_tagihan?.namaTagihan || "-"}</td>
+                <td className="py-2">{item.master_tagihan?.namatagihan || "-"}</td>
                 <td className="py-2 text-center">
                   {BULAN_NAMA[item.bulan]} {item.tahun}
                 </td>

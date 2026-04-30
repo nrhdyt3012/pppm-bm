@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
 
     console.log("🔍 [CHECK-STATUS] Checking tagihan:", tagihanId);
 
-    const supabase = await createClient();
+    const supabase = await createClient({ isAdmin: true });
 
     // Ambil tagihan beserta paymentToken
     const { data: tagihan, error: tagihanError } = await supabase
-      .from("tagihan_santri")
-      .select("idTagihanSantri, idSantri, statusPembayaran, jumlahTagihan, paymentToken")
-      .eq("idTagihanSantri", tagihanId)
+      .from("tagihan_siswa")
+      .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan, paymenttoken")
+      .eq("idtagihansiswa", tagihanId)
       .single();
 
     if (tagihanError || !tagihan) {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Jika sudah LUNAS, return langsung
-    if (tagihan.statusPembayaran === "LUNAS") {
+    if (tagihan.statuspembayaran === "LUNAS") {
       return NextResponse.json({ status: "LUNAS", already_paid: true });
     }
 
@@ -53,25 +53,25 @@ export async function POST(request: NextRequest) {
 
     const { data: existingPembayaran } = await supabase
       .from("pembayaran")
-      .select("id_pembayaran, status_pembayaran")
-      .eq("id_tagihan_santri", parseInt(tagihanId))
+      .select("idpembayaran, statuspembayaran")
+      .eq("idtagihansiswa", parseInt(tagihanId))
       .maybeSingle();
 
-    if (existingPembayaran?.status_pembayaran === "SUCCESS") {
+    if (existingPembayaran?.statuspembayaran === "SUCCESS") {
       // Sync status tagihan jika belum terupdate
-      if (tagihan.statusPembayaran !== "LUNAS") {
+      if (tagihan.statuspembayaran !== "LUNAS") {
         await supabase
-          .from("tagihan_santri")
+          .from("tagihan_siswa")
           .update({
-            statusPembayaran: "LUNAS",
-            updatedAt: new Date().toISOString(),
+            statuspembayaran: "LUNAS",
+            updatedat: new Date().toISOString(),
           })
-          .eq("idTagihanSantri", tagihanId);
+          .eq("idtagihansiswa", tagihanId);
       }
       return NextResponse.json({ status: "LUNAS" });
     }
 
-    return NextResponse.json({ status: tagihan.statusPembayaran });
+    return NextResponse.json({ status: tagihan.statuspembayaran });
   } catch (error: any) {
     console.error("💥 [CHECK-STATUS] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

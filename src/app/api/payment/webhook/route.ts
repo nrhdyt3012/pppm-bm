@@ -38,13 +38,13 @@ export async function POST(request: NextRequest) {
 
     console.log("🔍 [WEBHOOK] Tagihan ID:", tagihanId);
 
-    const supabase = await createClient();
+    const supabase = await createClient({ isAdmin: true });
 
     // Ambil data tagihan
     const { data: tagihan, error: tagihanError } = await supabase
       .from("tagihan_siswa")
-      .select("idTagihanSiswa, idSiswa, statusPembayaran, jumlahTagihan")
-      .eq("idTagihanSiswa", tagihanId)
+      .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan")
+      .eq("idtagihansiswa", tagihanId)
       .single();
 
     if (tagihanError || !tagihan) {
@@ -53,15 +53,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Map status Midtrans ke status lokal
-    let statusPembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA" = "BELUM BAYAR";
-    const metodePembayaran = body.payment_type || "online";
+    let statuspembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA" = "BELUM BAYAR";
+    const metodepembayaran = body.payment_type || "online";
 
     if (transaction_status === "settlement" || transaction_status === "capture") {
-      statusPembayaran = "LUNAS";
+      statuspembayaran = "LUNAS";
     } else if (transaction_status === "expire") {
-      statusPembayaran = "KADALUARSA";
+      statuspembayaran = "KADALUARSA";
     } else if (transaction_status === "cancel" || transaction_status === "deny") {
-      statusPembayaran = "BELUM BAYAR";
+      statuspembayaran = "BELUM BAYAR";
     } else {
       // pending — tidak update
       return NextResponse.json({ status: "pending", transaction_status });
@@ -69,22 +69,22 @@ export async function POST(request: NextRequest) {
 
     // Update status tagihan_siswa
     const updateData: any = {
-      statusPembayaran,
-      updatedAt: new Date().toISOString(),
+      statuspembayaran,
+      updatedat: new Date().toISOString(),
     };
 
-    if (statusPembayaran === "LUNAS") {
-      updateData.jumlahTerbayar = parseFloat(tagihan.jumlahTagihan);
+    if (statuspembayaran === "LUNAS") {
+      updateData.jumlahterbayar = parseFloat(tagihan.jumlahtagihan);
     }
 
-    if (statusPembayaran === "KADALUARSA" || transaction_status === "cancel") {
-      updateData.paymentToken = null;
+    if (statuspembayaran === "KADALUARSA" || transaction_status === "cancel") {
+      updateData.paymenttoken = null;
     }
 
     const { error: updateError } = await supabase
       .from("tagihan_siswa")
       .update(updateData)
-      .eq("idTagihanSiswa", tagihanId);
+      .eq("idtagihansiswa", tagihanId);
 
     if (updateError) {
       console.error("❌ [WEBHOOK] Update failed:", updateError);
@@ -93,48 +93,48 @@ export async function POST(request: NextRequest) {
 
     // Insert ke tabel pembayaran jika LUNAS
     let pembayaranId: number | null = null;
-    if (statusPembayaran === "LUNAS") {
+    if (statuspembayaran === "LUNAS") {
       const { data: existing } = await supabase
         .from("pembayaran")
-        .select("idPembayaran")
-        .eq("idTagihanSiswa", parseInt(tagihanId))
-        .eq("statusPembayaran", "SUCCESS")
+        .select("idpembayaran")
+        .eq("idtagihansiswa", parseInt(tagihanId))
+        .eq("statuspembayaran", "SUCCESS")
         .maybeSingle();
 
       if (!existing) {
         const { data: newPembayaran } = await supabase
           .from("pembayaran")
           .insert({
-            idTagihanSiswa: parseInt(tagihanId),
-            idSiswa: tagihan.idSiswa,
-            jumlahDibayar: parseFloat(tagihan.jumlahTagihan),
-            tanggalPembayaran: new Date().toISOString(),
-            metodePembayaran,
-            statusPembayaran: "SUCCESS",
+            idtagihansiswa: parseInt(tagihanId),
+            idsiswa: tagihan.idsiswa,
+            jumlahdibayar: parseFloat(tagihan.jumlahtagihan),
+            tanggalpembayaran: new Date().toISOString(),
+            metodepembayaran,
+            statuspembayaran: "SUCCESS",
           })
-          .select("idPembayaran")
+          .select("idpembayaran")
           .single();
 
-        pembayaranId = newPembayaran?.idPembayaran ?? null;
+        pembayaranId = newPembayaran?.idpembayaran ?? null;
       } else {
-        pembayaranId = existing.idPembayaran;
+        pembayaranId = existing.idpembayaran;
       }
     }
 
     // Log ke payment_gateway_log
     if (pembayaranId !== null) {
       await supabase.from("payment_gateway_log").insert({
-        idPembayaran: pembayaranId,
-        orderId: midtransOrderId,
-        transactionStatusMidtrans: transaction_status,
-        rawResponseMidtrans: body,
+        idpembayaran: pembayaranId,
+        orderid: midtransOrderId,
+        transactionstatusmidtrans: transaction_status,
+        rawresponsemidtrans: body,
       });
     }
 
     return NextResponse.json({
       status: "success",
       tagihan_id: tagihanId,
-      updated_status: statusPembayaran,
+      updated_status: statuspembayaran,
       pembayaran_id: pembayaranId,
     });
   } catch (error: any) {

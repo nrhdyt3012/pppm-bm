@@ -49,19 +49,19 @@ export default function TagihanSiswaPage() {
       const { data, error } = await supabase
         .from("tagihan_siswa")
         .select(`
-          idTagihanSiswa,
-          jumlahTagihan,
-          statusPembayaran,
-          paymentToken,
+          idtagihansiswa,
+          jumlahtagihan,
+          statuspembayaran,
+          paymenttoken,
           bulan,
           tahun,
-          createdAt,
-          master_tagihan:master_tagihan!idMasterTagihan(
-            id_masterTagihan, namaTagihan, jenjang, jenisTagihan, nominal
-          )
+          createdat,
+master_tagihan (
+  id_mastertagihan, namatagihan, jenjang, jenistagihan, nominal
+)
         `)
-        .eq("idSiswa", profile.id)
-        .eq("statusPembayaran", "BELUM BAYAR")
+        .eq("idsiswa", profile.id)
+        .eq("statuspembayaran", "BELUM BAYAR")
         .order("tahun", { ascending: false })
         .order("bulan", { ascending: false });
 
@@ -81,11 +81,11 @@ export default function TagihanSiswaPage() {
   const handlePayment = async () => {
     if (!selectedTagihan) return;
     try {
-      const jumlah = parseFloat(selectedTagihan.jumlahTagihan || 0);
+      const jumlah = parseFloat(selectedTagihan.jumlahtagihan || 0);
 
       // Jika sudah ada token, langsung buka snap
-      if (selectedTagihan.paymentToken) {
-        window.snap.pay(selectedTagihan.paymentToken, {
+      if (selectedTagihan.paymenttoken) {
+        window.snap.pay(selectedTagihan.paymenttoken, {
           onSuccess: () => { refetch(); setShowDialog(false); },
           onError: () => toast.error("Pembayaran gagal"),
           onClose: () => {},
@@ -99,9 +99,9 @@ export default function TagihanSiswaPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id: selectedTagihan.idTagihanSiswa,
+          order_id: selectedTagihan.idtagihansiswa,
           gross_amount: jumlah,
-          customer_name: siswaData?.namaSiswa || profile.name || "Siswa",
+          customer_name: siswaData?.namasiswa || profile.name || "Siswa",
         }),
       });
 
@@ -115,8 +115,8 @@ export default function TagihanSiswaPage() {
       // Simpan token ke database
       await supabase
         .from("tagihan_siswa")
-        .update({ paymentToken: result.token })
-        .eq("idTagihanSiswa", selectedTagihan.idTagihanSiswa);
+        .update({ paymenttoken: result.token })
+        .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
 
       // Buka Snap
       window.snap.pay(result.token, {
@@ -167,7 +167,7 @@ export default function TagihanSiswaPage() {
         ) : (
           <div className="space-y-3">
             {tagihanList.map((tagihan: any) => (
-              <Card key={tagihan.idTagihanSiswa} className="hover:shadow-md transition-shadow">
+              <Card key={tagihan.idtagihansiswa} className="hover:shadow-md transition-shadow">
                 <CardContent className="flex items-center justify-between p-5">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -175,15 +175,15 @@ export default function TagihanSiswaPage() {
                         Belum Bayar
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        #{tagihan.idTagihanSiswa}
+                        #{tagihan.idtagihansiswa}
                       </span>
                     </div>
-                    <p className="font-semibold text-base">{tagihan.master_tagihan?.namaTagihan || "-"}</p>
+                    <p className="font-semibold text-base">{tagihan.master_tagihan?.namatagihan || "-"}</p>
                     <p className="text-sm text-muted-foreground">
                       {BULAN_NAMA[tagihan.bulan]} {tagihan.tahun} · {tagihan.master_tagihan?.jenjang} · {tagihan.master_tagihan?.jenisTagihan}
                     </p>
                     <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">
-                      {convertIDR(parseFloat(tagihan.jumlahTagihan || 0))}
+                      {convertIDR(parseFloat(tagihan.jumlahtagihan || 0))}
                     </p>
                   </div>
                   <Button
@@ -246,7 +246,7 @@ export default function TagihanSiswaPage() {
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Jenis Tagihan:</span>
-                    <span className="font-medium">{selectedTagihan.master_tagihan?.namaTagihan}</span>
+                    <span className="font-medium">{selectedTagihan.master_tagihan?.namatagihan}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Periode:</span>
@@ -263,7 +263,7 @@ export default function TagihanSiswaPage() {
                   <div className="flex justify-between border-t pt-2 font-bold">
                     <span>Total Pembayaran:</span>
                     <span className="text-green-700 dark:text-green-400 text-base">
-                      {convertIDR(parseFloat(selectedTagihan.jumlahTagihan || 0))}
+                      {convertIDR(parseFloat(selectedTagihan.jumlahtagihan || 0))}
                     </span>
                   </div>
                 </CardContent>
