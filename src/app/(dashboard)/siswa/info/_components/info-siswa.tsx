@@ -61,9 +61,9 @@ export default function InfoSiswa() {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 text-center md:text-left space-y-2">
-              <h2 className="text-3xl font-bold">{siswaData?.namaSiswa || profile.name}</h2>
+              <h2 className="text-3xl font-bold">{siswaData?.namasiswa || profile.name}</h2>
               {siswaData?.NIS && (
-                <p className="text-muted-foreground text-sm">NIS: {siswaData.NIS}</p>
+                <p className="text-muted-foreground text-sm">NIS: {siswaData.nis}</p>
               )}
               <div className="flex flex-wrap gap-2 justify-center md:justify-start mt-3">
                 {siswaData?.kelas && (
@@ -99,16 +99,16 @@ export default function InfoSiswa() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <InfoItem icon={User} label="Nama Lengkap" value={siswaData?.namaSiswa} />
-            <InfoItem icon={BookOpen} label="NIS" value={siswaData?.NIS} />
+            <InfoItem icon={User} label="Nama Lengkap" value={siswaData?.namasiswa} />
+            <InfoItem icon={BookOpen} label="NIS" value={siswaData?.nis} />
             <InfoItem icon={BookOpen} label="Kelas" value={siswaData?.kelas} />
             <InfoItem icon={BookOpen} label="Angkatan" value={siswaData?.angkatan} />
-            <InfoItem icon={MapPin} label="Tempat Lahir" value={siswaData?.tempatLahir} />
+            <InfoItem icon={MapPin} label="Tempat Lahir" value={siswaData?.tempatlahir} />
             <InfoItem
               icon={Calendar}
               label="Tanggal Lahir"
-              value={siswaData?.tanggalLahir
-                ? new Date(siswaData.tanggalLahir).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+              value={siswaData?.tanggallahir
+                ? new Date(siswaData.tanggallahir).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
                 : null}
             />
           </CardContent>
@@ -123,8 +123,8 @@ export default function InfoSiswa() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <InfoItem icon={User} label="Nama Wali" value={siswaData?.namaWali} />
-            <InfoItem icon={Phone} label="No. WhatsApp" value={siswaData?.noWa} />
+            <InfoItem icon={User} label="Nama Wali" value={siswaData?.namawali} />
+            <InfoItem icon={Phone} label="No. WhatsApp" value={siswaData?.nowa} />
           </CardContent>
         </Card>
 

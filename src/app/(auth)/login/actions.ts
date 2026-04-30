@@ -62,7 +62,7 @@ export async function login(
     // Cek tabel siswa
     const { data: siswaData } = await authenticatedSupabase
       .from("siswa")
-      .select("id, namaSiswa, avatarUrl, kelas, NIS")
+      .select("id, namasiswa, avatarurl, kelas, nis")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -78,11 +78,11 @@ export async function login(
     } else if (siswaData) {
       profile = {
         id: siswaData.id,
-        name: siswaData.namaSiswa,
+        name: siswaData.namasiswa,
         role: "siswa" as const,
-        avatar_url: siswaData.avatarUrl,
+        avatar_url: siswaData.avatarurl,
         kelas: siswaData.kelas,
-        NIS: siswaData.NIS,
+        NIS: siswaData.nis,
       };
     } else {
       return {
