@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Users, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { Users, FileText, CheckCircle, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 
 export default function Dashboard() {
   const supabase = createClient();
@@ -56,6 +56,7 @@ export default function Dashboard() {
   const { data: pemasukanStats } = useQuery({
     queryKey: ["pemasukan-stats", currentMonth, currentYear],
     queryFn: async () => {
+      // Pemasukan bulan ini (tagihan LUNAS)
       const { data: bulanIniData } = await supabase
         .from("tagihan_siswa")
         .select("jumlahtagihan")
@@ -63,31 +64,42 @@ export default function Dashboard() {
         .eq("tahun", currentYear)
         .eq("statuspembayaran", "LUNAS");
 
-      const bulanIni = bulanIniData?.reduce(
-        (sum: number, item: any) => sum + parseFloat(item.jumlahtagihan || "0"), 0
-      ) || 0;
+      const bulanIni =
+        bulanIniData?.reduce(
+          (sum: number, item: any) => sum + parseFloat(item.jumlahtagihan || "0"),
+          0
+        ) || 0;
 
-      const { data: tahunIniData } = await supabase
+      // Tunggakan bulan ini (tagihan BELUM BAYAR)
+      const { data: tunggakanData } = await supabase
         .from("tagihan_siswa")
         .select("jumlahtagihan")
+        .eq("bulan", currentMonth)
         .eq("tahun", currentYear)
-        .eq("statuspembayaran", "LUNAS");
+        .eq("statuspembayaran", "BELUM BAYAR");
 
-      const tahunIni = tahunIniData?.reduce(
-        (sum: number, item: any) => sum + parseFloat(item.jumlahtagihan || "0"), 0
-      ) || 0;
+      const tunggakanBulanIni =
+        tunggakanData?.reduce(
+          (sum: number, item: any) => sum + parseFloat(item.jumlahtagihan || "0"),
+          0
+        ) || 0;
 
-      return { bulanIni, tahunIni };
+      return { bulanIni, tunggakanBulanIni };
     },
   });
 
-  const bulanNama = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const bulanNama = new Date().toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <div className="w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">PAUD Aisyiyah Bustanul Athfal 1 Buduran</p>
+        <p className="text-muted-foreground text-sm">
+          PAUD Aisyiyah Bustanul Athfal 1 Buduran
+        </p>
       </div>
 
       {/* Sensus Siswa */}
@@ -132,7 +144,9 @@ export default function Dashboard() {
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">{tagihanStats?.lunas || 0}</div>
+              <div className="text-3xl font-bold text-green-600">
+                {tagihanStats?.lunas || 0}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -141,34 +155,44 @@ export default function Dashboard() {
               <AlertCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-600">{tagihanStats?.belumBayar || 0}</div>
+              <div className="text-3xl font-bold text-red-600">
+                {tagihanStats?.belumBayar || 0}
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Pemasukan */}
+      {/* Pemasukan & Tunggakan Bulan Ini */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Pemasukan</h2>
+        <h2 className="text-lg font-semibold mb-3">Keuangan — {bulanNama}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Pemasukan Bulan Ini</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
                 {convertIDR(pemasukanStats?.bulanIni || 0)}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Total tagihan yang sudah lunas
+              </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Pemasukan {currentYear}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Tunggakan Bulan Ini</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-teal-600">
-                {convertIDR(pemasukanStats?.tahunIni || 0)}
+              <div className="text-2xl font-bold text-red-600">
+                {convertIDR(pemasukanStats?.tunggakanBulanIni || 0)}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Total tagihan yang belum dibayar
+              </p>
             </CardContent>
           </Card>
         </div>
