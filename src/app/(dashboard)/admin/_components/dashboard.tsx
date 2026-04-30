@@ -40,14 +40,14 @@ export default function Dashboard() {
         .select("*", { count: "exact", head: true })
         .eq("bulan", currentMonth)
         .eq("tahun", currentYear)
-        .eq("statusPembayaran", "LUNAS");
+        .eq("statuspembayaran", "LUNAS");
 
       const { count: belumBayar } = await supabase
         .from("tagihan_siswa")
         .select("*", { count: "exact", head: true })
         .eq("bulan", currentMonth)
         .eq("tahun", currentYear)
-        .eq("statusPembayaran", "BELUM BAYAR");
+        .eq("statuspembayaran", "BELUM BAYAR");
 
       return { total: total || 0, lunas: lunas || 0, belumBayar: belumBayar || 0 };
     },
@@ -58,23 +58,23 @@ export default function Dashboard() {
     queryFn: async () => {
       const { data: bulanIniData } = await supabase
         .from("tagihan_siswa")
-        .select("jumlahTagihan")
+        .select("jumlahtagihan")
         .eq("bulan", currentMonth)
         .eq("tahun", currentYear)
-        .eq("statusPembayaran", "LUNAS");
+        .eq("statuspembayaran", "LUNAS");
 
       const bulanIni = bulanIniData?.reduce(
-        (sum: number, item: any) => sum + parseFloat(item.jumlahTagihan || "0"), 0
+        (sum: number, item: any) => sum + parseFloat(item.jumlahtagihan || "0"), 0
       ) || 0;
 
       const { data: tahunIniData } = await supabase
         .from("tagihan_siswa")
-        .select("jumlahTagihan")
+        .select("jumlahtagihan")
         .eq("tahun", currentYear)
-        .eq("statusPembayaran", "LUNAS");
+        .eq("statuspembayaran", "LUNAS");
 
       const tahunIni = tahunIniData?.reduce(
-        (sum: number, item: any) => sum + parseFloat(item.jumlahTagihan || "0"), 0
+        (sum: number, item: any) => sum + parseFloat(item.jumlahtagihan || "0"), 0
       ) || 0;
 
       return { bulanIni, tahunIni };

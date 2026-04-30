@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/menu/actions.tsx
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
@@ -28,9 +27,9 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase.from("master_tagihan").insert({
-    namaTagihan: validatedFields.data.namaTagihan,
+    namatagihan: validatedFields.data.namaTagihan,
     jenjang: validatedFields.data.jenjang,
-    jenisTagihan: validatedFields.data.jenisTagihan,
+    jenistagihan: validatedFields.data.jenisTagihan,
     nominal: validatedFields.data.nominal,
     description: validatedFields.data.description,
   });
@@ -71,14 +70,14 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
   const { error } = await supabase
     .from("master_tagihan")
     .update({
-      namaTagihan: validatedFields.data.namaTagihan,
+      namatagihan: validatedFields.data.namaTagihan,
       jenjang: validatedFields.data.jenjang,
-      jenisTagihan: validatedFields.data.jenisTagihan,
+      jenistagihan: validatedFields.data.jenisTagihan,
       nominal: validatedFields.data.nominal,
       description: validatedFields.data.description,
       updated_at: new Date().toISOString(),
     })
-    .eq("id_masterTagihan", validatedFields.data.id_masterTagihan);
+    .eq("id_mastertagihan", validatedFields.data.id_masterTagihan);
 
   if (error) {
     return {
@@ -97,7 +96,7 @@ export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
   const { error } = await supabase
     .from("master_tagihan")
     .delete()
-    .eq("id_masterTagihan", parseInt(formData.get("id") as string));
+    .eq("id_mastertagihan", parseInt(formData.get("id") as string));
 
   if (error) {
     return {

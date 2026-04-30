@@ -45,6 +45,7 @@ const publicPages = [
   "/kontak",
   "/ppdb",
   "/berita",
+  "/login"
 ];
 const isPublicPage =
   pathname === "/" ||

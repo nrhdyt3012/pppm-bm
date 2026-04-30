@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/tagihan/actions.ts
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
@@ -6,12 +5,8 @@ import { revalidatePath } from "next/cache";
 
 // Update status tagihan siswa
 export async function updateTagihanSiswa(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("idTagihanSiswa");
-  const idMasterTagihan = formData.get("idMasterTagihan");
-  const jumlahTagihan = formData.get("jumlahTagihan");
-  const statusPembayaran = formData.get("statusPembayaran");
-  const bulan = formData.get("bulan");
-  const tahun = formData.get("tahun");
+  const idTagihan = formData.get("idtagihansiswa");
+  const statusPembayaran = formData.get("statuspembayaran");
 
   if (!idTagihan) {
     return { status: "error", errors: { _form: ["ID tagihan tidak valid"] } };
@@ -20,19 +15,29 @@ export async function updateTagihanSiswa(prevState: any, formData: FormData) {
   const supabase = await createClient();
 
   const updateData: any = {
-    statusPembayaran: statusPembayaran,
-    updatedAt: new Date().toISOString(),
+    statuspembayaran: statusPembayaran,
+    updatedat: new Date().toISOString(),
   };
 
-  if (idMasterTagihan) updateData.idMasterTagihan = parseInt(idMasterTagihan as string);
-  if (jumlahTagihan) updateData.jumlahTagihan = parseFloat(jumlahTagihan as string);
-  if (bulan) updateData.bulan = parseInt(bulan as string);
-  if (tahun) updateData.tahun = parseInt(tahun as string);
+  // Jika LUNAS, update juga jumlahterbayar
+  if (statusPembayaran === "LUNAS") {
+    // Ambil jumlah tagihan terlebih dahulu
+    const { data: tagihan } = await supabase
+      .from("tagihan_siswa")
+      .select("jumlahtagihan")
+      .eq("idtagihansiswa", idTagihan)
+      .single();
+
+    if (tagihan) {
+      updateData.jumlahterbayar = parseFloat(tagihan.jumlahtagihan);
+      updateData.sisa = 0;
+    }
+  }
 
   const { error } = await supabase
     .from("tagihan_siswa")
     .update(updateData)
-    .eq("idTagihanSiswa", idTagihan);
+    .eq("idtagihansiswa", idTagihan);
 
   if (error) {
     return { status: "error", errors: { _form: [`Gagal update: ${error.message}`] } };
@@ -44,7 +49,7 @@ export async function updateTagihanSiswa(prevState: any, formData: FormData) {
 
 // Hapus tagihan siswa
 export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("idTagihanSiswa");
+  const idTagihan = formData.get("idtagihansiswa");
 
   if (!idTagihan) {
     return { status: "error", errors: { _form: ["ID tagihan tidak valid"] } };
@@ -55,7 +60,7 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   const { error } = await supabase
     .from("tagihan_siswa")
     .delete()
-    .eq("idTagihanSiswa", idTagihan);
+    .eq("idtagihansiswa", idTagihan);
 
   if (error) {
     return { status: "error", errors: { _form: [`Gagal hapus: ${error.message}`] } };
@@ -97,24 +102,24 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
   const { data: masterTagihan, error: masterError } = await supabase
     .from("master_tagihan")
     .select("*")
-    .eq("id_masterTagihan", masterTagihanId)
+    .eq("id_mastertagihan", masterTagihanId)
     .single();
 
   if (masterError || !masterTagihan) {
     return { status: "error", errors: { _form: ["Data master tagihan tidak ditemukan"] } };
   }
 
-  // Cek duplikat (siswa yang sudah punya tagihan di bulan & tahun yang sama)
+  // Cek duplikat
   const { data: existing } = await supabase
     .from("tagihan_siswa")
-    .select("idSiswa, siswa!idSiswa(namaSiswa)")
-    .eq("idMasterTagihan", masterTagihanId)
+    .select("idsiswa, siswa!idsiswa(namasiswa)")
+    .eq("idmastertagihan", masterTagihanId)
     .eq("bulan", parseInt(bulan as string))
     .eq("tahun", parseInt(tahun as string))
-    .in("idSiswa", siswaIds);
+    .in("idsiswa", siswaIds);
 
   if (existing && existing.length > 0) {
-    const names = existing.map((t: any) => t.siswa?.namaSiswa || t.idSiswa).join(", ");
+    const names = existing.map((t: any) => t.siswa?.namasiswa || t.idsiswa).join(", ");
     return {
       status: "error",
       errors: { _form: [`Siswa berikut sudah memiliki tagihan periode ini: ${names}`] },
@@ -123,13 +128,13 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
 
   // Insert tagihan untuk setiap siswa
   const tagihanToInsert = siswaIds.map((siswaId: string) => ({
-    idSiswa: siswaId,
-    idMasterTagihan: parseInt(masterTagihanId as string),
+    idsiswa: siswaId,
+    idmastertagihan: parseInt(masterTagihanId as string),
     bulan: parseInt(bulan as string),
     tahun: parseInt(tahun as string),
-    jumlahTagihan: masterTagihan.nominal,
-    jumlahTerbayar: 0,
-    statusPembayaran: "BELUM BAYAR",
+    jumlahtagihan: masterTagihan.nominal,
+    jumlahterbayar: 0,
+    statuspembayaran: "BELUM BAYAR",
   }));
 
   const { error: insertError } = await supabase

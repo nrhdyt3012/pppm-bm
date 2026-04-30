@@ -22,7 +22,7 @@ export const metadata = {
   icons: { icon: "/logo_ppm.svg" },
 };
 
-export default async function RootLayout({
+export default async function AuthLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -37,23 +37,21 @@ export default async function RootLayout({
     profile = {};
   }
 
+  // TIDAK PERLU <html> dan <body> di sini
+  // Cukup return children dengan provider yang diperlukan
   return (
-    <html lang="id" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ReactQueryProvider>
-          <AuthStoreProvider profile={profile}>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster />
-            </ThemeProvider>
-          </AuthStoreProvider>
-        </ReactQueryProvider>
-      </body>
-    </html>
+    <ReactQueryProvider>
+      <AuthStoreProvider profile={profile}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </AuthStoreProvider>
+    </ReactQueryProvider>
   );
 }

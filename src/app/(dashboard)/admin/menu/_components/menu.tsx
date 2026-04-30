@@ -32,7 +32,7 @@ export default function MenuManagement() {
         .order("created_at", { ascending: false });
 
       if (currentSearch) {
-        query.or(`namaTagihan.ilike.%${currentSearch}%,jenjang.ilike.%${currentSearch}%`);
+        query.or(`namatagihan.ilike.%${currentSearch}%,jenjang.ilike.%${currentSearch}%`);
       }
 
       const result = await query;
@@ -47,30 +47,50 @@ export default function MenuManagement() {
   const filteredData = useMemo(() => {
     return (menus?.data || []).map((item: any, index: number) => [
       currentLimit * (currentPage - 1) + index + 1,
-      <div key={`nama-${item.id_masterTagihan}`}>
-        <p className="font-semibold">{item.namaTagihan}</p>
+      <div key={`nama-${item.id_mastertagihan}`}>
+        <p className="font-semibold">{item.namatagihan}</p>
         {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
       </div>,
-      <span key={`jenjang-${item.id_masterTagihan}`} className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+      <span key={`jenjang-${item.id_mastertagihan}`} className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
         {item.jenjang}
       </span>,
-      <span key={`jenis-${item.id_masterTagihan}`} className={`px-2 py-1 rounded-full text-xs ${item.jenisTagihan === "Reguler" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}>
-        {item.jenisTagihan}
+      <span key={`jenis-${item.id_mastertagihan}`} className={`px-2 py-1 rounded-full text-xs ${item.jenistagihan === "Reguler" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}>
+        {item.jenistagihan}
       </span>,
-      <span key={`nominal-${item.id_masterTagihan}`} className="font-semibold">
+      <span key={`nominal-${item.id_mastertagihan}`} className="font-semibold">
         {convertIDR(parseFloat(item.nominal || 0))}
       </span>,
       <DropdownAction
-        key={`action-${item.id_masterTagihan}`}
+        key={`action-${item.id_mastertagihan}`}
         menu={[
           {
             label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit</span>,
-            action: () => setSelectedAction({ data: item, type: "update" }),
+            action: () => setSelectedAction({
+              data: {
+                id_masterTagihan: item.id_mastertagihan,
+                namaTagihan: item.namatagihan,
+                jenjang: item.jenjang,
+                jenisTagihan: item.jenistagihan,
+                nominal: item.nominal,
+                description: item.description,
+              },
+              type: "update"
+            }),
           },
           {
             label: <span className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-400" />Hapus</span>,
             variant: "destructive",
-            action: () => setSelectedAction({ data: item, type: "delete" }),
+            action: () => setSelectedAction({
+              data: {
+                id_masterTagihan: item.id_mastertagihan,
+                namaTagihan: item.namatagihan,
+                jenjang: item.jenjang,
+                jenisTagihan: item.jenistagihan,
+                nominal: item.nominal,
+                description: item.description,
+              },
+              type: "delete"
+            }),
           },
         ]}
       />,

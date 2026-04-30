@@ -20,7 +20,7 @@ export default function DialogDeleteTagihanSiswa({
 
   const onSubmit = () => {
     const formData = new FormData();
-    formData.append("idTagihanSiswa", currentData?.idTagihanSiswa?.toString() ?? "");
+    formData.append("idtagihansiswa", currentData?.idtagihansiswa?.toString() ?? "");
     startTransition(() => { action(formData); });
   };
 
@@ -39,7 +39,7 @@ export default function DialogDeleteTagihanSiswa({
       onOpenChange={handleChangeAction}
       isLoading={isPending}
       onSubmit={onSubmit}
-      title={`Tagihan #${currentData?.idTagihanSiswa} — ${currentData?.siswa?.namaSiswa || ""}`}
+      title={`Tagihan #${currentData?.idtagihansiswa} — ${currentData?.siswa?.namasiswa || ""}`}
     />
   );
 }

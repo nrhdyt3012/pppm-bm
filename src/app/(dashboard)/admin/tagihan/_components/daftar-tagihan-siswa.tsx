@@ -25,10 +25,10 @@ export default function DaftarTagihanSiswa() {
     queryKey: ["tagihan-admin-stats"],
     queryFn: async () => {
       const { count: total } = await supabase.from("tagihan_siswa").select("*", { count: "exact", head: true });
-      const { count: belumBayar } = await supabase.from("tagihan_siswa").select("*", { count: "exact", head: true }).eq("statusPembayaran", "BELUM BAYAR");
-      const { count: lunas } = await supabase.from("tagihan_siswa").select("*", { count: "exact", head: true }).eq("statusPembayaran", "LUNAS");
-      const { data: nominalData } = await supabase.from("tagihan_siswa").select("jumlahTagihan");
-      const totalNominal = nominalData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahTagihan || 0), 0) || 0;
+      const { count: belumBayar } = await supabase.from("tagihan_siswa").select("*", { count: "exact", head: true }).eq("statuspembayaran", "BELUM BAYAR");
+      const { count: lunas } = await supabase.from("tagihan_siswa").select("*", { count: "exact", head: true }).eq("statuspembayaran", "LUNAS");
+      const { data: nominalData } = await supabase.from("tagihan_siswa").select("jumlahtagihan");
+      const totalNominal = nominalData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahtagihan || 0), 0) || 0;
       return { total: total || 0, belumBayar: belumBayar || 0, lunas: lunas || 0, totalNominal };
     },
   });
@@ -38,9 +38,12 @@ export default function DaftarTagihanSiswa() {
     queryFn: async () => {
       const { data, count, error } = await supabase
         .from("tagihan_siswa")
-        .select("*, siswa!idSiswa(id, namaSiswa, kelas), master_tagihan!idMasterTagihan(id_masterTagihan, namaTagihan, jenjang)", { count: "exact" })
+        .select(
+          "*, siswa!idsiswa(id, namasiswa, kelas), master_tagihan!idmastertagihan(id_mastertagihan, namatagihan, jenjang)",
+          { count: "exact" }
+        )
         .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
-        .order("createdAt", { ascending: false });
+        .order("createdat", { ascending: false });
 
       if (error) toast.error("Gagal memuat tagihan", { description: error.message });
       return { data: data || [], count: count || 0 };
@@ -66,25 +69,32 @@ export default function DaftarTagihanSiswa() {
   const filteredData = useMemo(() => {
     return (tagihanList?.data || []).map((item: any, index: number) => [
       currentLimit * (currentPage - 1) + index + 1,
-      <span key={`id-${item.idTagihanSiswa}`} className="font-mono text-sm">#{item.idTagihanSiswa}</span>,
-      <div key={`siswa-${item.idTagihanSiswa}`}>
-        <p className="font-medium">{item.siswa?.namaSiswa || "-"}</p>
+      <span key={`id-${item.idtagihansiswa}`} className="font-mono text-sm">#{item.idtagihansiswa}</span>,
+      <div key={`siswa-${item.idtagihansiswa}`}>
+        <p className="font-medium">{item.siswa?.namasiswa || "-"}</p>
         <p className="text-xs text-muted-foreground">{item.siswa?.kelas || ""}</p>
       </div>,
-      <div key={`tagihan-${item.idTagihanSiswa}`}>
-        <p className="font-semibold">{item.master_tagihan?.namaTagihan || "-"}</p>
+      <div key={`tagihan-${item.idtagihansiswa}`}>
+        <p className="font-semibold">{item.master_tagihan?.namatagihan || "-"}</p>
         <p className="text-xs text-muted-foreground">{item.bulan}/{item.tahun} · {item.master_tagihan?.jenjang || ""}</p>
       </div>,
-      <span key={`nominal-${item.idTagihanSiswa}`} className="font-semibold">
-        {convertIDR(parseFloat(item.jumlahTagihan) || 0)}
+      <span key={`nominal-${item.idtagihansiswa}`} className="font-semibold">
+        {convertIDR(parseFloat(item.jumlahtagihan) || 0)}
       </span>,
-      getStatusBadge(item.statusPembayaran),
-      new Date(item.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
+      getStatusBadge(item.statuspembayaran),
+      new Date(item.createdat).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
       <DropdownAction
-        key={`act-${item.idTagihanSiswa}`}
+        key={`act-${item.idtagihansiswa}`}
         menu={[
-          { label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit</span>, action: () => setSelectedAction({ data: item, type: "edit" }) },
-          { label: <span className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-400" />Hapus</span>, variant: "destructive", action: () => setSelectedAction({ data: item, type: "delete" }) },
+          {
+            label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit</span>,
+            action: () => setSelectedAction({ data: item, type: "edit" })
+          },
+          {
+            label: <span className="flex items-center gap-2"><Trash2 className="w-4 h-4 text-red-400" />Hapus</span>,
+            variant: "destructive",
+            action: () => setSelectedAction({ data: item, type: "delete" })
+          },
         ]}
       />,
     ]);

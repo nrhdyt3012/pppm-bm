@@ -22,7 +22,7 @@ import { z } from "zod";
 import { convertIDR } from "@/lib/utils";
 
 const schema = z.object({
-  statusPembayaran: z.string().min(1, "Status wajib diisi"),
+  statuspembayaran: z.string().min(1, "Status wajib diisi"),
 });
 
 type FormType = z.infer<typeof schema>;
@@ -51,8 +51,8 @@ export default function DialogEditTagihanSiswa({
 
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
-    formData.append("idTagihanSiswa", currentData?.idTagihanSiswa?.toString() ?? "");
-    formData.append("statusPembayaran", data.statusPembayaran);
+    formData.append("idtagihansiswa", currentData?.idtagihansiswa?.toString() ?? "");
+    formData.append("statuspembayaran", data.statuspembayaran);
     startTransition(() => { action(formData); });
   });
 
@@ -67,11 +67,11 @@ export default function DialogEditTagihanSiswa({
 
   useEffect(() => {
     if (currentData) {
-      form.setValue("statusPembayaran", currentData.statusPembayaran || "BELUM BAYAR");
+      form.setValue("statuspembayaran", currentData.statuspembayaran || "BELUM BAYAR");
     }
   }, [currentData]);
 
-  const statusVal = form.watch("statusPembayaran");
+  const statusVal = form.watch("statuspembayaran");
 
   return (
     <Dialog open={open} onOpenChange={handleChangeAction}>
@@ -80,7 +80,7 @@ export default function DialogEditTagihanSiswa({
           <DialogHeader>
             <DialogTitle>Edit Tagihan Siswa</DialogTitle>
             <DialogDescription>
-              Ubah status tagihan untuk {currentData?.siswa?.namaSiswa || "siswa"}
+              Ubah status tagihan untuk {currentData?.siswa?.namasiswa || "siswa"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -88,15 +88,15 @@ export default function DialogEditTagihanSiswa({
             <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">ID Tagihan:</span>
-                <span className="font-mono">#{currentData?.idTagihanSiswa}</span>
+                <span className="font-mono">#{currentData?.idtagihansiswa}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Nama Siswa:</span>
-                <span className="font-medium">{currentData?.siswa?.namaSiswa || "-"}</span>
+                <span className="font-medium">{currentData?.siswa?.namasiswa || "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tagihan:</span>
-                <span>{currentData?.master_tagihan?.namaTagihan || "-"}</span>
+                <span>{currentData?.master_tagihan?.namatagihan || "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Periode:</span>
@@ -105,14 +105,14 @@ export default function DialogEditTagihanSiswa({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Nominal:</span>
                 <span className="font-semibold text-green-700 dark:text-green-400">
-                  {convertIDR(parseFloat(currentData?.jumlahTagihan) || 0)}
+                  {convertIDR(parseFloat(currentData?.jumlahtagihan) || 0)}
                 </span>
               </div>
             </div>
 
             <FormSelect
               form={form}
-              name="statusPembayaran"
+              name="statuspembayaran"
               label="Status Pembayaran"
               selectItem={STATUS_OPTIONS}
             />

@@ -27,19 +27,19 @@ export default function RekapanTunggakan() {
       const { data, error } = await supabase
         .from("tagihan_siswa")
         .select(`
-          idTagihanSiswa,
-          jumlahTagihan,
-          statusPembayaran,
+          idtagihansiswa,
+          jumlahtagihan,
+          statuspembayaran,
           bulan,
           tahun,
-          createdAt,
-          siswa:siswa!idSiswa(id, namaSiswa, kelas, noWa),
-          master_tagihan:master_tagihan!idMasterTagihan(namaTagihan, jenjang, jenisTagihan)
+          createdat,
+          siswa:siswa!idsiswa(id, namasiswa, kelas, nowa),
+          master_tagihan:master_tagihan!idmastertagihan(namatagihan, jenjang, jenistagihan)
         `)
-        .eq("statusPembayaran", "BELUM BAYAR")
+        .eq("statuspembayaran", "BELUM BAYAR")
         .eq("bulan", selectedMonth)
         .eq("tahun", selectedYear)
-        .order("createdAt", { ascending: false });
+        .order("createdat", { ascending: false });
 
       if (error) {
         toast.error("Gagal memuat data", { description: error.message });
@@ -61,7 +61,7 @@ export default function RekapanTunggakan() {
         const { count } = await supabase
           .from("tagihan_siswa")
           .select("*", { count: "exact", head: true })
-          .eq("statusPembayaran", "BELUM BAYAR")
+          .eq("statuspembayaran", "BELUM BAYAR")
           .eq("bulan", m)
           .eq("tahun", y);
         results.push({ name: `${BULAN_NAMA[m].slice(0, 3)} ${y.toString().slice(2)}`, total: count || 0 });
@@ -71,7 +71,7 @@ export default function RekapanTunggakan() {
   });
 
   const totalNominal = useMemo(() =>
-    tunggakanData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahTagihan || 0), 0) || 0,
+    tunggakanData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahtagihan || 0), 0) || 0,
     [tunggakanData]
   );
 
@@ -89,15 +89,15 @@ export default function RekapanTunggakan() {
     if (!tunggakanData?.length) { toast.error("Tidak ada data"); return; }
     const rows = tunggakanData.map((item: any, i: number) => ({
       No: i + 1,
-      "ID Tagihan": item.idTagihanSiswa,
-      "Nama Siswa": item.siswa?.namaSiswa || "-",
+      "ID Tagihan": item.idtagihansiswa,
+      "Nama Siswa": item.siswa?.namasiswa || "-",
       "Kelas": item.siswa?.kelas || "-",
-      "No. WA Wali": item.siswa?.noWa || "-",
-      "Nama Tagihan": item.master_tagihan?.namaTagihan || "-",
+      "No. WA Wali": item.siswa?.nowa || "-",
+      "Nama Tagihan": item.master_tagihan?.namatagihan || "-",
       "Jenjang": item.master_tagihan?.jenjang || "-",
       "Bulan": BULAN_NAMA[item.bulan],
       "Tahun": item.tahun,
-      "Jumlah Tunggakan": parseFloat(item.jumlahTagihan || 0),
+      "Jumlah Tunggakan": parseFloat(item.jumlahtagihan || 0),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -173,13 +173,13 @@ export default function RekapanTunggakan() {
                 </thead>
                 <tbody>
                   {tunggakanData.map((item: any, i: number) => (
-                    <tr key={item.idTagihanSiswa} className="border-b hover:bg-muted/50">
+                    <tr key={item.idtagihansiswa} className="border-b hover:bg-muted/50">
                       <td className="p-3">{i + 1}</td>
-                      <td className="p-3 font-medium">{item.siswa?.namaSiswa || "-"}</td>
+                      <td className="p-3 font-medium">{item.siswa?.namasiswa || "-"}</td>
                       <td className="p-3">{item.siswa?.kelas || "-"}</td>
-                      <td className="p-3">{item.siswa?.noWa || "-"}</td>
-                      <td className="p-3">{item.master_tagihan?.namaTagihan || "-"}</td>
-                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahTagihan || 0))}</td>
+                      <td className="p-3">{item.siswa?.nowa || "-"}</td>
+                      <td className="p-3">{item.master_tagihan?.namatagihan || "-"}</td>
+                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahtagihan || 0))}</td>
                       <td className="p-3 text-center">
                         <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
                           Belum Bayar

@@ -27,19 +27,19 @@ export default function RekapanPembayaran() {
       const { data, error } = await supabase
         .from("tagihan_siswa")
         .select(`
-          idTagihanSiswa,
-          jumlahTagihan,
-          statusPembayaran,
+          idtagihansiswa,
+          jumlahtagihan,
+          statuspembayaran,
           bulan,
           tahun,
-          updatedAt,
-          siswa:siswa!idSiswa(id, namaSiswa, kelas),
-          master_tagihan:master_tagihan!idMasterTagihan(namaTagihan, jenjang, jenisTagihan)
+          updatedat,
+          siswa:siswa!idsiswa(id, namasiswa, kelas),
+          master_tagihan:master_tagihan!idmastertagihan(namatagihan, jenjang, jenistagihan)
         `)
-        .eq("statusPembayaran", "LUNAS")
+        .eq("statuspembayaran", "LUNAS")
         .eq("bulan", selectedMonth)
         .eq("tahun", selectedYear)
-        .order("updatedAt", { ascending: false });
+        .order("updatedat", { ascending: false });
 
       if (error) {
         toast.error("Gagal memuat data", { description: error.message });
@@ -62,7 +62,7 @@ export default function RekapanPembayaran() {
         const { count } = await supabase
           .from("tagihan_siswa")
           .select("*", { count: "exact", head: true })
-          .eq("statusPembayaran", "LUNAS")
+          .eq("statuspembayaran", "LUNAS")
           .eq("bulan", m)
           .eq("tahun", y);
         results.push({ name: `${BULAN_NAMA[m].slice(0, 3)} ${y.toString().slice(2)}`, total: count || 0 });
@@ -72,7 +72,7 @@ export default function RekapanPembayaran() {
   });
 
   const totalNominal = useMemo(() =>
-    pembayaranData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahTagihan || 0), 0) || 0,
+    pembayaranData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahtagihan || 0), 0) || 0,
     [pembayaranData]
   );
 
@@ -90,16 +90,16 @@ export default function RekapanPembayaran() {
     if (!pembayaranData?.length) { toast.error("Tidak ada data"); return; }
     const rows = pembayaranData.map((item: any, i: number) => ({
       No: i + 1,
-      "ID Tagihan": item.idTagihanSiswa,
-      "Nama Siswa": item.siswa?.namaSiswa || "-",
+      "ID Tagihan": item.idtagihansiswa,
+      "Nama Siswa": item.siswa?.namasiswa || "-",
       "Kelas": item.siswa?.kelas || "-",
-      "Nama Tagihan": item.master_tagihan?.namaTagihan || "-",
+      "Nama Tagihan": item.master_tagihan?.namatagihan || "-",
       "Jenjang": item.master_tagihan?.jenjang || "-",
-      "Jenis": item.master_tagihan?.jenisTagihan || "-",
+      "Jenis": item.master_tagihan?.jenistagihan || "-",
       "Bulan": BULAN_NAMA[item.bulan],
       "Tahun": item.tahun,
-      "Jumlah Dibayar": parseFloat(item.jumlahTagihan || 0),
-      "Tanggal Lunas": new Date(item.updatedAt).toLocaleDateString("id-ID"),
+      "Jumlah Dibayar": parseFloat(item.jumlahtagihan || 0),
+      "Tanggal Lunas": new Date(item.updatedat).toLocaleDateString("id-ID"),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -173,14 +173,14 @@ export default function RekapanPembayaran() {
                 </thead>
                 <tbody>
                   {pembayaranData.map((item: any, i: number) => (
-                    <tr key={item.idTagihanSiswa} className="border-b hover:bg-muted/50">
+                    <tr key={item.idtagihansiswa} className="border-b hover:bg-muted/50">
                       <td className="p-3">{i + 1}</td>
-                      <td className="p-3 font-medium">{item.siswa?.namaSiswa || "-"}</td>
+                      <td className="p-3 font-medium">{item.siswa?.namasiswa || "-"}</td>
                       <td className="p-3">{item.siswa?.kelas || "-"}</td>
-                      <td className="p-3">{item.master_tagihan?.namaTagihan || "-"}</td>
-                      <td className="p-3">{item.master_tagihan?.jenisTagihan || "-"}</td>
-                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahTagihan || 0))}</td>
-                      <td className="p-3">{new Date(item.updatedAt).toLocaleDateString("id-ID")}</td>
+                      <td className="p-3">{item.master_tagihan?.namatagihan || "-"}</td>
+                      <td className="p-3">{item.master_tagihan?.jenistagihan || "-"}</td>
+                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahtagihan || 0))}</td>
+                      <td className="p-3">{new Date(item.updatedat).toLocaleDateString("id-ID")}</td>
                     </tr>
                   ))}
                 </tbody>

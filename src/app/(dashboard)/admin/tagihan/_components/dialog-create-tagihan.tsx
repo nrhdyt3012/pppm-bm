@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, startTransition, useActionState } from "react";
+import { useState, useEffect, startTransition, useActionState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,8 +58,13 @@ export default function DialogCreateTagihan({ refetch }: { refetch: () => void }
   const { data: siswaList, isLoading: loadingSiswa } = useQuery({
     queryKey: ["siswa-for-tagihan", searchSiswa],
     queryFn: async () => {
-      let query = supabase.from("siswa").select("id, namaSiswa, kelas, NIS").eq("status", "aktif").order("kelas").order("namaSiswa");
-      if (searchSiswa) query = query.ilike("namaSiswa", `%${searchSiswa}%`);
+      let query = supabase
+        .from("siswa")
+        .select("id, namasiswa, kelas, nis")
+        .eq("status", "aktif")
+        .order("kelas")
+        .order("namasiswa");
+      if (searchSiswa) query = query.ilike("namasiswa", `%${searchSiswa}%`);
       const { data, error } = await query;
       if (error) toast.error("Gagal memuat siswa");
       return data || [];
@@ -69,13 +74,17 @@ export default function DialogCreateTagihan({ refetch }: { refetch: () => void }
   const { data: masterList, isLoading: loadingMaster } = useQuery({
     queryKey: ["master-tagihan-for-create"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("master_tagihan").select("*").order("jenjang").order("namaTagihan");
+      const { data, error } = await supabase
+        .from("master_tagihan")
+        .select("*")
+        .order("jenjang")
+        .order("namatagihan");
       if (error) toast.error("Gagal memuat master tagihan");
       return data || [];
     },
   });
 
-  const masterSelected = masterList?.find((m: any) => m.id_masterTagihan?.toString() === selectedMaster);
+  const masterSelected = masterList?.find((m: any) => m.id_mastertagihan?.toString() === selectedMaster);
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedSiswa(checked ? (siswaList?.map((s: any) => s.id) || []) : []);
@@ -111,7 +120,6 @@ export default function DialogCreateTagihan({ refetch }: { refetch: () => void }
     }
   }, [state]);
 
-  // Group siswa by kelas
   const siswaByKelas = useMemo(() => {
     const groups: Record<string, any[]> = {};
     siswaList?.forEach((s: any) => {
@@ -121,12 +129,6 @@ export default function DialogCreateTagihan({ refetch }: { refetch: () => void }
     });
     return groups;
   }, [siswaList]);
-
-  function useMemo(fn: () => Record<string, any[]>, deps: any[]) {
-    const [val, setVal] = useState<Record<string, any[]>>({});
-    useEffect(() => { setVal(fn()); }, deps);
-    return val;
-  }
 
   const tahunOptions = Array.from({ length: 5 }, (_, i) => {
     const y = new Date().getFullYear() - 1 + i;
@@ -175,23 +177,23 @@ export default function DialogCreateTagihan({ refetch }: { refetch: () => void }
             <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border rounded-lg p-2">
               {masterList?.map((master: any) => (
                 <div
-                  key={master.id_masterTagihan}
-                  onClick={() => setSelectedMaster(master.id_masterTagihan?.toString())}
+                  key={master.id_mastertagihan}
+                  onClick={() => setSelectedMaster(master.id_mastertagihan?.toString())}
                   className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedMaster === master.id_masterTagihan?.toString()
+                    selectedMaster === master.id_mastertagihan?.toString()
                       ? "border-green-500 bg-green-50 dark:bg-green-950"
                       : "hover:border-gray-400"
                   }`}
                 >
                   <div>
-                    <p className="font-medium text-sm">{master.namaTagihan}</p>
-                    <p className="text-xs text-muted-foreground">{master.jenjang} · {master.jenisTagihan}</p>
+                    <p className="font-medium text-sm">{master.namatagihan}</p>
+                    <p className="text-xs text-muted-foreground">{master.jenjang} · {master.jenistagihan}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-semibold text-sm text-green-700 dark:text-green-400">
                       {convertIDR(parseFloat(master.nominal || 0))}
                     </span>
-                    <Checkbox checked={selectedMaster === master.id_masterTagihan?.toString()} />
+                    <Checkbox checked={selectedMaster === master.id_mastertagihan?.toString()} />
                   </div>
                 </div>
               ))}
@@ -258,8 +260,8 @@ export default function DialogCreateTagihan({ refetch }: { refetch: () => void }
                           onCheckedChange={(c) => handleSelectSiswa(s.id, c as boolean)}
                         />
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{s.namaSiswa}</p>
-                          {s.NIS && <p className="text-xs text-muted-foreground">NIS: {s.NIS}</p>}
+                          <p className="text-sm font-medium">{s.namasiswa}</p>
+                          {s.nis && <p className="text-xs text-muted-foreground">NIS: {s.nis}</p>}
                         </div>
                       </div>
                     ))}
