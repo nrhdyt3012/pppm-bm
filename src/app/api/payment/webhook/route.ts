@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
       tagihanId = midtransOrderId;
     }
 
-    console.log("🔍 [WEBHOOK] Tagihan ID:", tagihanId);
+    console.log("🔍 [WEBHOOK] Tagihan ID:", tagihanId, "Gross Amount:", gross_amount);
 
     const supabase = await createClient({ isAdmin: true });
 
     // Ambil data tagihan
     const { data: tagihan, error: tagihanError } = await supabase
       .from("tagihan_siswa")
-      .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan")
+      .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan, jumlahterbayar, sisa")
       .eq("idtagihansiswa", tagihanId)
       .single();
 
@@ -55,27 +55,52 @@ export async function POST(request: NextRequest) {
     // Map status Midtrans ke status lokal
     let statuspembayaran: "BELUM BAYAR" | "LUNAS" | "KADALUARSA" = "BELUM BAYAR";
     const metodepembayaran = body.payment_type || "online";
+    const jumlahTagihan = parseFloat(tagihan.jumlahtagihan || 0);
+    const sudahBayar = parseFloat(tagihan.jumlahterbayar || 0);
+    const nominalBayar = parseFloat(gross_amount || 0);
+
+    // Handle payment status
+    let statusPembayaranRecord: "SUCCESS" | "PARTIAL" | "FAILED" | "PENDING" = "PENDING";
+    let terbayarBaru = sudahBayar;
+    let sisaBaru = parseFloat(tagihan.sisa || 0);
 
     if (transaction_status === "settlement" || transaction_status === "capture") {
-      statuspembayaran = "LUNAS";
+      // Pembayaran berhasil
+      terbayarBaru = sudahBayar + nominalBayar;
+      sisaBaru = Math.max(0, jumlahTagihan - terbayarBaru);
+
+      // Tentukan apakah partial atau full payment
+      if (Math.abs(sisaBaru) < 0.01) {
+        // Full payment (sisa <= 0)
+        statuspembayaran = "LUNAS";
+        statusPembayaranRecord = "SUCCESS";
+        terbayarBaru = jumlahTagihan;
+        sisaBaru = 0;
+      } else {
+        // Partial payment (masih ada sisa)
+        statuspembayaran = "BELUM BAYAR";
+        statusPembayaranRecord = "PARTIAL";
+      }
+
+      console.log(`✅ [WEBHOOK] Payment Success: Nominal=${nominalBayar}, Total=${jumlahTagihan}, Sisa=${sisaBaru}`);
     } else if (transaction_status === "expire") {
       statuspembayaran = "KADALUARSA";
+      statusPembayaranRecord = "FAILED";
     } else if (transaction_status === "cancel" || transaction_status === "deny") {
       statuspembayaran = "BELUM BAYAR";
+      statusPembayaranRecord = "FAILED";
     } else {
       // pending — tidak update
+      console.log("⏳ [WEBHOOK] Transaction pending");
       return NextResponse.json({ status: "pending", transaction_status });
     }
 
     // Update status tagihan_siswa
     const updateData: any = {
       statuspembayaran,
+      jumlahterbayar: terbayarBaru,
       updatedat: new Date().toISOString(),
     };
-
-    if (statuspembayaran === "LUNAS") {
-      updateData.jumlahterbayar = parseFloat(tagihan.jumlahtagihan);
-    }
 
     if (statuspembayaran === "KADALUARSA" || transaction_status === "cancel") {
       updateData.paymenttoken = null;
@@ -91,33 +116,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Gagal update tagihan" }, { status: 500 });
     }
 
-    // Insert ke tabel pembayaran jika LUNAS
+    // Update atau insert ke tabel pembayaran
     let pembayaranId: number | null = null;
-    if (statuspembayaran === "LUNAS") {
-      const { data: existing } = await supabase
+    if (transaction_status === "settlement" || transaction_status === "capture") {
+      // Update record pembayaran yang ada (status dari PENDING ke SUCCESS/PARTIAL)
+      const { data: existingPembayaran } = await supabase
         .from("pembayaran")
         .select("idpembayaran")
         .eq("idtagihansiswa", parseInt(tagihanId))
-        .eq("statuspembayaran", "SUCCESS")
+        .eq("statuspembayaran", "PENDING")
         .maybeSingle();
 
-      if (!existing) {
+      if (existingPembayaran) {
+        // Update existing record
+        const { error: updatePembayaranError } = await supabase
+          .from("pembayaran")
+          .update({
+            statuspembayaran: statusPembayaranRecord,
+            tanggalpembayaran: new Date().toISOString(),
+            metodepembayaran,
+          })
+          .eq("idpembayaran", existingPembayaran.idpembayaran);
+
+        if (!updatePembayaranError) {
+          pembayaranId = existingPembayaran.idpembayaran;
+        }
+      } else {
+        // Create new record jika tidak ada yang pending
         const { data: newPembayaran } = await supabase
           .from("pembayaran")
           .insert({
             idtagihansiswa: parseInt(tagihanId),
             idsiswa: tagihan.idsiswa,
-            jumlahdibayar: parseFloat(tagihan.jumlahtagihan),
+            jumlahdibayar: nominalBayar,
             tanggalpembayaran: new Date().toISOString(),
             metodepembayaran,
-            statuspembayaran: "SUCCESS",
+            statuspembayaran: statusPembayaranRecord,
           })
           .select("idpembayaran")
           .single();
 
         pembayaranId = newPembayaran?.idpembayaran ?? null;
-      } else {
-        pembayaranId = existing.idpembayaran;
       }
     }
 
@@ -131,11 +170,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log(`✅ [WEBHOOK] Updated: Tagihan=${tagihanId}, Status=${statuspembayaran}, Sisa=${sisaBaru}, PembayaranId=${pembayaranId}`);
+
     return NextResponse.json({
       status: "success",
       tagihan_id: tagihanId,
       updated_status: statuspembayaran,
       pembayaran_id: pembayaranId,
+      sisa_tagihan: sisaBaru,
     });
   } catch (error: any) {
     console.error("💥 [WEBHOOK] Error:", error);

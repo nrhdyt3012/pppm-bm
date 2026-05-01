@@ -15,10 +15,13 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Receipt, AlertCircle, User, Phone } from "lucide-react";
+import { Loader2, Receipt, AlertCircle, User, Phone, DollarSign } from "lucide-react";
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
 import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 declare global {
   interface Window { snap: any; }
@@ -32,6 +35,8 @@ export default function TagihanSiswaPage() {
   const profile = useAuthStore((state) => state.profile);
   const [selectedTagihan, setSelectedTagihan] = useState<any>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [nominalBayar, setNominalBayar] = useState<string>("");
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
 
   const { data: siswaData } = useQuery({
     queryKey: ["siswa-self", profile.id],
@@ -75,33 +80,53 @@ master_tagihan (
 
   const handleOpenDialog = (tagihan: any) => {
     setSelectedTagihan(tagihan);
+    setNominalBayar(tagihan.jumlahtagihan.toString());
     setShowDialog(true);
   };
 
   const handlePayment = async () => {
-    if (!selectedTagihan) return;
-    try {
-      const jumlah = parseFloat(selectedTagihan.jumlahtagihan || 0);
+    if (!selectedTagihan || !nominalBayar) {
+      toast.error("Input nominal pembayaran");
+      return;
+    }
 
-      // Jika sudah ada token, langsung buka snap
-      if (selectedTagihan.paymenttoken) {
+    const jumlahInput = parseFloat(nominalBayar);
+    const jumlahTotal = parseFloat(selectedTagihan.jumlahtagihan || 0);
+
+    if (isNaN(jumlahInput) || jumlahInput <= 0) {
+      toast.error("Nominal tidak valid");
+      return;
+    }
+
+    if (jumlahInput > jumlahTotal) {
+      toast.error("Nominal melebihi total tagihan");
+      return;
+    }
+
+    try {
+      setIsPaymentLoading(true);
+
+      // Jika nominal = total dan sudah ada token, langsung buka snap
+      if (jumlahInput === jumlahTotal && selectedTagihan.paymenttoken) {
         window.snap.pay(selectedTagihan.paymenttoken, {
-          onSuccess: () => { refetch(); setShowDialog(false); },
+          onSuccess: () => { refetch(); setShowDialog(false); setNominalBayar(""); },
           onError: () => toast.error("Pembayaran gagal"),
-          onClose: () => {},
+          onClose: () => { setIsPaymentLoading(false); },
         });
         setShowDialog(false);
         return;
       }
 
-      // Buat token baru
+      // Buat token baru dengan nominal custom
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id: selectedTagihan.idtagihansiswa,
-          gross_amount: jumlah,
+          gross_amount: jumlahInput,
+          nominal_total: jumlahTotal,
           customer_name: siswaData?.namasiswa || profile.name || "Siswa",
+          customer_id: profile.id,
         }),
       });
 
@@ -112,21 +137,25 @@ master_tagihan (
         return;
       }
 
-      // Simpan token ke database
-      await supabase
-        .from("tagihan_siswa")
-        .update({ paymenttoken: result.token })
-        .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
+      // Jika partial payment, jangan simpan token (buat token baru setiap kali)
+      // Tapi jika full payment, simpan tokennya
+      if (jumlahInput === jumlahTotal) {
+        await supabase
+          .from("tagihan_siswa")
+          .update({ paymenttoken: result.token })
+          .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
+      }
 
       // Buka Snap
       window.snap.pay(result.token, {
-        onSuccess: () => { refetch(); setShowDialog(false); },
+        onSuccess: () => { refetch(); setShowDialog(false); setNominalBayar(""); },
         onError: () => toast.error("Pembayaran gagal"),
-        onClose: () => {},
+        onClose: () => { setIsPaymentLoading(false); },
       });
       setShowDialog(false);
     } catch (err: any) {
       toast.error("Terjadi kesalahan", { description: err.message });
+      setIsPaymentLoading(false);
     }
   };
 
@@ -205,10 +234,10 @@ master_tagihan (
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-green-600" />
-              Konfirmasi Pembayaran
+              Pembayaran Tagihan
             </DialogTitle>
             <DialogDescription>
-              Periksa detail sebelum melanjutkan ke pembayaran
+              Input nominal pembayaran untuk melanjutkan
             </DialogDescription>
           </DialogHeader>
 
@@ -222,17 +251,12 @@ master_tagihan (
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Nama:</span>
-                  <span className="font-medium">{siswaData?.namaSiswa || profile.name}</span>
+                  <span className="font-medium">{siswaData?.namasiswa || profile.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Kelas:</span>
                   <span>{siswaData?.kelas || "-"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Wali:</span>
-                  <span>{siswaData?.namaWali || "-"}</span>
                 </div>
               </CardContent>
             </Card>
@@ -243,7 +267,7 @@ master_tagihan (
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Detail Tagihan</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
+                <CardContent className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Jenis Tagihan:</span>
                     <span className="font-medium">{selectedTagihan.master_tagihan?.namatagihan}</span>
@@ -252,19 +276,65 @@ master_tagihan (
                     <span className="text-muted-foreground">Periode:</span>
                     <span>{BULAN_NAMA[selectedTagihan.bulan]} {selectedTagihan.tahun}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Jenjang:</span>
-                    <span>{selectedTagihan.master_tagihan?.jenjang}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Jenis:</span>
-                    <span>{selectedTagihan.master_tagihan?.jenisTagihan}</span>
-                  </div>
                   <div className="flex justify-between border-t pt-2 font-bold">
-                    <span>Total Pembayaran:</span>
+                    <span>Total Tagihan:</span>
                     <span className="text-green-700 dark:text-green-400 text-base">
                       {convertIDR(parseFloat(selectedTagihan.jumlahtagihan || 0))}
                     </span>
+                  </div>
+
+                  {/* Input Nominal Pembayaran */}
+                  <div className="border-t pt-3 space-y-3">
+                    <div>
+                      <Label htmlFor="nominal-bayar" className="text-xs font-medium">
+                        <DollarSign className="w-4 h-4 inline mr-1" />
+                        Nominal Pembayaran
+                      </Label>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-sm text-muted-foreground">Rp</span>
+                        <Input
+                          id="nominal-bayar"
+                          type="number"
+                          value={nominalBayar}
+                          onChange={(e) => setNominalBayar(e.target.value)}
+                          min="1"
+                          max={parseFloat(selectedTagihan.jumlahtagihan || 0)}
+                          className="font-semibold text-base"
+                          disabled={isPaymentLoading}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Maksimal: {convertIDR(parseFloat(selectedTagihan.jumlahtagihan || 0))}
+                      </p>
+                    </div>
+
+                    {/* Sisa Tagihan Preview */}
+                    {nominalBayar && parseFloat(nominalBayar) > 0 && (
+                      <div className={cn(
+                        "p-3 rounded-lg border-2",
+                        parseFloat(nominalBayar) === parseFloat(selectedTagihan.jumlahtagihan || 0)
+                          ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                          : "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800"
+                      )}>
+                        <div className="text-sm space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Bayar:</span>
+                            <span className="font-semibold">{convertIDR(parseFloat(nominalBayar) || 0)}</span>
+                          </div>
+                          <div className="flex justify-between border-t pt-1">
+                            <span className="font-medium">Sisa Tagihan:</span>
+                            <span className={cn(
+                              "font-bold",
+                              parseFloat(nominalBayar) === parseFloat(selectedTagihan.jumlahtagihan || 0)
+                                ? "text-green-700 dark:text-green-400"
+                                : "text-red-700 dark:text-red-400"
+                            )}>
+                              {convertIDR(Math.max(0, parseFloat(selectedTagihan.jumlahtagihan || 0) - parseFloat(nominalBayar || 0)))}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -272,8 +342,11 @@ master_tagihan (
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>Batal</Button>
-            <Button onClick={handlePayment} className="bg-green-600 hover:bg-green-700">
+            <Button variant="outline" onClick={() => { setShowDialog(false); setNominalBayar(""); }} disabled={isPaymentLoading}>
+              Batal
+            </Button>
+            <Button onClick={handlePayment} className="bg-green-600 hover:bg-green-700" disabled={isPaymentLoading}>
+              {isPaymentLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
               Bayar Sekarang
             </Button>
           </DialogFooter>

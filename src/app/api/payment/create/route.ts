@@ -1,13 +1,14 @@
 // src/app/api/payment/create/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { environment } from "@/configs/environtment";
+import { createClient } from "@/lib/supabase/server";
 
 const midtransClient = require("midtrans-client");
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { order_id, gross_amount, customer_name } = body;
+    const { order_id, gross_amount, nominal_total, customer_name, customer_id } = body;
 
     if (!order_id || !gross_amount || !customer_name) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -15,6 +16,23 @@ export async function POST(request: NextRequest) {
 
     if (!environment.MIDTRANS_SERVER_KEY) {
       return NextResponse.json({ error: "Payment gateway not configured" }, { status: 500 });
+    }
+
+    // Simpan record pembayaran sementara di supabase dengan status PENDING
+    const supabase = await createClient({ isAdmin: true });
+    
+    const { error: insertError } = await supabase
+      .from("pembayaran")
+      .insert({
+        idtagihansiswa: parseInt(order_id),
+        idsiswa: customer_id,
+        jumlahdibayar: gross_amount,
+        metodepembayaran: "midtrans",
+        statuspembayaran: "PENDING",
+      });
+
+    if (insertError) {
+      console.error("Error insert pembayaran:", insertError);
     }
 
     const snap = new midtransClient.Snap({
@@ -33,9 +51,10 @@ export async function POST(request: NextRequest) {
       },
       customer_details: {
         first_name: customer_name,
+        customer_id: customer_id,
       },
       callbacks: {
-        finish: `${appUrl}/siswa/payment/success?order_id=${order_id}`,
+        finish: `${appUrl}/siswa/payment/success?order_id=${order_id}&amount=${gross_amount}&total=${nominal_total || gross_amount}`,
         error: `${appUrl}/siswa/payment/failed?order_id=${order_id}`,
         pending: `${appUrl}/siswa/tagihan`,
       },

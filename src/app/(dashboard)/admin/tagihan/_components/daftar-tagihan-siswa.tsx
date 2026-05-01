@@ -10,18 +10,19 @@ import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR, cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, CheckCircle2, AlertCircle, Plus, Pencil, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { FileText, CheckCircle2, AlertCircle, Plus, Pencil, Trash2, Banknote } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
 import DialogCreateTagihan from "./dialog-create-tagihan";
 import DialogEditTagihanSiswa from "./dialog-edit-tagihan-siswa";
 import DialogDeleteTagihanSiswa from "./dialog-delete-tagihan-siswa";
+import DialogBayarManual from "./dialog-bayar-manual";
 
 export default function DaftarTagihanSiswa() {
   const supabase = createClient();
   const { currentPage, currentLimit, currentSearch, handleChangePage, handleChangeLimit, handleChangeSearch } = useDataTable();
 
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["tagihan-admin-stats"],
     queryFn: async () => {
       const { count: total } = await supabase.from("tagihan_siswa").select("*", { count: "exact", head: true });
@@ -50,21 +51,28 @@ export default function DaftarTagihanSiswa() {
     },
   });
 
-  const [selectedAction, setSelectedAction] = useState<{ data: any; type: "edit" | "delete" } | null>(null);
+  const [selectedAction, setSelectedAction] = useState<{ data: any; type: "edit" | "delete" | "bayar" } | null>(null);
   const handleChangeAction = (open: boolean) => { if (!open) setSelectedAction(null); };
 
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, string> = {
-      "BELUM BAYAR": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
-      "LUNAS": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
-      "KADALUARSA": "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  // Setup realtime subscription untuk auto-refresh
+  useEffect(() => {
+    const channel = supabase
+      .channel("tagihan_siswa-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tagihan_siswa" },
+        () => {
+          // Refetch data ketika ada perubahan
+          refetch();
+          refetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
     };
-    return (
-      <span className={cn("px-2 py-1 rounded-full text-xs font-medium", config[status] || config["BELUM BAYAR"])}>
-        {status}
-      </span>
-    );
-  };
+  }, [refetch, refetchStats]);
 
   const filteredData = useMemo(() => {
     return (tagihanList?.data || []).map((item: any, index: number) => [
@@ -81,13 +89,19 @@ export default function DaftarTagihanSiswa() {
       <span key={`nominal-${item.idtagihansiswa}`} className="font-semibold">
         {convertIDR(parseFloat(item.jumlahtagihan) || 0)}
       </span>,
-      getStatusBadge(item.statuspembayaran),
+      <span key={`sisa-${item.idtagihansiswa}`} className={cn("font-semibold", parseFloat(item.sisa || 0) === 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+        {convertIDR(parseFloat(item.sisa) || 0)}
+      </span>,
       new Date(item.createdat).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
       <DropdownAction
         key={`act-${item.idtagihansiswa}`}
         menu={[
           {
-            label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit</span>,
+            label: <span className="flex items-center gap-2"><Banknote className="w-4 h-4 text-green-600" />Bayar Manual</span>,
+            action: () => setSelectedAction({ data: item, type: "bayar" })
+          },
+          {
+            label: <span className="flex items-center gap-2"><Pencil className="w-4 h-4" />Edit Status</span>,
             action: () => setSelectedAction({ data: item, type: "edit" })
           },
           {
@@ -128,7 +142,7 @@ export default function DaftarTagihanSiswa() {
       </div>
 
       <DataTable
-        header={["No", "ID", "Nama Siswa", "Tagihan", "Nominal", "Status", "Tanggal", "Aksi"]}
+        header={["No", "ID", "Nama Siswa", "Tagihan", "Nominal", "Sisa Tagihan", "Tanggal", "Aksi"]}
         data={filteredData}
         isLoading={isLoading}
         totalPages={tagihanList?.count ? Math.ceil(tagihanList.count / currentLimit) : 0}
@@ -138,6 +152,12 @@ export default function DaftarTagihanSiswa() {
         onChangeLimit={handleChangeLimit}
       />
 
+      <DialogBayarManual
+        open={selectedAction?.type === "bayar"}
+        refetch={refetch}
+        currentData={selectedAction?.data}
+        handleChangeAction={handleChangeAction}
+      />
       <DialogEditTagihanSiswa
         open={selectedAction?.type === "edit"}
         refetch={refetch}

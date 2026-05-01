@@ -1,3 +1,4 @@
+// src/app/(dashboard)/admin/tagihan/actions.ts
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
@@ -20,8 +21,8 @@ export async function updateTagihanSiswa(prevState: any, formData: FormData) {
   };
 
   // Jika LUNAS, update juga jumlahterbayar
+  // CATATAN: sisa akan auto-compute oleh database dari formula DEFAULT
   if (statusPembayaran === "LUNAS") {
-    // Ambil jumlah tagihan terlebih dahulu
     const { data: tagihan } = await supabase
       .from("tagihan_siswa")
       .select("jumlahtagihan")
@@ -30,7 +31,6 @@ export async function updateTagihanSiswa(prevState: any, formData: FormData) {
 
     if (tagihan) {
       updateData.jumlahterbayar = parseFloat(tagihan.jumlahtagihan);
-      updateData.sisa = 0;
     }
   }
 
@@ -68,6 +68,86 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
 
   revalidatePath("/admin/tagihan");
   return { status: "success" };
+}
+
+// ============ FITUR BARU: PEMBAYARAN MANUAL (CASH) ============
+export async function bayarTagihanManual(prevState: any, formData: FormData) {
+  const idTagihan = formData.get("idtagihansiswa");
+  const jumlahBayar = parseFloat(formData.get("jumlahbayar") as string);
+
+  if (!idTagihan || !jumlahBayar || jumlahBayar <= 0) {
+    return { status: "error", errors: { _form: ["Data pembayaran tidak valid"] } };
+  }
+
+  const supabase = await createClient({ isAdmin: true });
+
+  // Ambil data tagihan
+  const { data: tagihan, error: fetchError } = await supabase
+    .from("tagihan_siswa")
+    .select("idtagihansiswa, idsiswa, jumlahtagihan, jumlahterbayar")
+    .eq("idtagihansiswa", idTagihan)
+    .single();
+
+  if (fetchError || !tagihan) {
+    return { status: "error", errors: { _form: ["Tagihan tidak ditemukan"] } };
+  }
+
+  const totalTagihan = parseFloat(tagihan.jumlahtagihan || "0");
+  const sudahBayar = parseFloat(tagihan.jumlahterbayar || "0");
+  const sisaTagihan = totalTagihan - sudahBayar;
+
+  if (jumlahBayar > sisaTagihan) {
+    return { status: "error", errors: { _form: ["Jumlah pembayaran melebihi sisa tagihan"] } };
+  }
+
+  const terbayarBaru = sudahBayar + jumlahBayar;
+  const sisaBaru = totalTagihan - terbayarBaru;
+  const statusBaru = sisaBaru === 0 ? "LUNAS" : "BELUM BAYAR";
+
+  // Update tagihan_siswa
+  // CATATAN: sisa akan auto-compute oleh database dari formula DEFAULT
+  const { error: updateError } = await supabase
+    .from("tagihan_siswa")
+    .update({
+      jumlahterbayar: terbayarBaru,
+      statuspembayaran: statusBaru,
+      updatedat: new Date().toISOString(),
+    })
+    .eq("idtagihansiswa", idTagihan);
+
+  if (updateError) {
+    return { status: "error", errors: { _form: [`Gagal update tagihan: ${updateError.message}`] } };
+  }
+
+  // Insert ke tabel pembayaran
+  const { data: pembayaranData, error: insertError } = await supabase
+    .from("pembayaran")
+    .insert({
+      idtagihansiswa: parseInt(idTagihan as string),
+      idsiswa: tagihan.idsiswa,
+      jumlahdibayar: jumlahBayar,
+      tanggalpembayaran: new Date().toISOString(),
+      metodepembayaran: "cash",
+      statuspembayaran: "SUCCESS",
+    })
+    .select("idpembayaran")
+    .single();
+
+  if (insertError) {
+    console.error("Error insert pembayaran:", insertError);
+    // Tidak fatal, tagihan sudah terupdate
+  }
+
+  revalidatePath("/admin/tagihan");
+  return { 
+    status: "success",
+    data: {
+      idpembayaran: pembayaranData?.idpembayaran,
+      jumlahbayar: jumlahBayar,
+      sisatagihan: sisaBaru,
+      statusbaru: statusBaru,
+    }
+  };
 }
 
 // Buat tagihan batch untuk beberapa siswa
@@ -127,6 +207,7 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
   }
 
   // Insert tagihan untuk setiap siswa
+  // CATATAN: sisa akan auto-compute oleh database menggunakan formula DEFAULT
   const tagihanToInsert = siswaIds.map((siswaId: string) => ({
     idsiswa: siswaId,
     idmastertagihan: parseInt(masterTagihanId as string),
