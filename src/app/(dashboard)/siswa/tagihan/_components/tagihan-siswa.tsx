@@ -15,7 +15,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Receipt, AlertCircle, User, Phone, DollarSign } from "lucide-react";
+import { Loader2, Receipt, AlertCircle, User, DollarSign } from "lucide-react";
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
 import { useState, useEffect } from "react";
@@ -27,8 +27,10 @@ declare global {
   interface Window { snap: any; }
 }
 
-const BULAN_NAMA = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const BULAN_NAMA = [
+  "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
 
 export default function TagihanSiswaPage() {
   const supabase = createClient();
@@ -56,14 +58,15 @@ export default function TagihanSiswaPage() {
         .select(`
           idtagihansiswa,
           jumlahtagihan,
+          jumlahterbayar,
           statuspembayaran,
           paymenttoken,
           bulan,
           tahun,
           createdat,
-master_tagihan (
-  id_mastertagihan, namatagihan, jenjang, jenistagihan, nominal
-)
+          master_tagihan (
+            id_mastertagihan, namatagihan, jenjang, jenistagihan, nominal
+          )
         `)
         .eq("idsiswa", profile.id)
         .eq("statuspembayaran", "BELUM BAYAR")
@@ -80,8 +83,17 @@ master_tagihan (
 
   const handleOpenDialog = (tagihan: any) => {
     setSelectedTagihan(tagihan);
-    setNominalBayar(tagihan.jumlahtagihan.toString());
+    // Default: isi dengan sisa tagihan
+    const sisa = getSisaTagihan(tagihan);
+    setNominalBayar(sisa.toString());
     setShowDialog(true);
+  };
+
+  // Hitung sisa tagihan yang belum dibayar
+  const getSisaTagihan = (tagihan: any): number => {
+    const total = parseFloat(tagihan.jumlahtagihan || 0);
+    const terbayar = parseFloat(tagihan.jumlahterbayar || 0);
+    return Math.max(0, total - terbayar);
   };
 
   const handlePayment = async () => {
@@ -91,40 +103,29 @@ master_tagihan (
     }
 
     const jumlahInput = parseFloat(nominalBayar);
-    const jumlahTotal = parseFloat(selectedTagihan.jumlahtagihan || 0);
+    const sisaTagihan = getSisaTagihan(selectedTagihan);
 
     if (isNaN(jumlahInput) || jumlahInput <= 0) {
       toast.error("Nominal tidak valid");
       return;
     }
 
-    if (jumlahInput > jumlahTotal) {
-      toast.error("Nominal melebihi total tagihan");
+    if (jumlahInput > sisaTagihan + 0.01) {
+      toast.error(`Nominal melebihi sisa tagihan (${convertIDR(sisaTagihan)})`);
       return;
     }
 
     try {
       setIsPaymentLoading(true);
 
-      // Jika nominal = total dan sudah ada token, langsung buka snap
-      if (jumlahInput === jumlahTotal && selectedTagihan.paymenttoken) {
-        window.snap.pay(selectedTagihan.paymenttoken, {
-          onSuccess: () => { refetch(); setShowDialog(false); setNominalBayar(""); },
-          onError: () => toast.error("Pembayaran gagal"),
-          onClose: () => { setIsPaymentLoading(false); },
-        });
-        setShowDialog(false);
-        return;
-      }
-
-      // Buat token baru dengan nominal custom
+      // Buat token baru (partial atau full — selalu buat token baru agar amount tepat)
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id: selectedTagihan.idtagihansiswa,
           gross_amount: jumlahInput,
-          nominal_total: jumlahTotal,
+          nominal_total: parseFloat(selectedTagihan.jumlahtagihan || 0),
           customer_name: siswaData?.namasiswa || profile.name || "Siswa",
           customer_id: profile.id,
         }),
@@ -134,12 +135,13 @@ master_tagihan (
 
       if (!result.token) {
         toast.error("Gagal membuat pembayaran", { description: result.error });
+        setIsPaymentLoading(false);
         return;
       }
 
-      // Jika partial payment, jangan simpan token (buat token baru setiap kali)
-      // Tapi jika full payment, simpan tokennya
-      if (jumlahInput === jumlahTotal) {
+      // Simpan token hanya untuk full payment
+      const isFull = Math.abs(jumlahInput - sisaTagihan) < 0.01;
+      if (isFull) {
         await supabase
           .from("tagihan_siswa")
           .update({ paymenttoken: result.token })
@@ -148,9 +150,19 @@ master_tagihan (
 
       // Buka Snap
       window.snap.pay(result.token, {
-        onSuccess: () => { refetch(); setShowDialog(false); setNominalBayar(""); },
-        onError: () => toast.error("Pembayaran gagal"),
-        onClose: () => { setIsPaymentLoading(false); },
+        onSuccess: () => {
+          refetch();
+          setShowDialog(false);
+          setNominalBayar("");
+          setIsPaymentLoading(false);
+        },
+        onError: () => {
+          toast.error("Pembayaran gagal");
+          setIsPaymentLoading(false);
+        },
+        onClose: () => {
+          setIsPaymentLoading(false);
+        },
       });
       setShowDialog(false);
     } catch (err: any) {
@@ -195,40 +207,72 @@ master_tagihan (
           </Card>
         ) : (
           <div className="space-y-3">
-            {tagihanList.map((tagihan: any) => (
-              <Card key={tagihan.idtagihansiswa} className="hover:shadow-md transition-shadow">
-                <CardContent className="flex items-center justify-between p-5">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded text-xs font-medium">
-                        Belum Bayar
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        #{tagihan.idtagihansiswa}
-                      </span>
+            {tagihanList.map((tagihan: any) => {
+              const totalTagihan = parseFloat(tagihan.jumlahtagihan || 0);
+              const sudahBayar = parseFloat(tagihan.jumlahterbayar || 0);
+              const sisa = Math.max(0, totalTagihan - sudahBayar);
+              const hasPartialPayment = sudahBayar > 0;
+
+              return (
+                <Card key={tagihan.idtagihansiswa} className="hover:shadow-md transition-shadow">
+                  <CardContent className="flex items-center justify-between p-5">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded text-xs font-medium">
+                          Belum Lunas
+                        </span>
+                        {hasPartialPayment && (
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 rounded text-xs font-medium">
+                            Bayar Sebagian
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          #{tagihan.idtagihansiswa}
+                        </span>
+                      </div>
+
+                      <p className="font-semibold text-base">{tagihan.master_tagihan?.namatagihan || "-"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {BULAN_NAMA[tagihan.bulan]} {tagihan.tahun} · {tagihan.master_tagihan?.jenjang}
+                      </p>
+
+                      {/* Info nominal */}
+                      <div className="mt-2 space-y-0.5">
+                        {hasPartialPayment ? (
+                          <>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-muted-foreground">Total:</span>
+                              <span className="font-medium">{convertIDR(totalTagihan)}</span>
+                              <span className="text-muted-foreground">Terbayar:</span>
+                              <span className="text-green-600 font-medium">{convertIDR(sudahBayar)}</span>
+                            </div>
+                            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                              Sisa: {convertIDR(sisa)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
+                            {convertIDR(totalTagihan)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <p className="font-semibold text-base">{tagihan.master_tagihan?.namatagihan || "-"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {BULAN_NAMA[tagihan.bulan]} {tagihan.tahun} · {tagihan.master_tagihan?.jenjang} · {tagihan.master_tagihan?.jenisTagihan}
-                    </p>
-                    <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1">
-                      {convertIDR(parseFloat(tagihan.jumlahtagihan || 0))}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => handleOpenDialog(tagihan)}
-                    className="bg-green-600 hover:bg-green-700 ml-4"
-                  >
-                    Bayar
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+
+                    <Button
+                      onClick={() => handleOpenDialog(tagihan)}
+                      className="bg-green-600 hover:bg-green-700 ml-4 shrink-0"
+                    >
+                      {hasPartialPayment ? "Bayar Sisa" : "Bayar"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Dialog Detail Pembayaran */}
+      {/* Dialog Pembayaran */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -247,7 +291,7 @@ master_tagihan (
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Data Siswa</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-1 text-sm">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Nama:</span>
@@ -262,92 +306,133 @@ master_tagihan (
             </Card>
 
             {/* Detail Tagihan */}
-            {selectedTagihan && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Detail Tagihan</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Jenis Tagihan:</span>
-                    <span className="font-medium">{selectedTagihan.master_tagihan?.namatagihan}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Periode:</span>
-                    <span>{BULAN_NAMA[selectedTagihan.bulan]} {selectedTagihan.tahun}</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2 font-bold">
-                    <span>Total Tagihan:</span>
-                    <span className="text-green-700 dark:text-green-400 text-base">
-                      {convertIDR(parseFloat(selectedTagihan.jumlahtagihan || 0))}
-                    </span>
-                  </div>
+            {selectedTagihan && (() => {
+              const totalTagihan = parseFloat(selectedTagihan.jumlahtagihan || 0);
+              const sudahBayar = parseFloat(selectedTagihan.jumlahterbayar || 0);
+              const sisa = Math.max(0, totalTagihan - sudahBayar);
+              const jumlahBayarInput = parseFloat(nominalBayar || "0");
+              const sisaSetelahBayar = Math.max(0, sisa - jumlahBayarInput);
+              const akanLunas = jumlahBayarInput >= sisa - 0.01;
 
-                  {/* Input Nominal Pembayaran */}
-                  <div className="border-t pt-3 space-y-3">
-                    <div>
-                      <Label htmlFor="nominal-bayar" className="text-xs font-medium">
-                        <DollarSign className="w-4 h-4 inline mr-1" />
-                        Nominal Pembayaran
-                      </Label>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm text-muted-foreground">Rp</span>
-                        <Input
-                          id="nominal-bayar"
-                          type="number"
-                          value={nominalBayar}
-                          onChange={(e) => setNominalBayar(e.target.value)}
-                          min="1"
-                          max={parseFloat(selectedTagihan.jumlahtagihan || 0)}
-                          className="font-semibold text-base"
-                          disabled={isPaymentLoading}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Maksimal: {convertIDR(parseFloat(selectedTagihan.jumlahtagihan || 0))}
-                      </p>
+              return (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Detail Tagihan</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Jenis Tagihan:</span>
+                      <span className="font-medium">{selectedTagihan.master_tagihan?.namatagihan}</span>
                     </div>
-
-                    {/* Sisa Tagihan Preview */}
-                    {nominalBayar && parseFloat(nominalBayar) > 0 && (
-                      <div className={cn(
-                        "p-3 rounded-lg border-2",
-                        parseFloat(nominalBayar) === parseFloat(selectedTagihan.jumlahtagihan || 0)
-                          ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
-                          : "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800"
-                      )}>
-                        <div className="text-sm space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Bayar:</span>
-                            <span className="font-semibold">{convertIDR(parseFloat(nominalBayar) || 0)}</span>
-                          </div>
-                          <div className="flex justify-between border-t pt-1">
-                            <span className="font-medium">Sisa Tagihan:</span>
-                            <span className={cn(
-                              "font-bold",
-                              parseFloat(nominalBayar) === parseFloat(selectedTagihan.jumlahtagihan || 0)
-                                ? "text-green-700 dark:text-green-400"
-                                : "text-red-700 dark:text-red-400"
-                            )}>
-                              {convertIDR(Math.max(0, parseFloat(selectedTagihan.jumlahtagihan || 0) - parseFloat(nominalBayar || 0)))}
-                            </span>
-                          </div>
-                        </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Periode:</span>
+                      <span>{BULAN_NAMA[selectedTagihan.bulan]} {selectedTagihan.tahun}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Tagihan:</span>
+                      <span className="font-semibold">{convertIDR(totalTagihan)}</span>
+                    </div>
+                    {sudahBayar > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Sudah Dibayar:</span>
+                        <span className="font-semibold">{convertIDR(sudahBayar)}</span>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    <div className="flex justify-between border-t pt-2 font-bold">
+                      <span>Sisa Tagihan:</span>
+                      <span className="text-red-600 text-base">{convertIDR(sisa)}</span>
+                    </div>
+
+                    {/* Input Nominal */}
+                    <div className="border-t pt-3 space-y-3">
+                      <div>
+                        <Label htmlFor="nominal-bayar" className="text-xs font-medium flex items-center gap-1">
+                          <DollarSign className="w-3 h-3" />
+                          Nominal Pembayaran (Rp)
+                        </Label>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-sm text-muted-foreground">Rp</span>
+                          <Input
+                            id="nominal-bayar"
+                            type="number"
+                            value={nominalBayar}
+                            onChange={(e) => setNominalBayar(e.target.value)}
+                            min="1"
+                            max={sisa}
+                            className="font-semibold text-base"
+                            disabled={isPaymentLoading}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Maksimal: {convertIDR(sisa)}
+                        </p>
+                      </div>
+
+                      {/* Preview hasil bayar */}
+                      {jumlahBayarInput > 0 && (
+                        <div className={cn(
+                          "p-3 rounded-lg border-2 space-y-1 text-sm",
+                          akanLunas
+                            ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                            : "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800"
+                        )}>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Dibayar Sekarang:</span>
+                            <span className="font-semibold">{convertIDR(jumlahBayarInput)}</span>
+                          </div>
+                          <div className="flex justify-between border-t pt-1">
+                            <span className="font-medium">Sisa Setelah Bayar:</span>
+                            <span className={cn(
+                              "font-bold",
+                              akanLunas
+                                ? "text-green-700 dark:text-green-400"
+                                : "text-amber-700 dark:text-amber-400"
+                            )}>
+                              {akanLunas ? "LUNAS ✓" : convertIDR(sisaSetelahBayar)}
+                            </span>
+                          </div>
+                          {!akanLunas && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Pembayaran sebagian — Anda bisa melunasi sisanya kapan saja.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {jumlahBayarInput > sisa + 0.01 && (
+                        <p className="text-xs text-red-500">
+                          Jumlah melebihi sisa tagihan ({convertIDR(sisa)})
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowDialog(false); setNominalBayar(""); }} disabled={isPaymentLoading}>
+            <Button
+              variant="outline"
+              onClick={() => { setShowDialog(false); setNominalBayar(""); }}
+              disabled={isPaymentLoading}
+            >
               Batal
             </Button>
-            <Button onClick={handlePayment} className="bg-green-600 hover:bg-green-700" disabled={isPaymentLoading}>
-              {isPaymentLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
-              Bayar Sekarang
+            <Button
+              onClick={handlePayment}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={
+                isPaymentLoading ||
+                !nominalBayar ||
+                parseFloat(nominalBayar) <= 0 ||
+                parseFloat(nominalBayar) > getSisaTagihan(selectedTagihan) + 0.01
+              }
+            >
+              {isPaymentLoading
+                ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Memproses...</>
+                : "Bayar via Midtrans"
+              }
             </Button>
           </DialogFooter>
         </DialogContent>

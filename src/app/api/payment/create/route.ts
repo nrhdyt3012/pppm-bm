@@ -18,10 +18,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Payment gateway not configured" }, { status: 500 });
     }
 
-    // Simpan record pembayaran sementara di supabase dengan status PENDING
     const supabase = await createClient({ isAdmin: true });
-    
-    const { error: insertError } = await supabase
+
+    // Cek apakah ada record pembayaran PENDING yang sudah ada untuk tagihan ini
+    // (Untuk menghindari duplikat saat retry)
+    const { data: existingPending } = await supabase
+      .from("pembayaran")
+      .select("idpembayaran")
+      .eq("idtagihansiswa", parseInt(order_id))
+      .eq("statuspembayaran", "PENDING")
+      .maybeSingle();
+
+    // Hapus PENDING lama jika ada (diganti dengan yang baru)
+    if (existingPending) {
+      await supabase
+        .from("pembayaran")
+        .delete()
+        .eq("idpembayaran", existingPending.idpembayaran);
+    }
+
+    // Insert record pembayaran PENDING baru
+    const { data: newPembayaran, error: insertError } = await supabase
       .from("pembayaran")
       .insert({
         idtagihansiswa: parseInt(order_id),
@@ -29,7 +46,9 @@ export async function POST(request: NextRequest) {
         jumlahdibayar: gross_amount,
         metodepembayaran: "midtrans",
         statuspembayaran: "PENDING",
-      });
+      })
+      .select("idpembayaran")
+      .single();
 
     if (insertError) {
       console.error("Error insert pembayaran:", insertError);
@@ -40,9 +59,18 @@ export async function POST(request: NextRequest) {
       serverKey: environment.MIDTRANS_SERVER_KEY,
     });
 
-    // Format order_id: PPPM-{idTagihanSiswa}-{timestamp}
-    const midtransOrderId = `PPPM-${order_id}-${Date.now()}`;
+    // Format order_id: PPPM-{idTagihanSiswa}-{idPembayaran}-{timestamp}
+    // Menyertakan idPembayaran agar webhook bisa langsung update record yang tepat
+    const pembayaranId = newPembayaran?.idpembayaran ?? Date.now();
+    const midtransOrderId = `PPPM-${order_id}-${pembayaranId}-${Date.now()}`;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    // Encode semua data yang diperlukan ke callback URL
+    const successUrl = new URL(`${appUrl}/siswa/payment/success`);
+    successUrl.searchParams.set("order_id", order_id);
+    successUrl.searchParams.set("amount", gross_amount.toString());
+    successUrl.searchParams.set("total", (nominal_total || gross_amount).toString());
+    successUrl.searchParams.set("pembayaran_id", pembayaranId.toString());
 
     const parameter = {
       transaction_details: {
@@ -54,7 +82,7 @@ export async function POST(request: NextRequest) {
         customer_id: customer_id,
       },
       callbacks: {
-        finish: `${appUrl}/siswa/payment/success?order_id=${order_id}&amount=${gross_amount}&total=${nominal_total || gross_amount}`,
+        finish: successUrl.toString(),
         error: `${appUrl}/siswa/payment/failed?order_id=${order_id}`,
         pending: `${appUrl}/siswa/tagihan`,
       },
@@ -65,6 +93,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       token: transaction.token,
       redirect_url: transaction.redirect_url,
+      pembayaran_id: pembayaranId,
+      midtrans_order_id: midtransOrderId,
     });
   } catch (error: any) {
     const midtransError = error?.ApiResponse || error?.message || "Failed to create payment";

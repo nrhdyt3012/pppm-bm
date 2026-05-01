@@ -1,13 +1,10 @@
-// src/app/(dashboard)/santri/payment/actions.ts
+// src/app/(dashboard)/siswa/payment/actions.ts
 "use server";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { environment } from "@/configs/environtment";
 import { revalidatePath } from "next/cache";
 
-// Gunakan plain supabase-js client dengan service role key
-// createServerClient dari @supabase/ssr TIDAK bypass RLS meski pakai service role
-// createClient dari @supabase/supabase-js dengan service role key BYPASS RLS
 function getAdminClient() {
   return createSupabaseClient(
     environment.SUPABASE_URL,
@@ -21,125 +18,237 @@ function getAdminClient() {
   );
 }
 
-export async function confirmPayment(tagihanId: string, rawOrderId: string) {
+/**
+ * Konfirmasi pembayaran setelah Midtrans callback.
+ * Mendukung partial payment: update jumlahterbayar & sisa tanpa set LUNAS kalau belum full.
+ */
+export async function confirmPayment(
+  tagihanId: string,
+  rawOrderId: string,
+  nominalBayar?: number,
+  pembayaranId?: number
+) {
   if (!tagihanId) {
     return { status: "error", message: "ID tagihan tidak valid" };
   }
 
   const supabase = getAdminClient();
+  console.log("🔄 [confirmPayment] tagihanId:", tagihanId, "nominalBayar:", nominalBayar, "pembayaranId:", pembayaranId);
 
-  console.log("🔄 [confirmPayment] tagihanId:", tagihanId);
-
-  // Step 1: Ambil data tagihan
+  // Ambil data tagihan terbaru
   const { data: tagihan, error: fetchError } = await supabase
     .from("tagihan_siswa")
-    .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan")
+    .select("idtagihansiswa, idsiswa, statuspembayaran, jumlahtagihan, jumlahterbayar")
     .eq("idtagihansiswa", tagihanId)
     .single();
 
   if (fetchError || !tagihan) {
-    const msg = fetchError?.message ?? "Tagihan tidak ditemukan";
-    console.error("❌ [confirmPayment] fetch error:", fetchError);
-    return { status: "error", message: `Tagihan tidak ditemukan: ${msg}` };
+    return { status: "error", message: `Tagihan tidak ditemukan: ${fetchError?.message}` };
   }
 
-  console.log("📊 [confirmPayment] tagihan:", tagihan);
+  const jumlahTagihan = parseFloat(tagihan.jumlahtagihan || "0");
+  const sudahBayar = parseFloat(tagihan.jumlahterbayar || "0");
 
-  // Step 2: Jika sudah LUNAS, langsung return sukses
+  // Kalau webhook sudah update, status mungkin sudah benar
+  // Kita cek apakah pembayaran sudah tercatat
+  if (pembayaranId) {
+    const { data: existingPembayaran } = await supabase
+      .from("pembayaran")
+      .select("idpembayaran, statuspembayaran, jumlahdibayar")
+      .eq("idpembayaran", pembayaranId)
+      .maybeSingle();
+
+    if (existingPembayaran && existingPembayaran.statuspembayaran === "SUCCESS") {
+      // Webhook sudah handle, cukup revalidate
+      revalidatePath("/siswa/tagihan");
+      revalidatePath("/siswa/riwayat");
+      return {
+        status: "success",
+        data: {
+          jumlahBayar: parseFloat(existingPembayaran.jumlahdibayar || "0"),
+          sisaTagihan: jumlahTagihan - sudahBayar,
+          statusBaru: tagihan.statuspembayaran,
+          tagihanId,
+        },
+      };
+    }
+
+    if (existingPembayaran && existingPembayaran.statuspembayaran === "PARTIAL") {
+      revalidatePath("/siswa/tagihan");
+      revalidatePath("/siswa/riwayat");
+      return {
+        status: "success",
+        data: {
+          jumlahBayar: parseFloat(existingPembayaran.jumlahdibayar || "0"),
+          sisaTagihan: jumlahTagihan - sudahBayar,
+          statusBaru: tagihan.statuspembayaran,
+          tagihanId,
+        },
+      };
+    }
+  }
+
+  // Fallback: webhook belum jalan (misal dev/localhost), kita update manual
+  const nominalYangDibayar = nominalBayar || 0;
+
+  if (nominalYangDibayar <= 0) {
+    // Tidak ada info nominal — cek apakah sudah LUNAS dari status existing
+    if (tagihan.statuspembayaran === "LUNAS") {
+      revalidatePath("/siswa/tagihan");
+      revalidatePath("/siswa/riwayat");
+      return {
+        status: "success",
+        data: {
+          jumlahBayar: jumlahTagihan,
+          sisaTagihan: 0,
+          statusBaru: "LUNAS",
+          tagihanId,
+        },
+      };
+    }
+    return { status: "error", message: "Nominal pembayaran tidak diketahui. Tunggu konfirmasi sistem." };
+  }
+
+  // Hitung sisa baru
+  const terbayarBaru = sudahBayar + nominalYangDibayar;
+  const sisaBaru = Math.max(0, jumlahTagihan - terbayarBaru);
+  const statusBaru = sisaBaru < 0.01 ? "LUNAS" : "BELUM BAYAR";
+  const statusRecord: "SUCCESS" | "PARTIAL" = statusBaru === "LUNAS" ? "SUCCESS" : "PARTIAL";
+
+  // Jika sudah LUNAS sebelumnya, skip
   if (tagihan.statuspembayaran === "LUNAS") {
-    console.log("✅ [confirmPayment] already LUNAS");
-    return { status: "success", message: "already_lunas" };
+    revalidatePath("/siswa/tagihan");
+    revalidatePath("/siswa/riwayat");
+    return {
+      status: "success",
+      data: { jumlahBayar: nominalYangDibayar, sisaTagihan: 0, statusBaru: "LUNAS", tagihanId },
+    };
   }
 
-  // Step 3: Update tagihan_siswa → LUNAS
+  // Update tagihan_siswa
   const { error: updateError } = await supabase
     .from("tagihan_siswa")
     .update({
-      statuspembayaran: "LUNAS",
+      statuspembayaran: statusBaru,
+      jumlahterbayar: statusBaru === "LUNAS" ? jumlahTagihan : terbayarBaru,
       updatedat: new Date().toISOString(),
     })
     .eq("idtagihansiswa", tagihanId);
 
   if (updateError) {
-    console.error("❌ [confirmPayment] update error:", updateError);
-    return {
-      status: "error",
-      message: `Gagal update tagihan: ${updateError.message}`,
-    };
+    return { status: "error", message: `Gagal update tagihan: ${updateError.message}` };
   }
 
-  console.log("✅ [confirmPayment] tagihan updated to LUNAS");
+  // Update atau insert record pembayaran
+  let finalPembayaranId = pembayaranId ?? null;
 
-  // Step 4: Cek apakah record pembayaran sudah ada (idempotent)
-  const { data: existingPembayaran } = await supabase
-    .from("pembayaran")
-    .select("idpembayaran")
-    .eq("idtagihansiswa", parseInt(tagihanId))
-    .maybeSingle();
-
-  let pembayaranId: number | null = existingPembayaran?.idpembayaran ?? null;
-
-  if (!existingPembayaran) {
-    // Step 5: Insert ke tabel pembayaran
-    const insertPayload = {
-      idtagihansiswa: parseInt(tagihanId),
-      idsiswa: tagihan.idsiswa,
-      jumlahdibayar: parseFloat(tagihan.jumlahtagihan),
-      tanggalpembayaran: new Date().toISOString(),
-      metodepembayaran: "midtrans_online",
-      statuspembayaran: "SUCCESS",
-    };
-
-    console.log("📝 [confirmPayment] inserting pembayaran:", insertPayload);
-
-    const { data: newPembayaran, error: insertError } = await supabase
+  if (pembayaranId) {
+    await supabase
       .from("pembayaran")
-      .insert(insertPayload)
-      .select("idpembayaran")
-      .single();
-
-    if (insertError) {
-      console.error("❌ [confirmPayment] insert pembayaran error:", {
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint,
-        code: insertError.code,
-      });
-      // Tidak fatal — tagihan sudah LUNAS
-    } else {
-      pembayaranId = newPembayaran.idpembayaran;
-      console.log("✅ [confirmPayment] pembayaran inserted, id:", pembayaranId);
-    }
+      .update({
+        statuspembayaran: statusRecord,
+        tanggalpembayaran: new Date().toISOString(),
+        metodepembayaran: "midtrans_online",
+        jumlahdibayar: nominalYangDibayar,
+      })
+      .eq("idpembayaran", pembayaranId);
   } else {
-    console.log("ℹ️ [confirmPayment] pembayaran exists:", existingPembayaran.idpembayaran);
-  }
+    // Cek apakah ada PENDING
+    const { data: existingPending } = await supabase
+      .from("pembayaran")
+      .select("idpembayaran")
+      .eq("idtagihansiswa", parseInt(tagihanId))
+      .eq("statuspembayaran", "PENDING")
+      .maybeSingle();
 
-  // Step 6: Insert ke payment_gateway_log
-  if (pembayaranId !== null) {
-    const { error: logError } = await supabase
-      .from("payment_gateway_log")
-      .insert({
-        idpembayaran: pembayaranId,
-        orderid: rawOrderId,
-        transactionstatusmidtrans: "settlement",
-        rawresponsemidtrans: {
-          note: "Confirmed from success callback page",
-          raw_order_id: rawOrderId,
-          tagihan_id: tagihanId,
-          timestamp: new Date().toISOString(),
-        },
-      });
-
-    if (logError) {
-      console.error("⚠️ [confirmPayment] insert log error:", logError);
+    if (existingPending) {
+      await supabase
+        .from("pembayaran")
+        .update({
+          statuspembayaran: statusRecord,
+          tanggalpembayaran: new Date().toISOString(),
+          metodepembayaran: "midtrans_online",
+          jumlahdibayar: nominalYangDibayar,
+        })
+        .eq("idpembayaran", existingPending.idpembayaran);
+      finalPembayaranId = existingPending.idpembayaran;
     } else {
-      console.log("✅ [confirmPayment] payment_gateway_log inserted");
+      const { data: newPembayaran } = await supabase
+        .from("pembayaran")
+        .insert({
+          idtagihansiswa: parseInt(tagihanId),
+          idsiswa: tagihan.idsiswa,
+          jumlahdibayar: nominalYangDibayar,
+          tanggalpembayaran: new Date().toISOString(),
+          metodepembayaran: "midtrans_online",
+          statuspembayaran: statusRecord,
+        })
+        .select("idpembayaran")
+        .single();
+      finalPembayaranId = newPembayaran?.idpembayaran ?? null;
     }
   }
 
-  // Revalidate cache untuk halaman tagihan
+  // Log gateway
+  if (finalPembayaranId !== null) {
+    await supabase.from("payment_gateway_log").insert({
+      idpembayaran: finalPembayaranId,
+      orderid: rawOrderId,
+      transactionstatusmidtrans: "settlement",
+      rawresponsemidtrans: {
+        note: "Confirmed from success callback page (fallback)",
+        raw_order_id: rawOrderId,
+        tagihan_id: tagihanId,
+        nominal_bayar: nominalYangDibayar,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+
   revalidatePath("/siswa/tagihan");
   revalidatePath("/siswa/riwayat");
 
-  return { status: "success" };
+  return {
+    status: "success",
+    data: {
+      jumlahBayar: nominalYangDibayar,
+      sisaTagihan: statusBaru === "LUNAS" ? 0 : sisaBaru,
+      statusBaru,
+      tagihanId,
+      pembayaranId: finalPembayaranId,
+    },
+  };
+}
+
+/**
+ * Ambil detail pembayaran untuk cetak kwitansi per transaksi.
+ * Digunakan di halaman riwayat & success.
+ */
+export async function getPembayaranDetail(pembayaranId: number) {
+  const supabase = getAdminClient();
+
+  const { data, error } = await supabase
+    .from("pembayaran")
+    .select(`
+      idpembayaran,
+      jumlahdibayar,
+      tanggalpembayaran,
+      metodepembayaran,
+      statuspembayaran,
+      tagihan_siswa:tagihan_siswa!idtagihansiswa(
+        idtagihansiswa,
+        jumlahtagihan,
+        jumlahterbayar,
+        statuspembayaran,
+        bulan,
+        tahun,
+        siswa:siswa!idsiswa(id, namasiswa, kelas, namawali, nowa),
+        master_tagihan:master_tagihan!idmastertagihan(namatagihan, jenjang, jenistagihan)
+      )
+    `)
+    .eq("idpembayaran", pembayaranId)
+    .single();
+
+  if (error) return { status: "error", message: error.message };
+  return { status: "success", data };
 }
