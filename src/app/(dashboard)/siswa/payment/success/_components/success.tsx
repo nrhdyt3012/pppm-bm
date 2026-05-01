@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Loader2, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
@@ -18,7 +18,6 @@ function extractTagihanId(orderId: string): string {
 }
 
 function extractPembayaranId(orderId: string): number | undefined {
-  // Format: PPPM-{tagihanId}-{pembayaranId}-{timestamp}
   if (!orderId?.startsWith("PPPM-")) return undefined;
   const parts = orderId.split("-");
   if (parts.length >= 4) {
@@ -43,6 +42,7 @@ export default function Success() {
   const pembayaranIdParam = searchParams.get("pembayaran_id");
 
   const tagihanId = extractTagihanId(rawOrderId);
+  // Midtrans selalu full payment, amount dari URL sebagai fallback saja
   const nominalBayar = amountParam ? parseFloat(amountParam) : undefined;
   const pembayaranId = pembayaranIdParam
     ? parseInt(pembayaranIdParam)
@@ -75,9 +75,6 @@ export default function Success() {
     }
   };
 
-  const isLunas = successData?.statusBaru === "LUNAS";
-  const sisaTagihan = successData?.sisaTagihan ?? 0;
-
   return (
     <div className="w-full flex items-center justify-center">
       <Card className="w-full max-w-md shadow-xl">
@@ -95,30 +92,17 @@ export default function Success() {
 
             {status === "success" && (
               <>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                  isLunas
-                    ? "bg-green-100 dark:bg-green-900"
-                    : "bg-amber-100 dark:bg-amber-900"
-                }`}>
-                  {isLunas
-                    ? <CheckCircle className="w-10 h-10 text-green-600" />
-                    : <Clock className="w-10 h-10 text-amber-600" />
-                  }
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
 
                 <div>
-                  <h1 className="text-xl font-bold mb-2">
-                    {isLunas ? "Pembayaran Berhasil!" : "Pembayaran Diterima"}
-                  </h1>
+                  <h1 className="text-xl font-bold mb-2">Pembayaran Berhasil!</h1>
                   <p className="text-muted-foreground text-sm">
-                    {isLunas
-                      ? `Tagihan #${tagihanId} telah lunas.`
-                      : `Pembayaran untuk tagihan #${tagihanId} berhasil dicatat.`
-                    }
+                    Tagihan #{tagihanId} telah lunas.
                   </p>
                 </div>
 
-                {/* Detail pembayaran */}
                 <div className="w-full p-4 bg-muted rounded-lg text-sm space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">ID Tagihan:</span>
@@ -126,38 +110,22 @@ export default function Success() {
                   </div>
                   {successData?.jumlahBayar != null && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Dibayar:</span>
+                      <span className="text-muted-foreground">Jumlah Dibayar:</span>
                       <span className="font-semibold text-green-600">
                         {convertIDR(successData.jumlahBayar)}
                       </span>
                     </div>
                   )}
-                  {!isLunas && sisaTagihan > 0 && (
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-muted-foreground">Sisa Tagihan:</span>
-                      <span className="font-semibold text-amber-600">
-                        {convertIDR(sisaTagihan)}
-                      </span>
-                    </div>
-                  )}
                   <div className="flex justify-between border-t pt-2">
                     <span className="text-muted-foreground">Status:</span>
-                    <span className={`font-medium ${isLunas ? "text-green-600" : "text-amber-600"}`}>
-                      {isLunas ? "Lunas ✓" : "Belum Lunas (Sebagian)"}
-                    </span>
+                    <span className="font-medium text-green-600">Lunas ✓</span>
                   </div>
                 </div>
-
-                {!isLunas && (
-                  <div className="w-full p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300">
-                    Masih terdapat sisa tagihan <strong>{convertIDR(sisaTagihan)}</strong>. Anda dapat melakukan pembayaran lanjutan kapan saja.
-                  </div>
-                )}
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <Link href="/siswa/tagihan" className="flex-1">
                     <Button variant="outline" className="w-full">
-                      {isLunas ? "Lihat Tagihan Lain" : "Bayar Sisa Tagihan"}
+                      Lihat Tagihan Lain
                     </Button>
                   </Link>
                   <Link href="/siswa/riwayat" className="flex-1">

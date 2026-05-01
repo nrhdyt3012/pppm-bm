@@ -15,13 +15,10 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Receipt, AlertCircle, User, DollarSign } from "lucide-react";
+import { Loader2, Receipt, AlertCircle, User } from "lucide-react";
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 declare global {
   interface Window { snap: any; }
@@ -37,7 +34,6 @@ export default function TagihanSiswaPage() {
   const profile = useAuthStore((state) => state.profile);
   const [selectedTagihan, setSelectedTagihan] = useState<any>(null);
   const [showDialog, setShowDialog] = useState(false);
-  const [nominalBayar, setNominalBayar] = useState<string>("");
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
 
   const { data: siswaData } = useQuery({
@@ -81,50 +77,37 @@ export default function TagihanSiswaPage() {
     },
   });
 
-  const handleOpenDialog = (tagihan: any) => {
-    setSelectedTagihan(tagihan);
-    // Default: isi dengan sisa tagihan
-    const sisa = getSisaTagihan(tagihan);
-    setNominalBayar(sisa.toString());
-    setShowDialog(true);
-  };
-
-  // Hitung sisa tagihan yang belum dibayar
   const getSisaTagihan = (tagihan: any): number => {
     const total = parseFloat(tagihan.jumlahtagihan || 0);
     const terbayar = parseFloat(tagihan.jumlahterbayar || 0);
     return Math.max(0, total - terbayar);
   };
 
-  const handlePayment = async () => {
-    if (!selectedTagihan || !nominalBayar) {
-      toast.error("Input nominal pembayaran");
-      return;
-    }
+  const handleOpenDialog = (tagihan: any) => {
+    setSelectedTagihan(tagihan);
+    setShowDialog(true);
+  };
 
-    const jumlahInput = parseFloat(nominalBayar);
+  // Midtrans selalu bayar penuh (sisa tagihan)
+  const handlePayment = async () => {
+    if (!selectedTagihan) return;
+
     const sisaTagihan = getSisaTagihan(selectedTagihan);
 
-    if (isNaN(jumlahInput) || jumlahInput <= 0) {
-      toast.error("Nominal tidak valid");
-      return;
-    }
-
-    if (jumlahInput > sisaTagihan + 0.01) {
-      toast.error(`Nominal melebihi sisa tagihan (${convertIDR(sisaTagihan)})`);
+    if (sisaTagihan <= 0) {
+      toast.error("Tagihan sudah lunas");
       return;
     }
 
     try {
       setIsPaymentLoading(true);
 
-      // Buat token baru (partial atau full — selalu buat token baru agar amount tepat)
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id: selectedTagihan.idtagihansiswa,
-          gross_amount: jumlahInput,
+          gross_amount: sisaTagihan,
           nominal_total: parseFloat(selectedTagihan.jumlahtagihan || 0),
           customer_name: siswaData?.namasiswa || profile.name || "Siswa",
           customer_id: profile.id,
@@ -139,21 +122,17 @@ export default function TagihanSiswaPage() {
         return;
       }
 
-      // Simpan token hanya untuk full payment
-      const isFull = Math.abs(jumlahInput - sisaTagihan) < 0.01;
-      if (isFull) {
-        await supabase
-          .from("tagihan_siswa")
-          .update({ paymenttoken: result.token })
-          .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
-      }
+      // Simpan token ke tagihan
+      await supabase
+        .from("tagihan_siswa")
+        .update({ paymenttoken: result.token })
+        .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
 
       // Buka Snap
       window.snap.pay(result.token, {
         onSuccess: () => {
           refetch();
           setShowDialog(false);
-          setNominalBayar("");
           setIsPaymentLoading(false);
         },
         onError: () => {
@@ -223,7 +202,7 @@ export default function TagihanSiswaPage() {
                         </span>
                         {hasPartialPayment && (
                           <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 rounded text-xs font-medium">
-                            Bayar Sebagian
+                            Bayar Sebagian (Cash)
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground">
@@ -236,14 +215,13 @@ export default function TagihanSiswaPage() {
                         {BULAN_NAMA[tagihan.bulan]} {tagihan.tahun} · {tagihan.master_tagihan?.jenjang}
                       </p>
 
-                      {/* Info nominal */}
                       <div className="mt-2 space-y-0.5">
                         {hasPartialPayment ? (
                           <>
                             <div className="flex items-center gap-4 text-sm">
                               <span className="text-muted-foreground">Total:</span>
                               <span className="font-medium">{convertIDR(totalTagihan)}</span>
-                              <span className="text-muted-foreground">Terbayar:</span>
+                              <span className="text-muted-foreground">Terbayar (Cash):</span>
                               <span className="text-green-600 font-medium">{convertIDR(sudahBayar)}</span>
                             </div>
                             <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
@@ -262,7 +240,7 @@ export default function TagihanSiswaPage() {
                       onClick={() => handleOpenDialog(tagihan)}
                       className="bg-green-600 hover:bg-green-700 ml-4 shrink-0"
                     >
-                      {hasPartialPayment ? "Bayar Sisa" : "Bayar"}
+                      Bayar Online
                     </Button>
                   </CardContent>
                 </Card>
@@ -272,16 +250,16 @@ export default function TagihanSiswaPage() {
         )}
       </div>
 
-      {/* Dialog Pembayaran */}
+      {/* Dialog Konfirmasi Pembayaran */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-green-600" />
-              Pembayaran Tagihan
+              Konfirmasi Pembayaran Online
             </DialogTitle>
             <DialogDescription>
-              Input nominal pembayaran untuk melanjutkan
+              Pembayaran via Midtrans akan melunasi tagihan secara penuh
             </DialogDescription>
           </DialogHeader>
 
@@ -310,9 +288,6 @@ export default function TagihanSiswaPage() {
               const totalTagihan = parseFloat(selectedTagihan.jumlahtagihan || 0);
               const sudahBayar = parseFloat(selectedTagihan.jumlahterbayar || 0);
               const sisa = Math.max(0, totalTagihan - sudahBayar);
-              const jumlahBayarInput = parseFloat(nominalBayar || "0");
-              const sisaSetelahBayar = Math.max(0, sisa - jumlahBayarInput);
-              const akanLunas = jumlahBayarInput >= sisa - 0.01;
 
               return (
                 <Card>
@@ -334,76 +309,21 @@ export default function TagihanSiswaPage() {
                     </div>
                     {sudahBayar > 0 && (
                       <div className="flex justify-between text-green-600">
-                        <span>Sudah Dibayar:</span>
+                        <span>Sudah Dibayar (Cash):</span>
                         <span className="font-semibold">{convertIDR(sudahBayar)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between border-t pt-2 font-bold">
-                      <span>Sisa Tagihan:</span>
-                      <span className="text-red-600 text-base">{convertIDR(sisa)}</span>
+                    <div className="flex justify-between border-t pt-3">
+                      <span className="font-bold">Total Dibayar Sekarang:</span>
+                      <span className="font-bold text-green-700 dark:text-green-400 text-lg">
+                        {convertIDR(sisa)}
+                      </span>
                     </div>
 
-                    {/* Input Nominal */}
-                    <div className="border-t pt-3 space-y-3">
-                      <div>
-                        <Label htmlFor="nominal-bayar" className="text-xs font-medium flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" />
-                          Nominal Pembayaran (Rp)
-                        </Label>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-sm text-muted-foreground">Rp</span>
-                          <Input
-                            id="nominal-bayar"
-                            type="number"
-                            value={nominalBayar}
-                            onChange={(e) => setNominalBayar(e.target.value)}
-                            min="1"
-                            max={sisa}
-                            className="font-semibold text-base"
-                            disabled={isPaymentLoading}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Maksimal: {convertIDR(sisa)}
-                        </p>
-                      </div>
-
-                      {/* Preview hasil bayar */}
-                      {jumlahBayarInput > 0 && (
-                        <div className={cn(
-                          "p-3 rounded-lg border-2 space-y-1 text-sm",
-                          akanLunas
-                            ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
-                            : "bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800"
-                        )}>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Dibayar Sekarang:</span>
-                            <span className="font-semibold">{convertIDR(jumlahBayarInput)}</span>
-                          </div>
-                          <div className="flex justify-between border-t pt-1">
-                            <span className="font-medium">Sisa Setelah Bayar:</span>
-                            <span className={cn(
-                              "font-bold",
-                              akanLunas
-                                ? "text-green-700 dark:text-green-400"
-                                : "text-amber-700 dark:text-amber-400"
-                            )}>
-                              {akanLunas ? "LUNAS ✓" : convertIDR(sisaSetelahBayar)}
-                            </span>
-                          </div>
-                          {!akanLunas && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400">
-                              Pembayaran sebagian — Anda bisa melunasi sisanya kapan saja.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {jumlahBayarInput > sisa + 0.01 && (
-                        <p className="text-xs text-red-500">
-                          Jumlah melebihi sisa tagihan ({convertIDR(sisa)})
-                        </p>
-                      )}
+                    {/* Info pembayaran penuh */}
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-xs text-blue-700 dark:text-blue-300">
+                      Pembayaran via Midtrans akan <strong>melunasi tagihan sepenuhnya</strong>. 
+                      Jika ingin bayar sebagian, hubungi admin/bendahara untuk pembayaran cash.
                     </div>
                   </CardContent>
                 </Card>
@@ -414,7 +334,7 @@ export default function TagihanSiswaPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setShowDialog(false); setNominalBayar(""); }}
+              onClick={() => setShowDialog(false)}
               disabled={isPaymentLoading}
             >
               Batal
@@ -422,12 +342,7 @@ export default function TagihanSiswaPage() {
             <Button
               onClick={handlePayment}
               className="bg-green-600 hover:bg-green-700"
-              disabled={
-                isPaymentLoading ||
-                !nominalBayar ||
-                parseFloat(nominalBayar) <= 0 ||
-                parseFloat(nominalBayar) > getSisaTagihan(selectedTagihan) + 0.01
-              }
+              disabled={isPaymentLoading}
             >
               {isPaymentLoading
                 ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Memproses...</>
