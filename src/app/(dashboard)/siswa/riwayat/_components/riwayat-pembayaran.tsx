@@ -307,14 +307,21 @@ function SendEmailButton({ pembayaranId }: { pembayaranId: number }) {
   const handleSend = async () => {
     try {
       setIsSending(true);
+      console.log("[riwayat] Mengirim kwitansi untuk pembayaranId:", pembayaranId);
+      
       const res = await fetch("/api/send-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pembayaranId }),
       });
+      
       const result = await res.json();
+      console.log("[riwayat] Response dari API:", result, "Status:", res.status);
+      
       if (!res.ok) {
-        toast.error("Gagal kirim email", { description: result.error });
+        const errorMsg = result.error || `Server error (${res.status})`;
+        console.error("[riwayat] Error:", errorMsg);
+        toast.error("Gagal kirim email", { description: errorMsg });
       } else if (result.skipped) {
         toast.warning("Email provider belum dikonfigurasi", {
           description: "Hubungi admin untuk mengatur RESEND_API_KEY.",
@@ -325,7 +332,9 @@ function SendEmailButton({ pembayaranId }: { pembayaranId: number }) {
         });
       }
     } catch (err: any) {
-      toast.error("Terjadi kesalahan", { description: err.message });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("[riwayat] Fetch error:", errorMsg);
+      toast.error("Terjadi kesalahan saat mengirim", { description: errorMsg });
     } finally {
       setIsSending(false);
     }

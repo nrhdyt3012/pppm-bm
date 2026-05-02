@@ -151,7 +151,10 @@ function getAdminClient() {
  */
 export async function POST(req: NextRequest) {
   try {
+    console.log("[send-receipt] Menerima request...");
     const body = await req.json();
+    console.log("[send-receipt] Body:", JSON.stringify(body));
+    
     const {
       pembayaranId,
       idPembayaran: requestIdPembayaran,
@@ -166,7 +169,7 @@ export async function POST(req: NextRequest) {
     const supabase = getAdminClient();
 
     // Normalize: terima pembayaranId atau idPembayaran
-    let idPembayaran = requestIdPembayaran || pembayaranId;
+    const idPembayaran = requestIdPembayaran || pembayaranId;
     let idTagihan = requestIdTagihan;
     let jumlahBayar = requestJumlahBayar;
     let totalTagihan = requestTotalTagihan;
@@ -318,7 +321,18 @@ export async function POST(req: NextRequest) {
     console.log("[send-receipt] Email terkirim ke:", emailTujuan);
     return NextResponse.json({ success: true, email: emailTujuan });
   } catch (error: any) {
-    console.error("[send-receipt] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("[send-receipt] Error detail:", {
+      message: errorMsg,
+      stack: error?.stack,
+      type: error?.constructor?.name,
+    });
+    return NextResponse.json(
+      { 
+        error: `Gagal mengirim kwitansi: ${errorMsg}`,
+        details: process.env.NODE_ENV === "development" ? error?.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }

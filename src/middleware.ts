@@ -32,26 +32,37 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isAuthPage = pathname === "/login";
+  const isApiRoute = pathname.startsWith("/api/");
 
-// Halaman publik yang bisa diakses tanpa login
-const publicPages = [
-  "/login",
-    "/forgot-password",   // tambah ini
-  "/reset-password",
-  "/beranda",
-  "/profil",
-  "/fasilitas",
-  "/info-sekolah",
-  "/kontak",
-  "/ppdb",
-  "/berita",
-  "/login"
-];
-const isPublicPage =
-  pathname === "/" ||
-  publicPages.some(
-    (page) => pathname === page || pathname.startsWith(page + "/")
-  );
+  // Halaman publik yang bisa diakses tanpa login
+  const publicPages = [
+    "/login",
+    "/forgot-password",
+    "/reset-password",
+    "/beranda",
+    "/profil",
+    "/fasilitas",
+    "/info-sekolah",
+    "/kontak",
+    "/ppdb",
+    "/berita",
+  ];
+  const isPublicPage =
+    pathname === "/" ||
+    publicPages.some(
+      (page) => pathname === page || pathname.startsWith(page + "/")
+    );
+
+  // API routes harus return JSON error, bukan redirect
+  if (isApiRoute) {
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    return supabaseResponse;
+  }
 
   if (!user && !isPublicPage) {
     const url = request.nextUrl.clone();
