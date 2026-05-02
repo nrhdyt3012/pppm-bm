@@ -7,8 +7,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR, cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Receipt, Printer, ChevronDown, ChevronUp } from "lucide-react";
-import { useRef, useState } from "react";
+import { Loader2, Receipt, Printer, ChevronDown, ChevronUp, Mail } from "lucide-react";
+import { Fragment, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 
 const BULAN_NAMA = [
@@ -110,12 +110,15 @@ export default function RiwayatPembayaran() {
   const toggleExpand = (id: number) => {
     setExpandedTagihan((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
 
-  // Pisahkan pembayaran sukses (untuk ditampilkan)
   const getSuccessPembayaran = (item: TagihanItem) =>
     (item.pembayaran ?? []).filter(
       (p) => p.statuspembayaran === "SUCCESS" || p.statuspembayaran === "PARTIAL"
@@ -175,14 +178,18 @@ export default function RiwayatPembayaran() {
                     const successPembayaran = getSuccessPembayaran(item);
 
                     return (
-                      <>
+                      // ✅ FIX: gunakan Fragment dengan key, bukan <> yang menyebabkan ESLint error
+                      <Fragment key={`tagihan-${item.idtagihansiswa}`}>
                         <tr
-                          key={`tagihan-${item.idtagihansiswa}`}
                           className={cn(
                             "border-b hover:bg-muted/50 cursor-pointer",
                             isExpanded && "bg-muted/30"
                           )}
-                          onClick={() => successPembayaran.length > 0 && toggleExpand(item.idtagihansiswa)}
+                          onClick={() => {
+                            if (successPembayaran.length > 0) {
+                              toggleExpand(item.idtagihansiswa);
+                            }
+                          }}
                         >
                           <td className="p-3">{index + 1}</td>
                           <td className="p-3">
@@ -227,9 +234,8 @@ export default function RiwayatPembayaran() {
                           </td>
                         </tr>
 
-                        {/* Expandable: daftar transaksi per pembayaran */}
                         {isExpanded && successPembayaran.length > 0 && (
-                          <tr key={`expanded-${item.idtagihansiswa}`}>
+                          <tr>
                             <td colSpan={8} className="p-0 bg-muted/20">
                               <div className="px-6 py-3">
                                 <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
@@ -237,7 +243,10 @@ export default function RiwayatPembayaran() {
                                 </p>
                                 <div className="space-y-2">
                                   {successPembayaran
-                                    .sort((a, b) => new Date(a.tanggalpembayaran).getTime() - new Date(b.tanggalpembayaran).getTime())
+                                    .sort((a, b) =>
+                                      new Date(a.tanggalpembayaran).getTime() -
+                                      new Date(b.tanggalpembayaran).getTime()
+                                    )
                                     .map((p, pIdx) => (
                                       <div
                                         key={p.idpembayaran}
@@ -261,22 +270,24 @@ export default function RiwayatPembayaran() {
                                             </p>
                                           </div>
                                         </div>
-                                        <PrintButtonSingle
-                                          pembayaran={p}
-                                          tagihan={item}
-                                          siswaData={siswaData}
-                                          indexTransaksi={pIdx + 1}
-                                          totalTagihan={totalTagihan}
-                                        />
+                                        <div className="flex items-center gap-2">
+                                          <SendEmailButton pembayaranId={p.idpembayaran} />
+                                          <PrintButtonSingle
+                                            pembayaran={p}
+                                            tagihan={item}
+                                            siswaData={siswaData}
+                                            indexTransaksi={pIdx + 1}
+                                            totalTagihan={totalTagihan}
+                                          />
+                                        </div>
                                       </div>
-                                    ))
-                                  }
+                                    ))}
                                 </div>
                               </div>
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -286,6 +297,55 @@ export default function RiwayatPembayaran() {
         </Card>
       )}
     </div>
+  );
+}
+
+// ─── Tombol Kirim Email Kwitansi ──────────────────────────────────────────────
+function SendEmailButton({ pembayaranId }: { pembayaranId: number }) {
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSend = async () => {
+    try {
+      setIsSending(true);
+      const res = await fetch("/api/send-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pembayaranId }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error("Gagal kirim email", { description: result.error });
+      } else if (result.skipped) {
+        toast.warning("Email provider belum dikonfigurasi", {
+          description: "Hubungi admin untuk mengatur RESEND_API_KEY.",
+        });
+      } else {
+        toast.success("Kwitansi berhasil dikirim ke email", {
+          description: result.email,
+        });
+      }
+    } catch (err: any) {
+      toast.error("Terjadi kesalahan", { description: err.message });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <Button
+      onClick={handleSend}
+      disabled={isSending}
+      size="sm"
+      variant="outline"
+      className="gap-1 text-xs h-8 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+    >
+      {isSending ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <Mail className="h-3 w-3" />
+      )}
+      {isSending ? "Mengirim..." : "Kirim Email"}
+    </Button>
   );
 }
 
@@ -315,6 +375,9 @@ function PrintButtonSingle({
   const isLunas = tagihan.statuspembayaran === "LUNAS" && pembayaran.statuspembayaran === "SUCCESS";
   const metode = pembayaran.metodepembayaran === "cash" ? "Tunai/Cash" : "Transfer/Online (Midtrans)";
 
+  // Suppress unused var warning
+  void indexTransaksi;
+
   return (
     <>
       <Button
@@ -327,7 +390,6 @@ function PrintButtonSingle({
         Cetak Kwitansi
       </Button>
 
-      {/* Hidden receipt */}
       <div className="hidden">
         <div
           ref={contentRef}

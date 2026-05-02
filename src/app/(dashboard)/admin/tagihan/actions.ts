@@ -139,6 +139,31 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   }
 
   revalidatePath("/admin/tagihan");
+
+  // Kirim kwitansi email jika pembayaran sukses
+  if (pembayaranData?.idpembayaran) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    try {
+      await fetch(`${appUrl}/api/send-receipt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idPembayaran: pembayaranData.idpembayaran,
+          idTagihan: parseInt(idTagihan as string),
+          jumlahBayar: jumlahBayar,
+          totalTagihan: totalTagihan,
+          sisaTagihan: sisaBaru,
+          statusBaru: statusBaru,
+          metodePembayaran: "cash",
+        }),
+      });
+      console.log(`📧 [bayarTagihanManual] Receipt email queued for pembayaran ${pembayaranData.idpembayaran}`);
+    } catch (emailError) {
+      console.error(`⚠️ [bayarTagihanManual] Failed to queue receipt email:`, emailError);
+      // Jangan stop execution jika email fail
+    }
+  }
+
   return { 
     status: "success",
     data: {

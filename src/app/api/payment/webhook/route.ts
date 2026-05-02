@@ -194,6 +194,30 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [WEBHOOK] Done: Tagihan=${tagihanId}, Status=${statuspembayaranTagihan}, PembayaranId=${pembayaranId}`);
 
+    // Kirim kwitansi email jika pembayaran sukses
+    if (pembayaranId !== null && (transaction_status === "settlement" || transaction_status === "capture")) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      try {
+        await fetch(`${appUrl}/api/send-receipt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idPembayaran: pembayaranId,
+            idTagihan: parseInt(tagihanId),
+            jumlahBayar: nominalBayar,
+            totalTagihan: jumlahTagihan,
+            sisaTagihan: 0,
+            statusBaru: statuspembayaranTagihan,
+            metodePembayaran: metodepembayaran,
+          }),
+        });
+        console.log(`📧 [WEBHOOK] Receipt email queued for pembayaran ${pembayaranId}`);
+      } catch (emailError) {
+        console.error(`⚠️ [WEBHOOK] Failed to queue receipt email:`, emailError);
+        // Jangan stop webhook execution jika email fail
+      }
+    }
+
     return NextResponse.json({
       status: "success",
       tagihan_id: tagihanId,
