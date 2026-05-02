@@ -1,3 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-</sitemapindex>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://paudaba1buduran.my.id/</loc>
+  </url>
+  <url>
+    <loc>https://paudaba1buduran.my.id/beranda</loc>
+  </url>
+    <url>
+    <loc>https://paudaba1buduran.my.id/fasilitas</loc>
+  </url>
+    <url>
+    <loc>https://paudaba1buduran.my.id/info-sekolah</loc>
+  </url>
+  <url>
+    <loc>https://paudaba1buduran.my.id/kontak</loc>
+  </url>
+    <url>
+        <loc>https://paudaba1buduran.my.id/ppdb</loc>
+  </url>
+    <url>
+        <loc>https://paudaba1buduran.my.id/profil</loc>
+  </url>
+</urlset>
