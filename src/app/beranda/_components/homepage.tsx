@@ -22,7 +22,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
-import BeritaTerbaru from "./berita-terbaru";
 
 export default function Homepage() {
   const programUnggulan = [
@@ -228,9 +227,6 @@ export default function Homepage() {
           </div>
         </div>
       </section>
-
-      {/* Berita & Kegiatan
-      <BeritaTerbaru /> */}
 
       {/* Video Profil */}
       <section className="py-20 px-6 bg-white dark:bg-gray-800">
