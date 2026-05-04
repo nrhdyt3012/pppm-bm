@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /beranda
+Allow: /profil
+Allow: /fasilitas
+Allow: /info-sekolah
+Allow: /ppdb
+Allow: /kontak
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /siswa
+Disallow: /siswa/
+Disallow: /api/
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://www.paudaba1buduran.my.id/sitemap.xml
