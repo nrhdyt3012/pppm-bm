@@ -159,7 +159,7 @@ export default function ResetPassword() {
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
       <div className="absolute top-4 right-4"><DarkmodeToggle /></div>
       <div className="mb-8">
-        <Image src="/logo_ppm.svg" alt="Logo" width={100} height={100} className="rounded-full shadow-lg" priority />
+        <Image src="/logo.jpg" alt="Logo" width={100} height={100} className="rounded-full shadow-lg" priority />
       </div>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-2">

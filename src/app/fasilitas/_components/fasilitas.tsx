@@ -33,7 +33,7 @@ export default function FasilitasPage() {
         "Area bermain dalam kelas",
         "Meja kursi ergonomis untuk anak",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "area-bermain",
@@ -48,7 +48,7 @@ export default function FasilitasPage() {
         "Permainan edukatif outdoor",
         "Pengawasan ketat dari guru",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "perpustakaan",
@@ -63,7 +63,7 @@ export default function FasilitasPage() {
         "Buku dongeng dan ensiklopedia anak",
         "Peminjaman buku untuk dibawa pulang",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "masjid",
@@ -78,7 +78,7 @@ export default function FasilitasPage() {
         "Hafalan do'a dan surat pendek",
         "Bersih dan nyaman",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "kantin",
@@ -93,7 +93,7 @@ export default function FasilitasPage() {
         "Snack sehat",
         "Area makan bersih",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "toilet",
@@ -108,7 +108,7 @@ export default function FasilitasPage() {
         "Pendampingan guru",
         "Program toilet training",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "sentra-seni",
@@ -122,7 +122,7 @@ export default function FasilitasPage() {
         "Display karya anak",
         "Bimbingan guru seni",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "taman",
@@ -136,7 +136,7 @@ export default function FasilitasPage() {
         "Pembelajaran tentang alam",
         "Teduh dan asri",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "ruang-musik",
@@ -150,7 +150,7 @@ export default function FasilitasPage() {
         "Pembelajaran lagu islami",
         "Pengembangan motorik kasar",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       id: "keamanan",
@@ -164,7 +164,7 @@ export default function FasilitasPage() {
         "Pintu otomatis",
         "UKS dengan obat-obatan dasar",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
   ];
 

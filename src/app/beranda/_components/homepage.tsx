@@ -67,14 +67,14 @@ export default function Homepage() {
         {/* Background with overlay */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 via-blue-500/20 to-purple-500/20"></div>
-          <div className="absolute inset-0 bg-[url('/logo_ppm.svg')] bg-center bg-no-repeat opacity-5 bg-contain"></div>
+          <div className="absolute inset-0 bg-[url('/logo.jpg')] bg-center bg-no-repeat opacity-5 bg-contain"></div>
         </div>
 
         <div className="container mx-auto px-6 z-10">
           <div className="text-center space-y-8 animate-fade-in">
             <div className="flex justify-center mb-8">
               <Image
-                src="/logo_ppm.svg"
+                src="/logo.jpg"
                 alt="Logo KB TK Aisyiyah Bustanul Athfal 1 Buduran"
                 width={150}
                 height={150}
@@ -183,7 +183,7 @@ export default function Homepage() {
             <div className="relative">
               <div className="relative h-96 bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900 dark:to-blue-900 rounded-2xl overflow-hidden shadow-xl">
                 <Image
-                  src="/logo_ppm.svg"
+                  src="/logo.jpg"
                   alt="KB TK Aisyiyah"
                   fill
                   className="object-contain p-8"

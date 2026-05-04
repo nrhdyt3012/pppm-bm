@@ -76,7 +76,7 @@ export default function Login() {
 
       <div className="mb-8">
         <Image
-          src="/logo_ppm.svg"
+          src="/logo.jpg"
           alt="Logo PAUD ABA 1 Buduran"
           width={120}
           height={120}

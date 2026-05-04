@@ -30,7 +30,7 @@ export default function InfoSekolahPage() {
         "Bimbingan ustadz/ustadzah berpengalaman",
         "Evaluasi berkala untuk progress anak",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       title: "Do'a dan Hadist",
@@ -42,7 +42,7 @@ export default function InfoSekolahPage() {
         "Praktik langsung dalam kehidupan",
         "Pembiasaan akhlak mulia",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       title: "Petualangan Maharaja",
@@ -54,7 +54,7 @@ export default function InfoSekolahPage() {
         "Tidak ada drill membaca yang membosankan",
         "Stimulasi minat baca sejak dini",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       title: "Berkemandirian dan Berkarakter Islami",
@@ -66,7 +66,7 @@ export default function InfoSekolahPage() {
         "Toilet training",
         "Mengurus diri sendiri",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
     {
       title: "Tuntas Toilet Training",
@@ -78,7 +78,7 @@ export default function InfoSekolahPage() {
         "Kerjasama dengan orang tua",
         "Target tuntas sebelum lulus",
       ],
-      image: "/logo_ppm.svg",
+      image: "/logo.jpg",
     },
   ];
 

@@ -49,7 +49,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/beranda" className="flex items-center gap-3">
             <Image
-              src="/logo_ppm.svg"
+              src="/logo.jpg"
               alt="Logo"
               width={50}
               height={50}

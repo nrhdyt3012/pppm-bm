@@ -12,7 +12,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Image
-                src="/logo_ppm.svg"
+                src="/logo.jpg"
                 alt="Logo"
                 width={50}
                 height={50}

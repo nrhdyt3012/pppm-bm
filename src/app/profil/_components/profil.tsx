@@ -19,22 +19,22 @@ export default function ProfilPage() {
     {
       nama: "Ust. Aminah",
       jabatan: "Kepala Sekolah",
-      photo: "/logo_ppm.svg",
+      photo: "/logo.jpg",
     },
     {
       nama: "Ustadzah Siti Fatimah",
       jabatan: "Wakil Kepala Sekolah",
-      photo: "/logo_ppm.svg",
+      photo: "/logo.jpg",
     },
     {
       nama: "Ustadzah Nur Azizah",
       jabatan: "Koordinator KB",
-      photo: "/logo_ppm.svg",
+      photo: "/logo.jpg",
     },
     {
       nama: "Ustadzah Dewi Anggraini",
       jabatan: "Koordinator TK",
-      photo: "/logo_ppm.svg",
+      photo: "/logo.jpg",
     },
   ];
 
@@ -89,7 +89,7 @@ export default function ProfilPage() {
               <div className="relative">
                 <div className="w-64 h-64 rounded-full overflow-hidden border-8 border-teal-500 shadow-xl">
                   <Image
-                    src="/logo_ppm.svg"
+                    src="/logo.jpg"
                     alt="Kepala Sekolah"
                     width={256}
                     height={256}

@@ -5,7 +5,7 @@ export const metadata = {
   title: "PAUD ABA 1 Buduran | PPDB",
   description: "Penerimaan Peserta Didik Baru PAUD ABA 1 Buduran",
   icons: {
-    icon: "/logo_ppm.svg",
+    icon: "/logo.jpg",
   },
 };
 

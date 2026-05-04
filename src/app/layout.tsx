@@ -60,7 +60,7 @@ export const metadata: Metadata = {
       "KB TK Aisyiyah Bustanul Athfal 1 Buduran - Sholih, Ceria, Mandiri. Pendidikan anak usia dini dengan metode Ramah Otak Anak di Buduran, Sidoarjo.",
     images: [
       {
-        url: "/logo_ppm.svg",
+        url: "/logo.jpg",
         width: 512,
         height: 512,
         alt: "Logo PAUD ABA 1 Buduran",
@@ -68,9 +68,9 @@ export const metadata: Metadata = {
     ],
   },
   icons: {
-    icon: "/logo_ppm.svg",
-    shortcut: "/logo_ppm.svg",
-    apple: "/logo_ppm.svg",
+    icon: "/logo.jpg",
+    shortcut: "/logo.jpg",
+    apple: "/logo.jpg",
   },
   alternates: {
     canonical: "https://paudaba1buduran.my.id",
