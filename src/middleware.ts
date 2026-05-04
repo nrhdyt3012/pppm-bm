@@ -1,3 +1,4 @@
+// src/middleware.ts
 import { environment } from "./configs/environtment";
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
@@ -34,6 +35,16 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = pathname === "/login";
   const isApiRoute = pathname.startsWith("/api/");
 
+  // ✅ File SEO — harus selalu bisa diakses tanpa login (termasuk oleh Googlebot)
+  const isSeoFile =
+    pathname === "/sitemap.xml" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap-0.xml"; // Next.js kadang generate sitemap-0.xml
+
+  if (isSeoFile) {
+    return supabaseResponse;
+  }
+
   // Halaman publik yang bisa diakses tanpa login
   const publicPages = [
     "/login",
@@ -47,7 +58,9 @@ export async function middleware(request: NextRequest) {
     "/ppdb",
     "/berita",
     "/sitemap.xml",
+    "/robots.txt",
   ];
+
   const isPublicPage =
     pathname === "/" ||
     publicPages.some(
@@ -82,6 +95,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
