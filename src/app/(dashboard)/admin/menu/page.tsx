@@ -2,7 +2,7 @@ import MenuManagement from "./_components/menu";
 
 export const metadata = {
   title: "PAUD BA 1 Buduran | Master Tagihan",
-  icons: { icon: "/logo.jpg" },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function MenuPage() {

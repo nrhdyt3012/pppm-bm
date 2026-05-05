@@ -2,7 +2,7 @@ import ForgotPassword from "./_components/forgot-password";
 
 export const metadata = {
   title: "PAUD BA 1 Buduran | Lupa Password",
-  icons: { icon: "/logo.jpg" },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function ForgotPasswordPage() {

@@ -2,7 +2,7 @@ import InfoSiswa from "./_components/info-siswa";
 
 export const metadata = {
   title: "PAUD BA 1 Buduran | Info Siswa",
-  icons: { icon: "/logo.jpg" },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function InfoSiswaPage() {

@@ -5,7 +5,7 @@ export const metadata = {
   title: "PAUD ABA 1 Buduran | Profil",
   description: "Profil PAUD ABA 1 Buduran",
   icons: {
-    icon: "/logo.jpg",
+    icon: "/favicon.ico",
   },
 };
 

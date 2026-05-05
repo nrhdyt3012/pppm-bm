@@ -1,3 +1,4 @@
+// src/app/page.tsx
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
@@ -15,11 +16,13 @@ export default async function Home() {
     console.error("Error parsing user_profile cookie:", error);
   }
 
+  // Redirect berdasarkan role
   if (profile.role === "admin") {
     redirect("/admin");
   } else if (profile.role === "siswa") {
     redirect("/siswa/info");
   }
 
-  redirect("/login");
+  // Jika tidak ada role / belum login → ke beranda (halaman publik)
+  redirect("/beranda");
 }

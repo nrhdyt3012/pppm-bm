@@ -5,7 +5,7 @@ export const metadata = {
   title: "PAUD ABA 1 Buduran | Kontak",
   description: "Informasi Kontak PAUD ABA 1 Buduran",
   icons: {
-    icon: "/logo.jpg",
+    icon: "/favicon.ico",
   },
 };
 

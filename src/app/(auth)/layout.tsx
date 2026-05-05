@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "PAUD Aisyiyah Bustanul Athfal 1 Buduran",
   description: "Sistem Informasi Manajemen Pembayaran PAUD Aisyiyah Bustanul Athfal 1 Buduran",
-  icons: { icon: "/logo.jpg" },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default async function AuthLayout({
