@@ -59,6 +59,7 @@ export async function middleware(request: NextRequest) {
     "/berita",
     "/sitemap.xml",
     "/robots.txt",
+    "/siswa/payment",
   ];
 
   const isPublicPage =
