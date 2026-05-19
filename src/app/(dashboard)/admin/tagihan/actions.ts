@@ -1,78 +1,58 @@
-// src/app/(dashboard)/admin/tagihan/actions.ts
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-// Update status tagihan siswa
-export async function updateTagihanSiswa(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("idtagihansiswa");
-  const statusPembayaran = formData.get("statuspembayaran");
+// Helper: cek permission tagihan berdasarkan riwayat pembayaran
+async function getTagihanPermission(supabase: any, idTagihan: string) {
+  const { data: tagihan } = await supabase
+    .from("tagihan_siswa")
+    .select(`
+      idtagihansiswa,
+      statuspembayaran,
+      jumlahtagihan,
+      jumlahterbayar,
+      pembayaran (
+        idpembayaran,
+        statuspembayaran,
+        metodepembayaran
+      )
+    `)
+    .eq("idtagihansiswa", idTagihan)
+    .single();
 
-  if (!idTagihan) {
-    return { status: "error", errors: { _form: ["ID tagihan tidak valid"] } };
+  if (!tagihan) {
+    return { ok: false, reason: "Tagihan tidak ditemukan", tagihan: null };
   }
 
-  const supabase = await createClient();
+  const pembayaranList = tagihan.pembayaran ?? [];
 
-  const updateData: any = {
-    statuspembayaran: statusPembayaran,
-    updatedat: new Date().toISOString(),
+  // Cek apakah ada pembayaran yang berhasil (cash maupun Midtrans)
+  const hasSuccessPayment = pembayaranList.some(
+    (p: any) => p.statuspembayaran === "SUCCESS"
+  );
+
+  const hasMidtransPayment = pembayaranList.some(
+    (p: any) =>
+      p.statuspembayaran === "SUCCESS" && p.metodepembayaran !== "cash"
+  );
+
+  return {
+    ok: true,
+    tagihan,
+    hasSuccessPayment,
+    hasMidtransPayment,
+    // Boleh bayar manual jika belum ada pembayaran Midtrans dan belum LUNAS
+    canBayarManual:
+      !hasMidtransPayment && tagihan.statuspembayaran !== "LUNAS",
+    // Boleh delete hanya jika belum ada pembayaran sama sekali
+    canDelete: !hasSuccessPayment,
   };
-
-  // Jika LUNAS, update juga jumlahterbayar
-  // CATATAN: sisa akan auto-compute oleh database dari formula DEFAULT
-  if (statusPembayaran === "LUNAS") {
-    const { data: tagihan } = await supabase
-      .from("tagihan_siswa")
-      .select("jumlahtagihan")
-      .eq("idtagihansiswa", idTagihan)
-      .single();
-
-    if (tagihan) {
-      updateData.jumlahterbayar = parseFloat(tagihan.jumlahtagihan);
-    }
-  }
-
-  const { error } = await supabase
-    .from("tagihan_siswa")
-    .update(updateData)
-    .eq("idtagihansiswa", idTagihan);
-
-  if (error) {
-    return { status: "error", errors: { _form: [`Gagal update: ${error.message}`] } };
-  }
-
-  revalidatePath("/admin/tagihan");
-  return { status: "success" };
 }
 
-// Hapus tagihan siswa
-export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("idtagihansiswa");
-
-  if (!idTagihan) {
-    return { status: "error", errors: { _form: ["ID tagihan tidak valid"] } };
-  }
-
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("tagihan_siswa")
-    .delete()
-    .eq("idtagihansiswa", idTagihan);
-
-  if (error) {
-    return { status: "error", errors: { _form: [`Gagal hapus: ${error.message}`] } };
-  }
-
-  revalidatePath("/admin/tagihan");
-  return { status: "success" };
-}
-
-// ============ FITUR BARU: PEMBAYARAN MANUAL (CASH) ============
+// Bayar tagihan secara cash/manual oleh admin
 export async function bayarTagihanManual(prevState: any, formData: FormData) {
-  const idTagihan = formData.get("idtagihansiswa");
+  const idTagihan = formData.get("idtagihansiswa") as string;
   const jumlahBayar = parseFloat(formData.get("jumlahbayar") as string);
 
   if (!idTagihan || !jumlahBayar || jumlahBayar <= 0) {
@@ -80,32 +60,41 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   }
 
   const supabase = await createClient({ isAdmin: true });
+  const perm = await getTagihanPermission(supabase, idTagihan);
 
-  // Ambil data tagihan
-  const { data: tagihan, error: fetchError } = await supabase
-    .from("tagihan_siswa")
-    .select("idtagihansiswa, idsiswa, jumlahtagihan, jumlahterbayar")
-    .eq("idtagihansiswa", idTagihan)
-    .single();
-
-  if (fetchError || !tagihan) {
-    return { status: "error", errors: { _form: ["Tagihan tidak ditemukan"] } };
+  if (!perm.ok) {
+    return { status: "error", errors: { _form: [perm.reason] } };
+  }
+  if (!perm.canBayarManual) {
+    return {
+      status: "error",
+      errors: {
+        _form: [
+          perm.hasMidtransPayment
+            ? "Tagihan sudah lunas via Midtrans, tidak dapat ditambah pembayaran cash"
+            : "Tagihan sudah lunas",
+        ],
+      },
+    };
   }
 
-  const totalTagihan = parseFloat(tagihan.jumlahtagihan || "0");
-  const sudahBayar = parseFloat(tagihan.jumlahterbayar || "0");
+  const tagihan = perm.tagihan;
+  const totalTagihan = parseFloat(tagihan.jumlahtagihan);
+  const sudahBayar = parseFloat(tagihan.jumlahterbayar ?? "0");
   const sisaTagihan = totalTagihan - sudahBayar;
 
   if (jumlahBayar > sisaTagihan) {
-    return { status: "error", errors: { _form: ["Jumlah pembayaran melebihi sisa tagihan"] } };
+    return {
+      status: "error",
+      errors: { _form: ["Jumlah pembayaran melebihi sisa tagihan"] },
+    };
   }
 
   const terbayarBaru = sudahBayar + jumlahBayar;
-  const sisaBaru = totalTagihan - terbayarBaru;
-  const statusBaru = sisaBaru === 0 ? "LUNAS" : "BELUM BAYAR";
+  // sisa akan auto-dihitung oleh trigger database
+  const statusBaru = terbayarBaru >= totalTagihan ? "LUNAS" : "BELUM BAYAR";
 
   // Update tagihan_siswa
-  // CATATAN: sisa akan auto-compute oleh database dari formula DEFAULT
   const { error: updateError } = await supabase
     .from("tagihan_siswa")
     .update({
@@ -116,14 +105,17 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
     .eq("idtagihansiswa", idTagihan);
 
   if (updateError) {
-    return { status: "error", errors: { _form: [`Gagal update tagihan: ${updateError.message}`] } };
+    return {
+      status: "error",
+      errors: { _form: [`Gagal update tagihan: ${updateError.message}`] },
+    };
   }
 
-  // Insert ke tabel pembayaran
+  // Insert record pembayaran
   const { data: pembayaranData, error: insertError } = await supabase
     .from("pembayaran")
     .insert({
-      idtagihansiswa: parseInt(idTagihan as string),
+      idtagihansiswa: parseInt(idTagihan),
       idsiswa: tagihan.idsiswa,
       jumlahdibayar: jumlahBayar,
       tanggalpembayaran: new Date().toISOString(),
@@ -135,12 +127,11 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
 
   if (insertError) {
     console.error("Error insert pembayaran:", insertError);
-    // Tidak fatal, tagihan sudah terupdate
   }
 
   revalidatePath("/admin/tagihan");
 
-  // Kirim kwitansi email jika pembayaran sukses
+  // Kirim email kwitansi
   if (pembayaranData?.idpembayaran) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     try {
@@ -149,30 +140,68 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idPembayaran: pembayaranData.idpembayaran,
-          idTagihan: parseInt(idTagihan as string),
-          jumlahBayar: jumlahBayar,
-          totalTagihan: totalTagihan,
-          sisaTagihan: sisaBaru,
-          statusBaru: statusBaru,
+          idTagihan: parseInt(idTagihan),
+          jumlahBayar,
+          totalTagihan,
+          sisaTagihan: totalTagihan - terbayarBaru,
+          statusBaru,
           metodePembayaran: "cash",
         }),
       });
-      console.log(`📧 [bayarTagihanManual] Receipt email queued for pembayaran ${pembayaranData.idpembayaran}`);
-    } catch (emailError) {
-      console.error(`⚠️ [bayarTagihanManual] Failed to queue receipt email:`, emailError);
-      // Jangan stop execution jika email fail
+    } catch (e) {
+      console.error("Gagal kirim email:", e);
     }
   }
 
-  return { 
+  return {
     status: "success",
     data: {
       idpembayaran: pembayaranData?.idpembayaran,
       jumlahbayar: jumlahBayar,
-      sisatagihan: sisaBaru,
+      sisatagihan: totalTagihan - terbayarBaru,
       statusbaru: statusBaru,
-    }
+    },
   };
+}
+
+// Hapus tagihan — hanya boleh jika belum ada pembayaran
+export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
+  const idTagihan = formData.get("idtagihansiswa") as string;
+
+  if (!idTagihan) {
+    return { status: "error", errors: { _form: ["ID tagihan tidak valid"] } };
+  }
+
+  const supabase = await createClient();
+  const perm = await getTagihanPermission(supabase, idTagihan);
+
+  if (!perm.ok) {
+    return { status: "error", errors: { _form: [perm.reason] } };
+  }
+
+  if (!perm.canDelete) {
+    return {
+      status: "error",
+      errors: {
+        _form: [
+          "Tidak dapat menghapus tagihan yang sudah memiliki riwayat pembayaran. " +
+          "Hubungi developer jika ini adalah kesalahan data.",
+        ],
+      },
+    };
+  }
+
+  const { error } = await supabase
+    .from("tagihan_siswa")
+    .delete()
+    .eq("idtagihansiswa", idTagihan);
+
+  if (error) {
+    return { status: "error", errors: { _form: [error.message] } };
+  }
+
+  revalidatePath("/admin/tagihan");
+  return { status: "success" };
 }
 
 // Buat tagihan batch untuk beberapa siswa
