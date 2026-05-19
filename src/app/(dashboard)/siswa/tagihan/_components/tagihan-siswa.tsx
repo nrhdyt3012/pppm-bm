@@ -13,7 +13,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -26,32 +26,20 @@ import {
 } from "lucide-react";
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 declare global {
-  interface Window {
-    snap: any;
-  }
+  interface Window { snap: any; }
 }
 
 const BULAN_NAMA = [
-  "",
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
+  "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
 export default function TagihanSiswaPage() {
   const supabase = createClient();
+  const queryClient = useQueryClient();
   const profile = useAuthStore((state) => state.profile);
   const [selectedTagihan, setSelectedTagihan] = useState<any>(null);
   const [showDialog, setShowDialog] = useState(false);
@@ -70,12 +58,8 @@ export default function TagihanSiswaPage() {
     },
   });
 
-  // Query utama: tampilkan BELUM BAYAR + KADALUARSA
-  const {
-    data: tagihanList,
-    isLoading,
-    refetch,
-  } = useQuery({
+  // Query utama tagihan: BELUM BAYAR + KADALUARSA
+  const { data: tagihanList, isLoading, refetch } = useQuery({
     queryKey: ["tagihan-siswa-wali", profile.id],
     enabled: !!profile.id,
     queryFn: async () => {
@@ -95,7 +79,6 @@ export default function TagihanSiswaPage() {
           )
         `)
         .eq("idsiswa", profile.id)
-        // Tampilkan BELUM BAYAR dan KADALUARSA — keduanya masih perlu dibayar
         .in("statuspembayaran", ["BELUM BAYAR", "KADALUARSA"])
         .order("tahun", { ascending: false })
         .order("bulan", { ascending: false });
@@ -108,13 +91,11 @@ export default function TagihanSiswaPage() {
     },
   });
 
-  // Query polling: cek pembayaran PENDING milik siswa ini
-  // Berguna untuk menampilkan indikator "menunggu konfirmasi"
+  // Query polling pembayaran PENDING — setiap 8 detik
   const { data: pendingPembayaran } = useQuery({
     queryKey: ["pending-pembayaran", profile.id],
     enabled: !!profile.id,
-    // Polling setiap 10 detik — otomatis refresh jika webhook tiba
-    refetchInterval: 10_000,
+    refetchInterval: 8_000,
     queryFn: async () => {
       const { data } = await supabase
         .from("pembayaran")
@@ -124,6 +105,79 @@ export default function TagihanSiswaPage() {
       return data || [];
     },
   });
+
+  // ─── Realtime subscription: auto-refresh saat webhook update DB ──────────
+  // Ini yang memastikan halaman langsung update tanpa perlu refresh manual
+  const handleRealtimeUpdate = useCallback(() => {
+    // Invalidate semua query terkait tagihan & pembayaran
+    queryClient.invalidateQueries({
+      queryKey: ["tagihan-siswa-wali", profile.id],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["pending-pembayaran", profile.id],
+    });
+  }, [queryClient, profile.id]);
+
+  useEffect(() => {
+    if (!profile.id) return;
+
+    // Subscribe ke perubahan tagihan_siswa milik siswa ini
+    const tagihanChannel = supabase
+      .channel(`tagihan-siswa-${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "tagihan_siswa",
+          filter: `idsiswa=eq.${profile.id}`,
+        },
+        (payload: any) => {
+          console.log("[realtime] tagihan_siswa UPDATE:", payload.new);
+          const newStatus = payload.new?.statuspembayaran;
+
+          if (newStatus === "LUNAS") {
+            toast.success("Pembayaran dikonfirmasi! Tagihan telah lunas.", {
+              duration: 6000,
+            });
+          } else if (newStatus === "KADALUARSA") {
+            toast.warning("Sesi pembayaran telah berakhir.", {
+              description: "Silakan buat pembayaran baru.",
+            });
+          }
+          handleRealtimeUpdate();
+        }
+      )
+      .subscribe((status) => {
+        console.log("[realtime] tagihan channel status:", status);
+      });
+
+    // Subscribe ke perubahan pembayaran milik siswa ini
+    const pembayaranChannel = supabase
+      .channel(`pembayaran-siswa-${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pembayaran",
+          filter: `idsiswa=eq.${profile.id}`,
+        },
+        (payload: any) => {
+          console.log("[realtime] pembayaran change:", payload);
+          handleRealtimeUpdate();
+        }
+      )
+      .subscribe((status) => {
+        console.log("[realtime] pembayaran channel status:", status);
+      });
+
+    return () => {
+      tagihanChannel.unsubscribe();
+      pembayaranChannel.unsubscribe();
+    };
+  }, [profile.id, handleRealtimeUpdate]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const getSisaTagihan = (tagihan: any): number => {
     const total = parseFloat(tagihan.jumlahtagihan || 0);
@@ -136,12 +190,9 @@ export default function TagihanSiswaPage() {
     setShowDialog(true);
   };
 
-  // Midtrans selalu bayar penuh (sisa tagihan)
   const handlePayment = async () => {
     if (!selectedTagihan) return;
-
     const sisaTagihan = getSisaTagihan(selectedTagihan);
-
     if (sisaTagihan <= 0) {
       toast.error("Tagihan sudah lunas");
       return;
@@ -157,8 +208,7 @@ export default function TagihanSiswaPage() {
           order_id: selectedTagihan.idtagihansiswa,
           gross_amount: sisaTagihan,
           nominal_total: parseFloat(selectedTagihan.jumlahtagihan || 0),
-          customer_name:
-            siswaData?.namasiswa || profile.name || "Siswa",
+          customer_name: siswaData?.namasiswa || profile.name || "Siswa",
           customer_id: profile.id,
         }),
       });
@@ -166,9 +216,7 @@ export default function TagihanSiswaPage() {
       const result = await res.json();
 
       if (!result.token) {
-        toast.error("Gagal membuat pembayaran", {
-          description: result.error,
-        });
+        toast.error("Gagal membuat pembayaran", { description: result.error });
         setIsPaymentLoading(false);
         return;
       }
@@ -179,45 +227,51 @@ export default function TagihanSiswaPage() {
         .update({ paymenttoken: result.token })
         .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
 
-      // Buka Snap
+      // Tutup dialog konfirmasi SEBELUM buka Snap
+      setShowDialog(false);
+      setIsPaymentLoading(false);
+
+      // Buka Snap popup
+      // PENTING: jangan lakukan apapun setelah snap.pay() di luar callback
+      // karena Snap mengambil alih kontrol UI
       window.snap.pay(result.token, {
-        onSuccess: () => {
-          toast.success("Pembayaran berhasil! Tagihan sedang diverifikasi.");
+        onSuccess: (snapResult: any) => {
+          // Dipanggil saat user klik "Kembali ke Merchant" di halaman sukses Snap
+          // Atau saat Snap detect settlement langsung (GoPay, QRIS)
+          console.log("[Snap] onSuccess:", snapResult);
+          // Realtime subscription akan handle update otomatis
+          // tapi kita tetap trigger manual refetch sebagai backup
           refetch();
-          setShowDialog(false);
-          setIsPaymentLoading(false);
+          toast.success("Pembayaran berhasil!", {
+            description: "Status tagihan sedang diperbarui...",
+          });
         },
-        onPending: () => {
-          // Terjadi saat metode pembayaran butuh aksi lanjutan
-          // (misal: transfer bank, bayar di minimarket)
-          toast.info("Pembayaran sedang diproses", {
+        onPending: (snapResult: any) => {
+          // Dipanggil untuk metode async: VA, Indomaret, dll
+          console.log("[Snap] onPending:", snapResult);
+          toast.info("Pembayaran sedang menunggu konfirmasi", {
             description:
-              "Selesaikan pembayaran sesuai instruksi yang diberikan Midtrans. Status akan diperbarui otomatis.",
-            duration: 8000,
+              "Selesaikan pembayaran sesuai instruksi. " +
+              "Status diperbarui otomatis setelah bank mengkonfirmasi.",
+            duration: 10_000,
           });
           refetch();
-          setShowDialog(false);
-          setIsPaymentLoading(false);
         },
-        onError: (result: any) => {
-          console.error("[Snap] onError:", result);
+        onError: (snapResult: any) => {
+          console.error("[Snap] onError:", snapResult);
           toast.error("Pembayaran gagal", {
-            description:
-              "Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.",
+            description: "Silakan coba lagi.",
           });
-          setIsPaymentLoading(false);
         },
         onClose: () => {
-          // User menutup popup tanpa menyelesaikan pembayaran
+          // User tutup popup tanpa selesaikan pembayaran
+          console.log("[Snap] onClose");
           toast.info("Pembayaran belum diselesaikan", {
             description:
-              "Tagihan masih tersimpan. Kamu bisa melanjutkan pembayaran kapan saja.",
+              "Tagihan masih tersimpan. Kamu bisa melanjutkan kapan saja.",
           });
-          setIsPaymentLoading(false);
         },
       });
-
-      setShowDialog(false);
     } catch (err: any) {
       toast.error("Terjadi kesalahan", { description: err.message });
       setIsPaymentLoading(false);
@@ -269,27 +323,21 @@ export default function TagihanSiswaPage() {
               const sudahBayar = parseFloat(tagihan.jumlahterbayar || 0);
               const sisa = Math.max(0, totalTagihan - sudahBayar);
               const hasPartialPayment = sudahBayar > 0;
-              const isKadaluarsa =
-                tagihan.statuspembayaran === "KADALUARSA";
-
-              // Cek apakah tagihan ini punya pembayaran PENDING
+              const isKadaluarsa = tagihan.statuspembayaran === "KADALUARSA";
               const hasPending = pendingPembayaran?.some(
-                (p: any) =>
-                  p.idtagihansiswa === tagihan.idtagihansiswa
+                (p: any) => p.idtagihansiswa === tagihan.idtagihansiswa
               );
 
               return (
                 <Card
                   key={tagihan.idtagihansiswa}
                   className={`transition-shadow hover:shadow-md ${
-                    isKadaluarsa
-                      ? "border-gray-300 dark:border-gray-700 opacity-90"
-                      : ""
+                    isKadaluarsa ? "border-gray-300 dark:border-gray-700" : ""
                   }`}
                 >
                   <CardContent className="flex items-start justify-between p-5 gap-4">
                     <div className="flex-1 min-w-0">
-                      {/* Badge baris */}
+                      {/* Badge row */}
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {isKadaluarsa ? (
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded text-xs font-medium flex items-center gap-1">
@@ -308,7 +356,6 @@ export default function TagihanSiswaPage() {
                           </span>
                         )}
 
-                        {/* Badge PENDING: ada transaksi yang menunggu konfirmasi */}
                         {hasPending && (
                           <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded text-xs font-medium flex items-center gap-1">
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -329,22 +376,14 @@ export default function TagihanSiswaPage() {
                         {tagihan.master_tagihan?.jenjang}
                       </p>
 
-                      <div className="mt-2 space-y-0.5">
+                      <div className="mt-2">
                         {hasPartialPayment ? (
                           <>
                             <div className="flex items-center gap-4 text-sm">
-                              <span className="text-muted-foreground">
-                                Total:
-                              </span>
-                              <span className="font-medium">
-                                {convertIDR(totalTagihan)}
-                              </span>
-                              <span className="text-muted-foreground">
-                                Terbayar (Cash):
-                              </span>
-                              <span className="text-green-600 font-medium">
-                                {convertIDR(sudahBayar)}
-                              </span>
+                              <span className="text-muted-foreground">Total:</span>
+                              <span className="font-medium">{convertIDR(totalTagihan)}</span>
+                              <span className="text-muted-foreground">Terbayar:</span>
+                              <span className="text-green-600 font-medium">{convertIDR(sudahBayar)}</span>
                             </div>
                             <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
                               Sisa: {convertIDR(sisa)}
@@ -357,7 +396,6 @@ export default function TagihanSiswaPage() {
                         )}
                       </div>
 
-                      {/* Info tambahan untuk tagihan kadaluarsa */}
                       {isKadaluarsa && (
                         <p className="mt-2 text-xs text-muted-foreground">
                           Sesi pembayaran sebelumnya telah berakhir. Klik
@@ -365,18 +403,17 @@ export default function TagihanSiswaPage() {
                         </p>
                       )}
 
-                      {/* Info pending */}
-                      {hasPending && (
+                      {hasPending && !isKadaluarsa && (
                         <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                          Jika kamu sudah menyelesaikan pembayaran (transfer
-                          bank / dompet digital), status akan diperbarui
-                          otomatis dalam beberapa menit.
+                          Jika sudah menyelesaikan pembayaran (transfer bank /
+                          dompet digital), status diperbarui otomatis setelah
+                          bank mengkonfirmasi. Biasanya kurang dari 5 menit.
                         </p>
                       )}
                     </div>
 
                     {/* Tombol aksi */}
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex flex-col gap-2">
                       {isKadaluarsa ? (
                         <Button
                           onClick={() => handleOpenDialog(tagihan)}
@@ -387,7 +424,6 @@ export default function TagihanSiswaPage() {
                           Bayar Ulang
                         </Button>
                       ) : hasPending ? (
-                        // Saat pending: tombol tetap ada tapi dengan label berbeda
                         <Button
                           onClick={() => handleOpenDialog(tagihan)}
                           variant="outline"
@@ -413,7 +449,7 @@ export default function TagihanSiswaPage() {
         )}
       </div>
 
-      {/* Dialog Konfirmasi Pembayaran */}
+      {/* Dialog Konfirmasi */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
@@ -422,13 +458,12 @@ export default function TagihanSiswaPage() {
               Konfirmasi Pembayaran Online
             </DialogTitle>
             <DialogDescription>
-              Pembayaran via Midtrans akan melunasi tagihan secara penuh.
-              Kamu bisa memilih metode pembayaran di halaman Midtrans.
+              Pilih metode pembayaran di halaman Midtrans setelah klik
+              "Lanjut ke Pembayaran".
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Data Siswa */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Data Siswa</CardTitle>
@@ -449,96 +484,65 @@ export default function TagihanSiswaPage() {
               </CardContent>
             </Card>
 
-            {/* Detail Tagihan */}
             {selectedTagihan &&
               (() => {
-                const totalTagihan = parseFloat(
-                  selectedTagihan.jumlahtagihan || 0
-                );
-                const sudahBayar = parseFloat(
-                  selectedTagihan.jumlahterbayar || 0
-                );
+                const totalTagihan = parseFloat(selectedTagihan.jumlahtagihan || 0);
+                const sudahBayar = parseFloat(selectedTagihan.jumlahterbayar || 0);
                 const sisa = Math.max(0, totalTagihan - sudahBayar);
-                const isKadaluarsa =
-                  selectedTagihan.statuspembayaran === "KADALUARSA";
+                const isKadaluarsa = selectedTagihan.statuspembayaran === "KADALUARSA";
 
                 return (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">
-                        Detail Tagihan
-                      </CardTitle>
+                      <CardTitle className="text-sm">Detail Tagihan</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Jenis Tagihan:
-                        </span>
+                        <span className="text-muted-foreground">Jenis Tagihan:</span>
                         <span className="font-medium">
                           {selectedTagihan.master_tagihan?.namatagihan}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Periode:
-                        </span>
+                        <span className="text-muted-foreground">Periode:</span>
                         <span>
-                          {BULAN_NAMA[selectedTagihan.bulan]}{" "}
-                          {selectedTagihan.tahun}
+                          {BULAN_NAMA[selectedTagihan.bulan]} {selectedTagihan.tahun}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Total Tagihan:
-                        </span>
-                        <span className="font-semibold">
-                          {convertIDR(totalTagihan)}
-                        </span>
+                        <span className="text-muted-foreground">Total Tagihan:</span>
+                        <span className="font-semibold">{convertIDR(totalTagihan)}</span>
                       </div>
                       {sudahBayar > 0 && (
                         <div className="flex justify-between text-green-600">
                           <span>Sudah Dibayar (Cash):</span>
-                          <span className="font-semibold">
-                            {convertIDR(sudahBayar)}
-                          </span>
+                          <span className="font-semibold">{convertIDR(sudahBayar)}</span>
                         </div>
                       )}
                       <div className="flex justify-between border-t pt-3">
-                        <span className="font-bold">
-                          Total Dibayar Sekarang:
-                        </span>
+                        <span className="font-bold">Dibayar Sekarang:</span>
                         <span className="font-bold text-green-700 dark:text-green-400 text-lg">
                           {convertIDR(sisa)}
                         </span>
                       </div>
 
-                      {/* Info untuk tagihan kadaluarsa */}
                       {isKadaluarsa && (
                         <div className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-600 dark:text-gray-400 flex items-start gap-2">
                           <RefreshCw className="w-3 h-3 mt-0.5 shrink-0" />
-                          <span>
-                            Sesi pembayaran sebelumnya telah berakhir.
-                            Sistem akan membuat sesi pembayaran baru
-                            untukmu.
-                          </span>
+                          Sesi pembayaran lama telah berakhir. Sistem akan
+                          membuat sesi pembayaran baru.
                         </div>
                       )}
 
-                      {/* Info metode pembayaran */}
                       <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-xs text-blue-700 dark:text-blue-300">
-                        <p className="font-semibold mb-1">
-                          Metode pembayaran yang tersedia:
-                        </p>
+                        <p className="font-semibold mb-1">Metode pembayaran tersedia:</p>
                         <ul className="space-y-0.5 text-blue-600 dark:text-blue-400">
-                          <li>• Transfer Bank (BCA, BNI, BRI, Mandiri, Permata)</li>
+                          <li>• Transfer Bank VA (BCA, BNI, BRI, Mandiri, Permata)</li>
                           <li>• Dompet Digital (GoPay, ShopeePay)</li>
                           <li>• QRIS</li>
                           <li>• Kartu Kredit / Debit</li>
                           <li>• Gerai (Indomaret, Alfamart)</li>
                         </ul>
-                        <p className="mt-2 text-blue-500 dark:text-blue-500">
-                          Pilih metode setelah klik "Lanjut ke Pembayaran".
-                        </p>
                       </div>
                     </CardContent>
                   </Card>
