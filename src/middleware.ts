@@ -6,6 +6,18 @@ import { NextRequest, NextResponse } from "next/server";
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  const pathname = request.nextUrl.pathname;
+
+  // ✅ PALING ATAS: Bypass webhook Midtrans & API payment dari semua auth check
+  // Midtrans server tidak punya cookie/session user → harus dibebaskan sebelum apapun
+  const isPublicApiRoute =
+    pathname.startsWith("/api/payment/") ||
+    pathname.startsWith("/api/send-receipt");
+
+  if (isPublicApiRoute) {
+    return NextResponse.next();
+  }
+
   const supabase = createServerClient(
     environment.SUPABASE_URL!,
     environment.SUPABASE_ANON_KEY!,
@@ -31,7 +43,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
   const isAuthPage = pathname === "/login";
   const isApiRoute = pathname.startsWith("/api/");
 
@@ -39,7 +50,7 @@ export async function middleware(request: NextRequest) {
   const isSeoFile =
     pathname === "/sitemap.xml" ||
     pathname === "/robots.txt" ||
-    pathname === "/sitemap-0.xml"; // Next.js kadang generate sitemap-0.xml
+    pathname === "/sitemap-0.xml";
 
   if (isSeoFile) {
     return supabaseResponse;
@@ -60,7 +71,6 @@ export async function middleware(request: NextRequest) {
     "/sitemap.xml",
     "/robots.txt",
     "/siswa/payment",
-    "/api/payment"
   ];
 
   const isPublicPage =
@@ -69,7 +79,7 @@ export async function middleware(request: NextRequest) {
       (page) => pathname === page || pathname.startsWith(page + "/")
     );
 
-  // API routes harus return JSON error, bukan redirect
+  // API routes privat (selain yang sudah di-bypass di atas) → wajib login
   if (isApiRoute) {
     if (!user) {
       return NextResponse.json(

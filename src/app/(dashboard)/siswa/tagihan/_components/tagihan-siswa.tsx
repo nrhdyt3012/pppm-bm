@@ -27,6 +27,7 @@ import {
 import Script from "next/script";
 import { environment } from "@/configs/environtment";
 import { useState, useEffect, useCallback } from "react";
+import { confirmPayment } from "../../payment/actions";
 
 declare global {
   interface Window { snap: any; }
@@ -58,7 +59,6 @@ export default function TagihanSiswaPage() {
     },
   });
 
-  // Query utama tagihan: BELUM BAYAR + KADALUARSA
   const { data: tagihanList, isLoading, refetch } = useQuery({
     queryKey: ["tagihan-siswa-wali", profile.id],
     enabled: !!profile.id,
@@ -91,7 +91,6 @@ export default function TagihanSiswaPage() {
     },
   });
 
-  // Query polling pembayaran PENDING — setiap 8 detik
   const { data: pendingPembayaran } = useQuery({
     queryKey: ["pending-pembayaran", profile.id],
     enabled: !!profile.id,
@@ -106,10 +105,7 @@ export default function TagihanSiswaPage() {
     },
   });
 
-  // ─── Realtime subscription: auto-refresh saat webhook update DB ──────────
-  // Ini yang memastikan halaman langsung update tanpa perlu refresh manual
   const handleRealtimeUpdate = useCallback(() => {
-    // Invalidate semua query terkait tagihan & pembayaran
     queryClient.invalidateQueries({
       queryKey: ["tagihan-siswa-wali", profile.id],
     });
@@ -121,7 +117,6 @@ export default function TagihanSiswaPage() {
   useEffect(() => {
     if (!profile.id) return;
 
-    // Subscribe ke perubahan tagihan_siswa milik siswa ini
     const tagihanChannel = supabase
       .channel(`tagihan-siswa-${profile.id}`)
       .on(
@@ -148,11 +143,8 @@ export default function TagihanSiswaPage() {
           handleRealtimeUpdate();
         }
       )
-      .subscribe((status) => {
-        console.log("[realtime] tagihan channel status:", status);
-      });
+      .subscribe();
 
-    // Subscribe ke perubahan pembayaran milik siswa ini
     const pembayaranChannel = supabase
       .channel(`pembayaran-siswa-${profile.id}`)
       .on(
@@ -163,21 +155,17 @@ export default function TagihanSiswaPage() {
           table: "pembayaran",
           filter: `idsiswa=eq.${profile.id}`,
         },
-        (payload: any) => {
-          console.log("[realtime] pembayaran change:", payload);
+        () => {
           handleRealtimeUpdate();
         }
       )
-      .subscribe((status) => {
-        console.log("[realtime] pembayaran channel status:", status);
-      });
+      .subscribe();
 
     return () => {
       tagihanChannel.unsubscribe();
       pembayaranChannel.unsubscribe();
     };
   }, [profile.id, handleRealtimeUpdate]);
-  // ─────────────────────────────────────────────────────────────────────────
 
   const getSisaTagihan = (tagihan: any): number => {
     const total = parseFloat(tagihan.jumlahtagihan || 0);
@@ -221,33 +209,63 @@ export default function TagihanSiswaPage() {
         return;
       }
 
-      // Simpan token ke tagihan
       await supabase
         .from("tagihan_siswa")
         .update({ paymenttoken: result.token })
         .eq("idtagihansiswa", selectedTagihan.idtagihansiswa);
 
-      // Tutup dialog konfirmasi SEBELUM buka Snap
+      // Simpan data tagihan yang dipilih sebelum dialog ditutup
+      const tagihanId = selectedTagihan.idtagihansiswa.toString();
+      const rawOrderId = result.midtrans_order_id;
+      const nominalBayar = sisaTagihan;
+      const pembayaranId = result.pembayaran_id;
+
       setShowDialog(false);
       setIsPaymentLoading(false);
 
-      // Buka Snap popup
-      // PENTING: jangan lakukan apapun setelah snap.pay() di luar callback
-      // karena Snap mengambil alih kontrol UI
       window.snap.pay(result.token, {
-        onSuccess: (snapResult: any) => {
-          // Dipanggil saat user klik "Kembali ke Merchant" di halaman sukses Snap
-          // Atau saat Snap detect settlement langsung (GoPay, QRIS)
+        onSuccess: async (snapResult: any) => {
           console.log("[Snap] onSuccess:", snapResult);
-          // Realtime subscription akan handle update otomatis
-          // tapi kita tetap trigger manual refetch sebagai backup
+
+          // ✅ FIX: Panggil confirmPayment untuk update DB
+          // Ini sebagai fallback jika webhook Midtrans terlambat / belum terpanggil
+          try {
+            toast.loading("Memverifikasi pembayaran...", { id: "confirm-toast" });
+
+            const confirmResult = await confirmPayment(
+              tagihanId,
+              rawOrderId || snapResult.order_id || tagihanId,
+              nominalBayar,
+              pembayaranId
+            );
+
+            if (confirmResult.status === "success") {
+              toast.success("Pembayaran berhasil! Tagihan sudah lunas.", {
+                id: "confirm-toast",
+                duration: 5000,
+              });
+            } else {
+              // confirmPayment gagal tapi mungkin webhook sudah handle
+              toast.success("Pembayaran berhasil! Status sedang diperbarui...", {
+                id: "confirm-toast",
+                duration: 5000,
+              });
+            }
+          } catch (err) {
+            console.error("[Snap] confirmPayment error:", err);
+            // Jangan tampilkan error ke user — webhook mungkin sudah handle
+            toast.success("Pembayaran berhasil! Status sedang diperbarui...", {
+              id: "confirm-toast",
+              duration: 5000,
+            });
+          }
+
+          // Refresh data tagihan
           refetch();
-          toast.success("Pembayaran berhasil!", {
-            description: "Status tagihan sedang diperbarui...",
-          });
+          handleRealtimeUpdate();
         },
+
         onPending: (snapResult: any) => {
-          // Dipanggil untuk metode async: VA, Indomaret, dll
           console.log("[Snap] onPending:", snapResult);
           toast.info("Pembayaran sedang menunggu konfirmasi", {
             description:
@@ -257,14 +275,15 @@ export default function TagihanSiswaPage() {
           });
           refetch();
         },
+
         onError: (snapResult: any) => {
           console.error("[Snap] onError:", snapResult);
           toast.error("Pembayaran gagal", {
             description: "Silakan coba lagi.",
           });
         },
+
         onClose: () => {
-          // User tutup popup tanpa selesaikan pembayaran
           console.log("[Snap] onClose");
           toast.info("Pembayaran belum diselesaikan", {
             description:
@@ -337,7 +356,6 @@ export default function TagihanSiswaPage() {
                 >
                   <CardContent className="flex items-start justify-between p-5 gap-4">
                     <div className="flex-1 min-w-0">
-                      {/* Badge row */}
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {isKadaluarsa ? (
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded text-xs font-medium flex items-center gap-1">
@@ -412,7 +430,6 @@ export default function TagihanSiswaPage() {
                       )}
                     </div>
 
-                    {/* Tombol aksi */}
                     <div className="shrink-0 flex flex-col gap-2">
                       {isKadaluarsa ? (
                         <Button
