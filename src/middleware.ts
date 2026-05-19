@@ -60,6 +60,7 @@ export async function middleware(request: NextRequest) {
     "/sitemap.xml",
     "/robots.txt",
     "/siswa/payment",
+    "/api/payment"
   ];
 
   const isPublicPage =
