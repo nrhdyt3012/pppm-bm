@@ -5,22 +5,158 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Download, Calendar } from "lucide-react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
 } from "recharts";
 import * as XLSX from "xlsx";
 
-const BULAN_NAMA = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const BULAN_NAMA = [
+  "",
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
 
+const BULAN_SINGKAT = [
+  "", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agt", "Sep", "Okt", "Nov", "Des",
+];
+
+// Warna highlight untuk bar aktif vs tidak aktif
+const COLOR_ACTIVE = "#16a34a";
+const COLOR_INACTIVE = "#86efac";
+
+// ─── Custom Tooltip ────────────────────────────────────────────────────────────
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  const breakdown: Record<string, number> = data.breakdown || {};
+  const breakdownEntries = Object.entries(breakdown).filter(([, v]) => v > 0);
+
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 min-w-[200px]">
+      <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">
+        📅 {label}
+      </p>
+      {breakdownEntries.length > 0 ? (
+        <div className="space-y-1.5">
+          {breakdownEntries.map(([key, count]) => (
+            <div key={key} className="flex items-center justify-between gap-4">
+              <span className="text-xs text-gray-500 dark:text-gray-400">{key}</span>
+              <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+                {count} tagihan
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-200">Total</span>
+            <span className="text-xs font-bold text-green-700 dark:text-green-400">
+              {data.total} tagihan
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 dark:text-gray-500">Tidak ada data</p>
+      )}
+    </div>
+  );
+};
+
+// ─── Month-Year Picker ─────────────────────────────────────────────────────────
+const MonthYearPicker = ({
+  selectedMonth,
+  selectedYear,
+  onChange,
+  onClose,
+}: {
+  selectedMonth: number;
+  selectedYear: number;
+  onChange: (month: number, year: number) => void;
+  onClose: () => void;
+}) => {
+  const [pickerYear, setPickerYear] = useState(selectedYear);
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <div className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 w-72">
+      {/* Navigasi tahun */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setPickerYear((y) => y - 1)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{pickerYear}</span>
+        <button
+          onClick={() => setPickerYear((y) => y + 1)}
+          disabled={pickerYear >= currentYear + 1}
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-30"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Grid bulan */}
+      <div className="grid grid-cols-3 gap-2">
+        {BULAN_SINGKAT.slice(1).map((nama, idx) => {
+          const bulanIdx = idx + 1;
+          const isActive = bulanIdx === selectedMonth && pickerYear === selectedYear;
+          return (
+            <button
+              key={bulanIdx}
+              onClick={() => {
+                onChange(bulanIdx, pickerYear);
+                onClose();
+              }}
+              className={`py-2 rounded-lg text-xs font-medium transition-all ${
+                isActive
+                  ? "bg-green-600 text-white shadow-sm"
+                  : "hover:bg-green-50 dark:hover:bg-green-950 text-gray-700 dark:text-gray-300"
+              }`}
+            >
+              {nama}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ─── Komponen Utama ────────────────────────────────────────────────────────────
 export default function RekapanPembayaran() {
   const supabase = createClient();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showPicker, setShowPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
+  // Tutup picker ketika klik di luar
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // ─── Data tabel per periode terpilih ──────────────────────────────────────
   const { data: pembayaranData, isLoading } = useQuery({
     queryKey: ["rekapan-pembayaran", selectedMonth, selectedYear],
     queryFn: async () => {
@@ -49,7 +185,7 @@ export default function RekapanPembayaran() {
     },
   });
 
-  // Grafik 6 bulan terakhir
+  // ─── Data grafik 6 bulan terakhir dengan breakdown ────────────────────────
   const { data: chartData } = useQuery({
     queryKey: ["chart-pembayaran"],
     queryFn: async () => {
@@ -59,45 +195,76 @@ export default function RekapanPembayaran() {
         d.setMonth(d.getMonth() - i);
         const m = d.getMonth() + 1;
         const y = d.getFullYear();
-        const { count } = await supabase
+
+        const { data } = await supabase
           .from("tagihan_siswa")
-          .select("*", { count: "exact", head: true })
+          .select(`
+            idtagihansiswa,
+            master_tagihan:master_tagihan!idmastertagihan(jenjang, jenistagihan)
+          `)
           .eq("statuspembayaran", "LUNAS")
           .eq("bulan", m)
           .eq("tahun", y);
-        results.push({ name: `${BULAN_NAMA[m].slice(0, 3)} ${y.toString().slice(2)}`, total: count || 0 });
+
+        // Breakdown per jenjang+jenis
+        const breakdown: Record<string, number> = {};
+        (data || []).forEach((item: any) => {
+          const jenjang = item.master_tagihan?.jenjang || "Lainnya";
+          const jenis = item.master_tagihan?.jenistagihan || "";
+          const key = jenis ? `${jenjang} ${jenis}` : jenjang;
+          breakdown[key] = (breakdown[key] || 0) + 1;
+        });
+
+        results.push({
+          name: `${BULAN_SINGKAT[m]} ${y.toString().slice(2)}`,
+          bulan: m,
+          tahun: y,
+          total: (data || []).length,
+          breakdown,
+        });
       }
       return results;
     },
   });
 
-  const totalNominal = useMemo(() =>
-    pembayaranData?.reduce((s: number, i: any) => s + parseFloat(i.jumlahtagihan || 0), 0) || 0,
+  const totalNominal = useMemo(
+    () =>
+      pembayaranData?.reduce(
+        (s: number, i: any) => s + parseFloat(i.jumlahtagihan || 0),
+        0
+      ) || 0,
     [pembayaranData]
   );
 
   const handlePrevMonth = () => {
-    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
-    else setSelectedMonth(m => m - 1);
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((y) => y - 1);
+    } else setSelectedMonth((m) => m - 1);
   };
 
   const handleNextMonth = () => {
-    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
-    else setSelectedMonth(m => m + 1);
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((y) => y + 1);
+    } else setSelectedMonth((m) => m + 1);
   };
 
   const handleExport = () => {
-    if (!pembayaranData?.length) { toast.error("Tidak ada data"); return; }
+    if (!pembayaranData?.length) {
+      toast.error("Tidak ada data");
+      return;
+    }
     const rows = pembayaranData.map((item: any, i: number) => ({
       No: i + 1,
       "ID Tagihan": item.idtagihansiswa,
       "Nama Siswa": item.siswa?.namasiswa || "-",
-      "Kelas": item.siswa?.kelas || "-",
+      Kelas: item.siswa?.kelas || "-",
       "Nama Tagihan": item.master_tagihan?.namatagihan || "-",
-      "Jenjang": item.master_tagihan?.jenjang || "-",
-      "Jenis": item.master_tagihan?.jenistagihan || "-",
-      "Bulan": BULAN_NAMA[item.bulan],
-      "Tahun": item.tahun,
+      Jenjang: item.master_tagihan?.jenjang || "-",
+      Jenis: item.master_tagihan?.jenistagihan || "-",
+      Bulan: BULAN_NAMA[item.bulan],
+      Tahun: item.tahun,
       "Jumlah Dibayar": parseFloat(item.jumlahtagihan || 0),
       "Tanggal Lunas": new Date(item.updatedat).toLocaleDateString("id-ID"),
     }));
@@ -112,51 +279,127 @@ export default function RekapanPembayaran() {
     <div className="w-full space-y-6">
       <h1 className="text-2xl font-bold">Rekapan Pembayaran</h1>
 
+      {/* ─── Grafik ─────────────────────────────────────────────────────────── */}
       <Card>
-        <CardHeader><CardTitle>Grafik Pembayaran (6 Bulan Terakhir)</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Grafik Pembayaran (6 Bulan Terakhir)</CardTitle>
+        </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="total" fill="#16a34a" name="Jumlah Tagihan Lunas" />
+            <BarChart data={chartData} barCategoryGap="30%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+              <Legend
+                formatter={() => "Jumlah Tagihan Lunas"}
+                wrapperStyle={{ fontSize: 12 }}
+              />
+              <Bar dataKey="total" name="Jumlah Tagihan Lunas" radius={[6, 6, 0, 0]}>
+                {(chartData || []).map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={
+                      entry.bulan === selectedMonth && entry.tahun === selectedYear
+                        ? COLOR_ACTIVE
+                        : COLOR_INACTIVE
+                    }
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
+      {/* ─── Navigasi periode ───────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}><ChevronLeft className="h-4 w-4" /></Button>
-          <h2 className="text-lg font-semibold">{BULAN_NAMA[selectedMonth]} {selectedYear}</h2>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}><ChevronRight className="h-4 w-4" /></Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {/* Tombol periode — klik buka picker */}
+          <div className="relative" ref={pickerRef}>
+            <Button
+              variant="outline"
+              className="gap-2 min-w-[160px] font-semibold"
+              onClick={() => setShowPicker((v) => !v)}
+            >
+              <Calendar className="h-4 w-4 text-green-600" />
+              {BULAN_NAMA[selectedMonth]} {selectedYear}
+            </Button>
+
+            {showPicker && (
+              <MonthYearPicker
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                onChange={(m, y) => {
+                  setSelectedMonth(m);
+                  setSelectedYear(y);
+                }}
+                onClose={() => setShowPicker(false)}
+              />
+            )}
+          </div>
+
+          <Button variant="outline" size="icon" onClick={handleNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-        <Button onClick={handleExport} disabled={!pembayaranData?.length} className="bg-green-600 hover:bg-green-700">
-          <Download className="mr-2 h-4 w-4" />Export Excel
+
+        <Button
+          onClick={handleExport}
+          disabled={!pembayaranData?.length}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Excel
         </Button>
       </div>
 
+      {/* ─── Kartu ringkasan ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader><CardTitle className="text-sm">Total Transaksi</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold">{pembayaranData?.length || 0} Tagihan</p></CardContent>
+          <CardHeader>
+            <CardTitle className="text-sm">Total Transaksi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{pembayaranData?.length || 0} Tagihan</p>
+          </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">Total Nominal</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-green-600">{convertIDR(totalNominal)}</p></CardContent>
+          <CardHeader>
+            <CardTitle className="text-sm">Total Nominal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-600">{convertIDR(totalNominal)}</p>
+          </CardContent>
         </Card>
       </div>
 
+      {/* ─── Tabel ──────────────────────────────────────────────────────────── */}
       <Card>
-        <CardHeader><CardTitle>Daftar Pembayaran Lunas</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Daftar Pembayaran Lunas</CardTitle>
+        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Memuat data...</div>
           ) : !pembayaranData?.length ? (
-            <div className="text-center py-8 text-muted-foreground">Tidak ada data untuk periode ini</div>
+            <div className="text-center py-8 text-muted-foreground">
+              Tidak ada data untuk periode ini
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
@@ -179,8 +422,12 @@ export default function RekapanPembayaran() {
                       <td className="p-3">{item.siswa?.kelas || "-"}</td>
                       <td className="p-3">{item.master_tagihan?.namatagihan || "-"}</td>
                       <td className="p-3">{item.master_tagihan?.jenistagihan || "-"}</td>
-                      <td className="p-3 text-right font-semibold">{convertIDR(parseFloat(item.jumlahtagihan || 0))}</td>
-                      <td className="p-3">{new Date(item.updatedat).toLocaleDateString("id-ID")}</td>
+                      <td className="p-3 text-right font-semibold">
+                        {convertIDR(parseFloat(item.jumlahtagihan || 0))}
+                      </td>
+                      <td className="p-3">
+                        {new Date(item.updatedat).toLocaleDateString("id-ID")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -188,7 +435,7 @@ export default function RekapanPembayaran() {
                   <tr className="border-t-2 font-bold bg-muted/30">
                     <td colSpan={5} className="p-3 text-right">Total:</td>
                     <td className="p-3 text-right text-green-600">{convertIDR(totalNominal)}</td>
-                    <td></td>
+                    <td />
                   </tr>
                 </tfoot>
               </table>
