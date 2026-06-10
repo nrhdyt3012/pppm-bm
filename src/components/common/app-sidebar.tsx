@@ -53,6 +53,7 @@ const ADMIN_MENU = [
     url: "/admin/rekapan-tunggakan",
     icon: AlertCircle,
   },
+  { title: "Riwayat Aktivitas", url: "/admin/changelog", icon: History },
 ];
 
 const SUPERADMIN_MENU = [
@@ -71,11 +72,11 @@ const SUPERADMIN_MENU = [
     url: "/admin/rekapan-tunggakan",
     icon: AlertCircle,
   },
+  { title: "Riwayat Aktivitas", url: "/admin/changelog", icon: History },
 ];
 
 const SUPERADMIN_EXCLUSIVE_MENU = [
   { title: "Kelola Bendahara", url: "/superadmin/bendahara", icon: ShieldCheck },
-  { title: "Riwayat Aktivitas", url: "/superadmin/changelog", icon: History },
 ];
 
 const SISWA_MENU = [
