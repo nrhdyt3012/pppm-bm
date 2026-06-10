@@ -93,7 +93,7 @@ class FontteClient {
    */
   static formatPhoneNumber(phone: string): string {
     // Remove spaces and special characters
-    let cleaned = phone.replace(/\D/g, '');
+    const cleaned = phone.replace(/\D/g, '');
 
     // If starts with 62, keep it
     if (cleaned.startsWith('62')) {
