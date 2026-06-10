@@ -300,6 +300,70 @@ export async function POST(request: NextRequest) {
           emailError
         );
       }
+
+      // Kirim notifikasi WhatsApp untuk payment success
+      if (process.env.FONNTE_API_KEY) {
+        try {
+          await fetch(`${appUrl}/api/notifications/send-payment-status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              idPembayaran: pembayaranId,
+              idTagihan: parseInt(tagihanId),
+              status: "SUCCESS",
+            }),
+          });
+          console.log(
+            `📱 [WEBHOOK] WhatsApp payment success notification queued for pembayaran ${pembayaranId}`
+          );
+        } catch (whatsappError) {
+          console.error(
+            `⚠️ [WEBHOOK] Gagal kirim WhatsApp notification:`,
+            whatsappError
+          );
+        }
+      }
+    }
+
+    // Kirim notifikasi WhatsApp untuk payment failed
+    if (
+      pembayaranId !== null &&
+      (transaction_status === "cancel" ||
+        transaction_status === "deny" ||
+        transaction_status === "expire")
+    ) {
+      if (process.env.FONNTE_API_KEY) {
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const statusMap: Record<string, "FAILED" | "EXPIRED"> = {
+          cancel: "FAILED",
+          deny: "FAILED",
+          expire: "EXPIRED",
+        };
+
+        try {
+          await fetch(
+            `${appUrl}/api/notifications/send-payment-status`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                idPembayaran: pembayaranId,
+                idTagihan: parseInt(tagihanId),
+                status: statusMap[transaction_status] || "FAILED",
+              }),
+            }
+          );
+          console.log(
+            `📱 [WEBHOOK] WhatsApp payment failed notification queued for pembayaran ${pembayaranId}`
+          );
+        } catch (whatsappError) {
+          console.error(
+            `⚠️ [WEBHOOK] Gagal kirim WhatsApp notification:`,
+            whatsappError
+          );
+        }
+      }
     }
 
     return NextResponse.json({

@@ -1,0 +1,73 @@
+/**
+ * Type definitions untuk Fonnte WhatsApp API
+ */
+
+export interface FontteConfig {
+  apiKey: string;
+  baseUrl: string;
+}
+
+export interface FontneSendMessageRequest {
+  target: string; // Nomor WhatsApp dengan kode negara (628xxxxxxxxx)
+  message: string;
+  countryCode?: string;
+}
+
+export interface FontneSendMessageResponse {
+  status: boolean;
+  message: string;
+  data?: {
+    id: string;
+    message: string;
+    target: string;
+    device: string;
+    status: 'pending' | 'sent' | 'delivered' | 'read';
+  };
+}
+
+export interface FontneCheckStatusRequest {
+  id: string; // Message ID dari response
+}
+
+export interface FontneCheckStatusResponse {
+  status: boolean;
+  message: string;
+  data?: {
+    id: string;
+    status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+    timestamp: string;
+  };
+}
+
+export interface FontneWebhookPayload {
+  event: 'message' | 'status' | 'device';
+  data: {
+    id: string;
+    target?: string;
+    message?: string;
+    status?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+    timestamp: string;
+  };
+}
+
+export interface WhatsAppNotificationLog {
+  id: number;
+  recipient_phone: string;
+  message_type: 'TAGIHAN' | 'PAYMENT_SUCCESS' | 'PAYMENT_FAILED';
+  target_id: number | null;
+  message_content: string;
+  delivery_status: 'PENDING' | 'SENT' | 'DELIVERED' | 'FAILED';
+  fonnte_message_id: string | null;
+  fonnte_response: Record<string, any> | null;
+  created_at: string;
+  delivered_at: string | null;
+}
+
+export interface NotificationPayload {
+  recipientPhone: string;
+  messageType: 'TAGIHAN' | 'PAYMENT_SUCCESS' | 'PAYMENT_FAILED';
+  targetId?: number;
+  recipientName: string;
+  studentName: string;
+  data: Record<string, any>;
+}
