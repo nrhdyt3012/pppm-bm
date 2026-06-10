@@ -1,152 +1,234 @@
 "use client";
 
-import { GraduationCap, EllipsisVertical } from "lucide-react";
+// src/components/common/app-sidebar.tsx — VERSI BARU dengan superadmin menu
+// Ganti seluruh file dengan ini.
+
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
-} from "../ui/sidebar";
+} from "@/components/ui/sidebar";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import {
-  SIDEBAR_MENU_LIST,
-  SidebarMenuKey,
-} from "../../constants/sidebar-constants";
-import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
+  LayoutDashboard,
+  Users,
+  FileText,
+  ClipboardList,
+  AlertCircle,
+  LogOut,
+  Receipt,
+  History,
+  ShieldCheck,
+  Crown,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Button } from "../ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth-store";
-import SidebarAccountActions from "./logout-dialog";
+import { cn } from "@/lib/utils";
+
+// ── Menu definitions ──────────────────────────────────────────────────────────
+
+const ADMIN_MENU = [
+  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Data Siswa", url: "/admin/user", icon: Users },
+  { title: "Master Tagihan", url: "/admin/menu", icon: ClipboardList },
+  { title: "Tagihan Siswa", url: "/admin/tagihan", icon: FileText },
+  {
+    title: "Rekapan Pembayaran",
+    url: "/admin/rekapan-pembayaran",
+    icon: Receipt,
+  },
+  {
+    title: "Rekapan Tunggakan",
+    url: "/admin/rekapan-tunggakan",
+    icon: AlertCircle,
+  },
+];
+
+const SUPERADMIN_MENU = [
+  // Superadmin punya akses ke semua menu admin…
+  { title: "Dashboard Admin", url: "/admin", icon: LayoutDashboard },
+  { title: "Data Siswa", url: "/admin/user", icon: Users },
+  { title: "Master Tagihan", url: "/admin/menu", icon: ClipboardList },
+  { title: "Tagihan Siswa", url: "/admin/tagihan", icon: FileText },
+  {
+    title: "Rekapan Pembayaran",
+    url: "/admin/rekapan-pembayaran",
+    icon: Receipt,
+  },
+  {
+    title: "Rekapan Tunggakan",
+    url: "/admin/rekapan-tunggakan",
+    icon: AlertCircle,
+  },
+];
+
+const SUPERADMIN_EXCLUSIVE_MENU = [
+  { title: "Kelola Bendahara", url: "/superadmin/bendahara", icon: ShieldCheck },
+  { title: "Riwayat Aktivitas", url: "/superadmin/changelog", icon: History },
+];
+
+const SISWA_MENU = [
+  { title: "Info Siswa", url: "/siswa/info", icon: Users },
+  { title: "Tagihan", url: "/siswa/tagihan", icon: FileText },
+  { title: "Riwayat Pembayaran", url: "/siswa/riwayat", icon: History },
+];
+
+// ── Komponen Sidebar ──────────────────────────────────────────────────────────
 
 export default function AppSidebar() {
-  const { isMobile } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
   const profile = useAuthStore((state) => state.profile);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    document.cookie =
+      "user_profile=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    toast.success("Berhasil logout");
+    router.push("/login");
+  };
+
+  const isSuperadmin = profile?.role === "superadmin";
+  const isAdmin = profile?.role === "admin";
+  const isSiswa = profile?.role === "siswa";
+
+  // Tentukan menu utama
+  const mainMenu = isSiswa
+    ? SISWA_MENU
+    : isSuperadmin
+    ? SUPERADMIN_MENU
+    : ADMIN_MENU;
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      {/* Header */}
+      <SidebarHeader className="border-b">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <div className="font-semibold">
-                <div className="bg-green-600 flex p-2 items-center justify-center rounded-md">
-                  <GraduationCap className="size-4 text-white" />
+              <Link href={isSuperadmin ? "/superadmin" : isAdmin ? "/admin" : "/siswa/info"}>
+                <div className="flex items-center gap-3">
+                  <Image
+                    src="/logo.jpg"
+                    alt="Logo"
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="font-semibold truncate">PAUD ABA 1</span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {isSuperadmin
+                        ? "Superadmin"
+                        : isAdmin
+                        ? "Bendahara"
+                        : "Wali Siswa"}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-xs leading-tight">
-                  PAUD Aisyiyah BA 1 Buduran
-                </span>
-              </div>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Menu Utama */}
         <SidebarGroup>
-          <SidebarGroupContent className="flex flex-col gap-2">
+          <SidebarGroupLabel>
+            {isSiswa ? "Menu Siswa" : "Menu Administrasi"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
             <SidebarMenu>
-              {SIDEBAR_MENU_LIST[profile.role as SidebarMenuKey]?.map(
-                (item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild tooltip={item.title}>
-                      <a
-                        href={item.url}
-                        className={cn("px-4 py-3 h-auto", {
-                          "bg-green-600 text-white hover:bg-green-600 hover:text-white":
-                            pathname === item.url,
-                        })}
-                      >
-                        {item.icon && <item.icon />}
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              )}
+              {mainMenu.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    tooltip={item.title}
+                  >
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Menu Eksklusif Superadmin */}
+        {isSuperadmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center gap-1.5">
+              <Crown className="w-3.5 h-3.5 text-yellow-500" />
+              Superadmin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {SUPERADMIN_EXCLUSIVE_MENU.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.url}
+                      tooltip={item.title}
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={profile.avatar_url} alt={profile.name} />
-                    <AvatarFallback className="rounded-lg">
-                      {profile.name?.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="leading-tight">
-                    <h4 className="truncate font-medium">{profile.name}</h4>
-                    <p className="text-muted-foreground truncate text-xs capitalize">
-                      {profile.role}
-                    </p>
-                  </div>
-                  <EllipsisVertical className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent
-                className="min-w-56 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align="end"
-                sideOffset={4}
-              >
-                {/* Info profil di header dropdown */}
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5">
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage
-                        src={profile.avatar_url}
-                        alt={profile.name}
-                      />
-                      <AvatarFallback className="rounded-lg">
-                        {profile.name?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="leading-tight">
-                      <h4 className="truncate font-medium">{profile.name}</h4>
-                      <p className="text-muted-foreground truncate text-xs capitalize">
-                        {profile.role}
-                      </p>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-
-                <DropdownMenuSeparator />
-
-                {/* Ganti Password + Logout */}
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <SidebarAccountActions />
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      {/* Footer: profil + logout */}
+      <SidebarFooter className="border-t">
+        <div className="p-2 space-y-2">
+          <div className="px-2 py-1.5">
+            <p className="text-xs font-medium truncate">
+              {profile?.name || "Pengguna"}
+            </p>
+            <p
+              className={cn(
+                "text-xs font-medium",
+                isSuperadmin
+                  ? "text-yellow-600 dark:text-yellow-400"
+                  : isAdmin
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-blue-600 dark:text-blue-400"
+              )}
+            >
+              {isSuperadmin ? "Superadmin" : isAdmin ? "Bendahara" : "Wali Siswa"}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

@@ -1,5 +1,7 @@
 "use server";
 
+// src/app/(auth)/login/actions.ts — VERSI BARU dengan superadmin
+
 import { INITIAL_STATE_LOGIN_FORM } from "@/constants/auth-constant";
 import { createClient } from "@/lib/supabase/server";
 import { AuthFormState } from "@/types/auth";
@@ -37,30 +39,30 @@ export async function login(
     } = await supabase.auth.signInWithPassword(validatedFields.data);
 
     if (error) {
-      return {
-        status: "error",
-        errors: { _form: [error.message] },
-      };
+      return { status: "error", errors: { _form: [error.message] } };
     }
-
     if (!user) {
-      return {
-        status: "error",
-        errors: { _form: ["User tidak ditemukan"] },
-      };
+      return { status: "error", errors: { _form: ["User tidak ditemukan"] } };
     }
 
-    const authenticatedSupabase = await createClient();
+    const authSupabase = await createClient();
 
-    // Cek tabel admin
-    const { data: adminData } = await authenticatedSupabase
+    // ── Cek tabel superadmin (prioritas tertinggi) ──────────────────────────
+    const { data: superadminData } = await authSupabase
+      .from("superadmin")
+      .select("id, nama")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // ── Cek tabel admin / bendahara ─────────────────────────────────────────
+    const { data: adminData } = await authSupabase
       .from("admin")
       .select("id, nama")
       .eq("id", user.id)
       .maybeSingle();
 
-    // Cek tabel siswa
-    const { data: siswaData } = await authenticatedSupabase
+    // ── Cek tabel siswa ─────────────────────────────────────────────────────
+    const { data: siswaData } = await authSupabase
       .from("siswa")
       .select("id, namasiswa, avatarurl, kelas, nis")
       .eq("id", user.id)
@@ -68,7 +70,14 @@ export async function login(
 
     let profile = null;
 
-    if (adminData) {
+    if (superadminData) {
+      profile = {
+        id: superadminData.id,
+        name: superadminData.nama,
+        role: "superadmin" as const,
+        avatar_url: null,
+      };
+    } else if (adminData) {
       profile = {
         id: adminData.id,
         name: adminData.nama,
@@ -104,12 +113,15 @@ export async function login(
 
     revalidatePath("/", "layout");
 
-    const redirectUrl = profile.role === "admin" ? "/admin" : "/siswa/info";
+    // ── Redirect berdasarkan role ────────────────────────────────────────────
+    const redirectUrl =
+      profile.role === "superadmin"
+        ? "/superadmin"
+        : profile.role === "admin"
+        ? "/admin"
+        : "/siswa/info";
 
-    return {
-      status: "success",
-      data: { profile, redirectUrl },
-    };
+    return { status: "success", data: { profile, redirectUrl } };
   } catch (error: any) {
     return {
       status: "error",
