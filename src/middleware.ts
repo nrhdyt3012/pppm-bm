@@ -3,6 +3,18 @@ import { environment } from "./configs/environtment";
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
+// Helper function to get user role from cookie
+function getUserRole(request: NextRequest): string | null {
+  const profileCookie = request.cookies.get("user_profile")?.value;
+  if (!profileCookie) return null;
+  try {
+    const profile = JSON.parse(profileCookie);
+    return profile.role || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -100,6 +112,38 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // ✅ ROLE-BASED ROUTE PROTECTION
+  // Cek apakah user memiliki role
+  const userRole = getUserRole(request);
+
+  // Guard /superadmin/* — hanya superadmin yang bisa akses
+  if (pathname.startsWith("/superadmin")) {
+    if (userRole !== "superadmin") {
+      const url = request.nextUrl.clone();
+      url.pathname = userRole ? "/" : "/login";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Guard /admin/* — hanya admin dan superadmin yang bisa akses
+  if (pathname.startsWith("/admin")) {
+    if (userRole !== "admin" && userRole !== "superadmin") {
+      const url = request.nextUrl.clone();
+      url.pathname = userRole === "siswa" ? "/siswa/info" : "/login";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Guard /siswa/* — hanya siswa yang bisa akses
+  if (pathname.startsWith("/siswa")) {
+    if (userRole !== "siswa") {
+      const url = request.nextUrl.clone();
+      url.pathname =
+        userRole === "admin" || userRole === "superadmin" ? "/admin" : "/login";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
