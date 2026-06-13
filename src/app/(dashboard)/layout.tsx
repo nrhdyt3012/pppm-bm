@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ReactNode } from "react";
 import DashboardBreadcrumb from "./_components/dashboard-breadcrumbs";
+import AngkatanFilter from "./_components/angkatan-filter";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -22,6 +23,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             <DashboardBreadcrumb />
+            <AngkatanFilter />
           </div>
           <div className="px-4">
             <DarkmodeToggle />

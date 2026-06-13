@@ -83,6 +83,7 @@ export async function middleware(request: NextRequest) {
     "/sitemap.xml",
     "/robots.txt",
     "/siswa/payment",
+    "/kwitansi",
   ];
 
   const isPublicPage =

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { writeChangelog } from "@/lib/changelog";
 import { MenuFormState } from "@/types/menu";
 import { menuSchema } from "@/validations/menu-validation";
 import { revalidatePath } from "next/cache";
@@ -17,10 +18,7 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
   if (!validatedFields.success) {
     return {
       status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
+      errors: { ...validatedFields.error.flatten().fieldErrors, _form: [] },
     };
   }
 
@@ -35,11 +33,15 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
   });
 
   if (error) {
-    return {
-      status: "error",
-      errors: { ...prevState.errors, _form: [error.message] },
-    };
+    return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
+
+  await writeChangelog({
+    supabase,
+    namamenu: "Master Tagihan",
+    jenisaksi: "TAMBAH",
+    deskripsi: `Menambahkan master tagihan "${validatedFields.data.namaTagihan}" (${validatedFields.data.jenjang} - ${validatedFields.data.jenisTagihan})`,
+  });
 
   revalidatePath("/admin/menu");
   return { status: "success" };
@@ -58,10 +60,7 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
   if (!validatedFields.success) {
     return {
       status: "error",
-      errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
-      },
+      errors: { ...validatedFields.error.flatten().fieldErrors, _form: [] },
     };
   }
 
@@ -80,11 +79,15 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
     .eq("id_mastertagihan", validatedFields.data.id_masterTagihan);
 
   if (error) {
-    return {
-      status: "error",
-      errors: { ...prevState.errors, _form: [error.message] },
-    };
+    return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
+
+  await writeChangelog({
+    supabase,
+    namamenu: "Master Tagihan",
+    jenisaksi: "UBAH",
+    deskripsi: `Mengubah master tagihan "${validatedFields.data.namaTagihan}" (${validatedFields.data.jenjang} - ${validatedFields.data.jenisTagihan})`,
+  });
 
   revalidatePath("/admin/menu");
   return { status: "success" };
@@ -92,18 +95,29 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
 
 export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
   const supabase = await createClient();
+  const id = parseInt(formData.get("id") as string);
+
+  const { data: existing } = await supabase
+    .from("master_tagihan")
+    .select("namatagihan")
+    .eq("id_mastertagihan", id)
+    .maybeSingle();
 
   const { error } = await supabase
     .from("master_tagihan")
     .delete()
-    .eq("id_mastertagihan", parseInt(formData.get("id") as string));
+    .eq("id_mastertagihan", id);
 
   if (error) {
-    return {
-      status: "error",
-      errors: { ...prevState.errors, _form: [error.message] },
-    };
+    return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
+
+  await writeChangelog({
+    supabase,
+    namamenu: "Master Tagihan",
+    jenisaksi: "HAPUS",
+    deskripsi: `Menghapus master tagihan "${existing?.namatagihan || `#${id}`}"`,
+  });
 
   revalidatePath("/admin/menu");
   return { status: "success" };
