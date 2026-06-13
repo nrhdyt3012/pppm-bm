@@ -72,21 +72,10 @@ export default function DaftarTagihanSiswa() {
         .select("*", { count: "exact", head: true })
         .eq("statuspembayaran", "LUNAS");
 
-      const { data: nominalData } = await supabase
-        .from("tagihan_siswa")
-        .select("jumlahtagihan");
-
-      const totalNominal =
-        nominalData?.reduce(
-          (s: number, i: any) => s + parseFloat(i.jumlahtagihan || 0),
-          0
-        ) || 0;
-
       return {
         total: total || 0,
         belumBayar: belumBayar || 0,
         lunas: lunas || 0,
-        totalNominal,
       };
     },
   });
@@ -311,52 +300,37 @@ export default function DaftarTagihanSiswa() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Total Tagihan</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.total || 0}</div>
-          </CardContent>
-        </Card>
+<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardTitle className="text-sm">Total Tagihan</CardTitle>
+      <FileText className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{stats?.total || 0}</div>
+    </CardContent>
+  </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Belum Bayar</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats?.belumBayar || 0}
-            </div>
-          </CardContent>
-        </Card>
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardTitle className="text-sm">Belum Bayar</CardTitle>
+      <AlertCircle className="h-4 w-4 text-red-500" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-red-600">{stats?.belumBayar || 0}</div>
+    </CardContent>
+  </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm">Lunas</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats?.lunas || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Total Nominal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-teal-600">
-              {convertIDR(stats?.totalNominal || 0)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardTitle className="text-sm">Lunas</CardTitle>
+      <CheckCircle2 className="h-4 w-4 text-green-500" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-green-600">{stats?.lunas || 0}</div>
+    </CardContent>
+  </Card>
+</div>
 
       {/* Tabel */}
       <DataTable

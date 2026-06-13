@@ -89,8 +89,7 @@ export async function POST(request: NextRequest) {
 
     if (status === "SUCCESS") {
       // Send payment success notification
-      const linkKwitansi = `${appUrl}/(dashboard)/siswa/riwayat?pembayaranId=${idPembayaran}`;
-
+      const linkKwitansi = `${appUrl}/kwitansi/${idPembayaran}`;
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_SUCCESS",

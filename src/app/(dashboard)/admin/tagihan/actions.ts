@@ -1,7 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { writeChangelog } from "@/lib/changelog";
 import { revalidatePath } from "next/cache";
+
+const first = (v: any) => (Array.isArray(v) ? v[0] : v);
 
 // Helper: cek permission tagihan berdasarkan riwayat pembayaran
 async function getTagihanPermission(supabase: any, idTagihan: string) {
@@ -9,9 +12,14 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
     .from("tagihan_siswa")
     .select(`
       idtagihansiswa,
+      idsiswa,
+      bulan,
+      tahun,
       statuspembayaran,
       jumlahtagihan,
       jumlahterbayar,
+      siswa:siswa!idsiswa(namasiswa),
+      master_tagihan:master_tagihan!idmastertagihan(namatagihan),
       pembayaran (
         idpembayaran,
         statuspembayaran,
@@ -27,14 +35,12 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
 
   const pembayaranList = tagihan.pembayaran ?? [];
 
-  // Cek apakah ada pembayaran yang berhasil (cash maupun Midtrans)
   const hasSuccessPayment = pembayaranList.some(
     (p: any) => p.statuspembayaran === "SUCCESS"
   );
 
   const hasMidtransPayment = pembayaranList.some(
-    (p: any) =>
-      p.statuspembayaran === "SUCCESS" && p.metodepembayaran !== "cash"
+    (p: any) => p.statuspembayaran === "SUCCESS" && p.metodepembayaran !== "cash"
   );
 
   return {
@@ -42,10 +48,7 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
     tagihan,
     hasSuccessPayment,
     hasMidtransPayment,
-    // Boleh bayar manual jika belum ada pembayaran Midtrans dan belum LUNAS
-    canBayarManual:
-      !hasMidtransPayment && tagihan.statuspembayaran !== "LUNAS",
-    // Boleh delete hanya jika belum ada pembayaran sama sekali
+    canBayarManual: !hasMidtransPayment && tagihan.statuspembayaran !== "LUNAS",
     canDelete: !hasSuccessPayment,
   };
 }
@@ -84,17 +87,12 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   const sisaTagihan = totalTagihan - sudahBayar;
 
   if (jumlahBayar > sisaTagihan) {
-    return {
-      status: "error",
-      errors: { _form: ["Jumlah pembayaran melebihi sisa tagihan"] },
-    };
+    return { status: "error", errors: { _form: ["Jumlah pembayaran melebihi sisa tagihan"] } };
   }
 
   const terbayarBaru = sudahBayar + jumlahBayar;
-  // sisa akan auto-dihitung oleh trigger database
   const statusBaru = terbayarBaru >= totalTagihan ? "LUNAS" : "BELUM BAYAR";
 
-  // Update tagihan_siswa
   const { error: updateError } = await supabase
     .from("tagihan_siswa")
     .update({
@@ -105,13 +103,9 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
     .eq("idtagihansiswa", idTagihan);
 
   if (updateError) {
-    return {
-      status: "error",
-      errors: { _form: [`Gagal update tagihan: ${updateError.message}`] },
-    };
+    return { status: "error", errors: { _form: [`Gagal update tagihan: ${updateError.message}`] } };
   }
 
-  // Insert record pembayaran
   const { data: pembayaranData, error: insertError } = await supabase
     .from("pembayaran")
     .insert({
@@ -129,11 +123,23 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
     console.error("Error insert pembayaran:", insertError);
   }
 
+  // ─── Changelog ─────────────────────────────────────────────────────────
+  const namaSiswa = first(tagihan.siswa)?.namasiswa || "-";
+  const namaTagihan = first(tagihan.master_tagihan)?.namatagihan || "-";
+
+  await writeChangelog({
+    supabase,
+    namamenu: "Tagihan Siswa",
+    jenisaksi: "UBAH",
+    deskripsi: `Mencatat pembayaran cash sebesar Rp${jumlahBayar.toLocaleString("id-ID")} untuk ${namaSiswa} - ${namaTagihan} (${tagihan.bulan}/${tagihan.tahun})`,
+  });
+
   revalidatePath("/admin/tagihan");
 
-  // Kirim email kwitansi
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  // ─── Kirim email kwitansi ──────────────────────────────────────────────
   if (pembayaranData?.idpembayaran) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     try {
       await fetch(`${appUrl}/api/send-receipt`, {
         method: "POST",
@@ -150,6 +156,23 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
       });
     } catch (e) {
       console.error("Gagal kirim email:", e);
+    }
+
+    // ─── Kirim notifikasi WhatsApp pembayaran sukses ──────────────────────
+    if (process.env.FONNTE_API_KEY) {
+      try {
+        await fetch(`${appUrl}/api/notifications/send-payment-status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idPembayaran: pembayaranData.idpembayaran,
+            idTagihan: parseInt(idTagihan),
+            status: "SUCCESS",
+          }),
+        });
+      } catch (e) {
+        console.error("Gagal kirim notifikasi WA:", e);
+      }
     }
   }
 
@@ -191,6 +214,10 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
     };
   }
 
+  const tagihan: any = perm.tagihan;
+  const namaSiswa = first(tagihan.siswa)?.namasiswa || "-";
+  const namaTagihan = first(tagihan.master_tagihan)?.namatagihan || "-";
+
   const { error } = await supabase
     .from("tagihan_siswa")
     .delete()
@@ -199,6 +226,13 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   if (error) {
     return { status: "error", errors: { _form: [error.message] } };
   }
+
+  await writeChangelog({
+    supabase,
+    namamenu: "Tagihan Siswa",
+    jenisaksi: "HAPUS",
+    deskripsi: `Menghapus tagihan #${idTagihan} — ${namaSiswa}: ${namaTagihan} (${tagihan.bulan}/${tagihan.tahun})`,
+  });
 
   revalidatePath("/admin/tagihan");
   return { status: "success" };
@@ -232,7 +266,6 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
 
   const supabase = await createClient();
 
-  // Ambil data master tagihan
   const { data: masterTagihan, error: masterError } = await supabase
     .from("master_tagihan")
     .select("*")
@@ -243,7 +276,6 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
     return { status: "error", errors: { _form: ["Data master tagihan tidak ditemukan"] } };
   }
 
-  // Cek duplikat
   const { data: existing } = await supabase
     .from("tagihan_siswa")
     .select("idsiswa, siswa!idsiswa(namasiswa)")
@@ -253,15 +285,13 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
     .in("idsiswa", siswaIds);
 
   if (existing && existing.length > 0) {
-    const names = existing.map((t: any) => t.siswa?.namasiswa || t.idsiswa).join(", ");
+    const names = existing.map((t: any) => first(t.siswa)?.namasiswa || t.idsiswa).join(", ");
     return {
       status: "error",
       errors: { _form: [`Siswa berikut sudah memiliki tagihan periode ini: ${names}`] },
     };
   }
 
-  // Insert tagihan untuk setiap siswa
-  // CATATAN: sisa akan auto-compute oleh database menggunakan formula DEFAULT
   const tagihanToInsert = siswaIds.map((siswaId: string) => ({
     idsiswa: siswaId,
     idmastertagihan: parseInt(masterTagihanId as string),
@@ -272,14 +302,37 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
     statuspembayaran: "BELUM BAYAR",
   }));
 
-  const { error: insertError } = await supabase
+  const { data: insertedTagihan, error: insertError } = await supabase
     .from("tagihan_siswa")
-    .insert(tagihanToInsert);
+    .insert(tagihanToInsert)
+    .select("idtagihansiswa");
 
   if (insertError) {
     return { status: "error", errors: { _form: [`Gagal membuat tagihan: ${insertError.message}`] } };
   }
 
+  await writeChangelog({
+    supabase,
+    namamenu: "Tagihan Siswa",
+    jenisaksi: "TAMBAH",
+    deskripsi: `Membuat ${siswaIds.length} tagihan "${masterTagihan.namatagihan}" untuk periode ${bulan}/${tahun}`,
+  });
+
   revalidatePath("/admin/tagihan");
+
+  // ─── Kirim notifikasi WhatsApp tagihan baru ke setiap siswa ─────────────
+  if (process.env.FONNTE_API_KEY && insertedTagihan?.length) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    await Promise.allSettled(
+      insertedTagihan.map((t: any) =>
+        fetch(`${appUrl}/api/notifications/send-bill`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idTagihan: t.idtagihansiswa }),
+        })
+      )
+    );
+  }
+
   return { status: "success" };
 }

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
+import { useAngkatanFilterStore } from "@/stores/angkatan-filter-store";
 import { useQuery } from "@tanstack/react-query";
 import { Users, FileText, CheckCircle, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 
@@ -10,14 +11,28 @@ export default function Dashboard() {
   const supabase = createClient();
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
+  const { angkatan } = useAngkatanFilterStore();
+
+  // Daftar siswa sesuai filter angkatan
+  const { data: siswaFiltered } = useQuery({
+    queryKey: ["siswa-by-angkatan", angkatan],
+    queryFn: async () => {
+      let query = supabase.from("siswa").select("id, kelas, status, angkatan");
+      if (angkatan !== "semua") query = query.eq("angkatan", angkatan);
+      const { data } = await query;
+      return data || [];
+    },
+  });
+
+  const idList = (siswaFiltered || []).map((s: any) => s.id);
 
   const { data: siswaStats } = useQuery({
-    queryKey: ["siswa-stats"],
+    queryKey: ["siswa-stats", angkatan, siswaFiltered],
+    enabled: !!siswaFiltered,
     queryFn: async () => {
-      const { data } = await supabase.from("siswa").select("id, kelas, status");
-      const aktif = data?.filter((s: any) => s.status === "aktif") || [];
+      const aktif = (siswaFiltered || []).filter((s: any) => s.status === "aktif");
       return {
-        total: data?.length || 0,
+        total: siswaFiltered?.length || 0,
         aktif: aktif.length,
         kb: aktif.filter((s: any) => s.kelas === "KB").length,
         tka: aktif.filter((s: any) => s.kelas === "TK A").length,
@@ -27,42 +42,47 @@ export default function Dashboard() {
   });
 
   const { data: tagihanStats } = useQuery({
-    queryKey: ["tagihan-stats", currentMonth, currentYear],
+    queryKey: ["tagihan-stats", currentMonth, currentYear, angkatan, idList],
+    enabled: !!siswaFiltered,
     queryFn: async () => {
-      const { count: total } = await supabase
-        .from("tagihan_siswa")
-        .select("*", { count: "exact", head: true })
-        .eq("bulan", currentMonth)
-        .eq("tahun", currentYear);
+      if (angkatan !== "semua" && idList.length === 0) {
+        return { total: 0, lunas: 0, belumBayar: 0 };
+      }
 
-      const { count: lunas } = await supabase
-        .from("tagihan_siswa")
-        .select("*", { count: "exact", head: true })
-        .eq("bulan", currentMonth)
-        .eq("tahun", currentYear)
-        .eq("statuspembayaran", "LUNAS");
+      const base = () => {
+        let q = supabase
+          .from("tagihan_siswa")
+          .select("*", { count: "exact", head: true })
+          .eq("bulan", currentMonth)
+          .eq("tahun", currentYear);
+        if (angkatan !== "semua") q = q.in("idsiswa", idList);
+        return q;
+      };
 
-      const { count: belumBayar } = await supabase
-        .from("tagihan_siswa")
-        .select("*", { count: "exact", head: true })
-        .eq("bulan", currentMonth)
-        .eq("tahun", currentYear)
-        .eq("statuspembayaran", "BELUM BAYAR");
+      const { count: total } = await base();
+      const { count: lunas } = await base().eq("statuspembayaran", "LUNAS");
+      const { count: belumBayar } = await base().eq("statuspembayaran", "BELUM BAYAR");
 
       return { total: total || 0, lunas: lunas || 0, belumBayar: belumBayar || 0 };
     },
   });
 
   const { data: pemasukanStats } = useQuery({
-    queryKey: ["pemasukan-stats", currentMonth, currentYear],
+    queryKey: ["pemasukan-stats", currentMonth, currentYear, angkatan, idList],
+    enabled: !!siswaFiltered,
     queryFn: async () => {
-      // Pemasukan bulan ini (tagihan LUNAS)
-      const { data: bulanIniData } = await supabase
+      if (angkatan !== "semua" && idList.length === 0) {
+        return { bulanIni: 0, tunggakanBulanIni: 0 };
+      }
+
+      let lunasQuery = supabase
         .from("tagihan_siswa")
         .select("jumlahtagihan")
         .eq("bulan", currentMonth)
         .eq("tahun", currentYear)
         .eq("statuspembayaran", "LUNAS");
+      if (angkatan !== "semua") lunasQuery = lunasQuery.in("idsiswa", idList);
+      const { data: bulanIniData } = await lunasQuery;
 
       const bulanIni =
         bulanIniData?.reduce(
@@ -70,13 +90,14 @@ export default function Dashboard() {
           0
         ) || 0;
 
-      // Tunggakan bulan ini (tagihan BELUM BAYAR)
-      const { data: tunggakanData } = await supabase
+      let belumQuery = supabase
         .from("tagihan_siswa")
         .select("jumlahtagihan")
         .eq("bulan", currentMonth)
         .eq("tahun", currentYear)
         .eq("statuspembayaran", "BELUM BAYAR");
+      if (angkatan !== "semua") belumQuery = belumQuery.in("idsiswa", idList);
+      const { data: tunggakanData } = await belumQuery;
 
       const tunggakanBulanIni =
         tunggakanData?.reduce(
@@ -92,6 +113,7 @@ export default function Dashboard() {
     month: "long",
     year: "numeric",
   });
+
 
   return (
     <div className="w-full space-y-6">

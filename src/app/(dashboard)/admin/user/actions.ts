@@ -2,6 +2,7 @@
 
 import { deleteFile, uploadFile } from "@/actions/storage-action";
 import { createClient } from "@/lib/supabase/server";
+import { writeChangelog } from "@/lib/changelog";
 import { AuthFormState } from "@/types/auth";
 import { createUserSchema, updateUserSchema } from "@/validations/auth-validation";
 import { revalidatePath } from "next/cache";
@@ -99,6 +100,13 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     const { error: insertError } = await supabase.from("siswa").upsert(payload);
     if (insertError) {
       console.error("Insert siswa error:", insertError.message);
+    } else {
+      await writeChangelog({
+        supabase,
+        namamenu: "Data Siswa",
+        jenisaksi: "TAMBAH",
+        deskripsi: `Menambahkan data siswa: ${validatedFields.data.nama_siswa} (${validatedFields.data.kelas})`,
+      });
     }
   }
 
@@ -186,6 +194,13 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
     };
   }
 
+  await writeChangelog({
+    supabase,
+    namamenu: "Data Siswa",
+    jenisaksi: "UBAH",
+    deskripsi: `Mengubah data siswa: ${validatedFields.data.nama_siswa}`,
+  });
+
   revalidatePath("/admin/user");
   return { status: "success" };
 }
@@ -194,6 +209,14 @@ export async function deleteUser(prevState: AuthFormState, formData: FormData) {
   const supabase = await createClient({ isAdmin: true });
   const userId = formData.get("id") as string;
   const image = formData.get("avatar_url") as string;
+
+  // Ambil nama siswa dulu sebelum dihapus, untuk changelog
+  const { data: siswaData } = await supabase
+    .from("siswa")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+  const namaSiswa = siswaData?.namasiswa || siswaData?.namaSiswa || userId;
 
   if (image && image.includes("/images/")) {
     await deleteFile("images", image.split("/images/")[1]);
@@ -204,6 +227,13 @@ export async function deleteUser(prevState: AuthFormState, formData: FormData) {
   if (error) {
     return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
+
+  await writeChangelog({
+    supabase,
+    namamenu: "Data Siswa",
+    jenisaksi: "HAPUS",
+    deskripsi: `Menghapus data siswa: ${namaSiswa}`,
+  });
 
   revalidatePath("/admin/user");
   return { status: "success" };
