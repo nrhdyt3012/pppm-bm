@@ -1,5 +1,7 @@
 "use server";
 
+// src/app/(dashboard)/admin/master-tagihan/actions.ts
+
 import { createClient } from "@/lib/supabase/server";
 import { writeChangelog } from "@/lib/changelog";
 import { MenuFormState } from "@/types/menu";
@@ -22,7 +24,8 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
     };
   }
 
-  const supabase = await createClient();
+  // Gunakan isAdmin: true agar tidak terkena RLS policy
+  const supabase = await createClient({ isAdmin: true });
 
   const { error } = await supabase.from("master_tagihan").insert({
     namatagihan: validatedFields.data.namaTagihan,
@@ -64,7 +67,8 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
     };
   }
 
-  const supabase = await createClient();
+  // Gunakan isAdmin: true agar tidak terkena RLS policy
+  const supabase = await createClient({ isAdmin: true });
 
   const { error } = await supabase
     .from("master_tagihan")
@@ -94,7 +98,8 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
 }
 
 export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
-  const supabase = await createClient();
+  // Gunakan isAdmin: true agar tidak terkena RLS policy
+  const supabase = await createClient({ isAdmin: true });
   const id = parseInt(formData.get("id") as string);
 
   const { data: existing } = await supabase

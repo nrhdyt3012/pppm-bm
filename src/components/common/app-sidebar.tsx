@@ -1,7 +1,6 @@
 "use client";
 
-// src/components/common/app-sidebar.tsx — VERSI BARU dengan superadmin menu
-// Ganti seluruh file dengan ini.
+// src/components/common/app-sidebar.tsx
 
 import {
   Sidebar,
@@ -21,58 +20,49 @@ import {
   FileText,
   ClipboardList,
   AlertCircle,
-  LogOut,
   Receipt,
-  History,
+  Activity,
   ShieldCheck,
   Crown,
+  MoreHorizontal,
+  KeyRound,
+  LogOut,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "../ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ── Menu definitions ──────────────────────────────────────────────────────────
 
 const ADMIN_MENU = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-  { title: "Data Siswa", url: "/admin/user", icon: Users },
+  { title: "Rekapan Pembayaran", url: "/admin/rekapan-pembayaran", icon: Receipt },
+  { title: "Rekapan Tunggakan", url: "/admin/rekapan-tunggakan", icon: AlertCircle },
   { title: "Master Tagihan", url: "/admin/menu", icon: ClipboardList },
   { title: "Tagihan Siswa", url: "/admin/tagihan", icon: FileText },
-  {
-    title: "Rekapan Pembayaran",
-    url: "/admin/rekapan-pembayaran",
-    icon: Receipt,
-  },
-  {
-    title: "Rekapan Tunggakan",
-    url: "/admin/rekapan-tunggakan",
-    icon: AlertCircle,
-  },
-  { title: "Riwayat Aktivitas", url: "/admin/changelog", icon: History },
+  { title: "Data Siswa", url: "/admin/user", icon: Users },
+  { title: "Changelog", url: "/admin/changelog", icon: Activity },
 ];
 
 const SUPERADMIN_MENU = [
-  // Superadmin punya akses ke semua menu admin…
   { title: "Dashboard Admin", url: "/admin", icon: LayoutDashboard },
-  { title: "Data Siswa", url: "/admin/user", icon: Users },
+  { title: "Rekapan Pembayaran", url: "/admin/rekapan-pembayaran", icon: Receipt },
+  { title: "Rekapan Tunggakan", url: "/admin/rekapan-tunggakan", icon: AlertCircle },
   { title: "Master Tagihan", url: "/admin/menu", icon: ClipboardList },
   { title: "Tagihan Siswa", url: "/admin/tagihan", icon: FileText },
-  {
-    title: "Rekapan Pembayaran",
-    url: "/admin/rekapan-pembayaran",
-    icon: Receipt,
-  },
-  {
-    title: "Rekapan Tunggakan",
-    url: "/admin/rekapan-tunggakan",
-    icon: AlertCircle,
-  },
-  { title: "Riwayat Aktivitas", url: "/admin/changelog", icon: History },
+  { title: "Data Siswa", url: "/admin/user", icon: Users },
+  { title: "Changelog", url: "/admin/changelog", icon: Activity },
 ];
 
 const SUPERADMIN_EXCLUSIVE_MENU = [
@@ -82,7 +72,7 @@ const SUPERADMIN_EXCLUSIVE_MENU = [
 const SISWA_MENU = [
   { title: "Info Siswa", url: "/siswa/info", icon: Users },
   { title: "Tagihan", url: "/siswa/tagihan", icon: FileText },
-  { title: "Riwayat Pembayaran", url: "/siswa/riwayat", icon: History },
+  { title: "Riwayat Pembayaran", url: "/siswa/riwayat", icon: Activity },
 ];
 
 // ── Komponen Sidebar ──────────────────────────────────────────────────────────
@@ -101,16 +91,31 @@ export default function AppSidebar() {
     router.push("/login");
   };
 
+  const handleGantiPassword = () => {
+    router.push("/ganti-password");
+  };
+
   const isSuperadmin = profile?.role === "superadmin";
   const isAdmin = profile?.role === "admin";
   const isSiswa = profile?.role === "siswa";
 
-  // Tentukan menu utama
   const mainMenu = isSiswa
     ? SISWA_MENU
     : isSuperadmin
     ? SUPERADMIN_MENU
     : ADMIN_MENU;
+
+  const roleLabel = isSuperadmin
+    ? "Superadmin"
+    : isAdmin
+    ? "Admin"
+    : "Wali Siswa";
+
+  const roleColor = isSuperadmin
+    ? "text-yellow-600 dark:text-yellow-400"
+    : isAdmin
+    ? "text-green-600 dark:text-green-400"
+    : "text-blue-600 dark:text-blue-400";
 
   return (
     <Sidebar collapsible="icon">
@@ -119,7 +124,15 @@ export default function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href={isSuperadmin ? "/superadmin" : isAdmin ? "/admin" : "/siswa/info"}>
+              <Link
+                href={
+                  isSuperadmin
+                    ? "/superadmin"
+                    : isAdmin
+                    ? "/admin"
+                    : "/siswa/info"
+                }
+              >
                 <div className="flex items-center gap-3">
                   <Image
                     src="/logo.jpg"
@@ -145,8 +158,8 @@ export default function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
+      {/* Content */}
       <SidebarContent>
-        {/* Menu Utama */}
         <SidebarGroup>
           <SidebarGroupLabel>
             {isSiswa ? "Menu Siswa" : "Menu Administrasi"}
@@ -200,35 +213,61 @@ export default function AppSidebar() {
         )}
       </SidebarContent>
 
-      {/* Footer: profil + logout */}
-      <SidebarFooter className="border-t">
-        <div className="p-2 space-y-2">
-          <div className="px-2 py-1.5">
-            <p className="text-xs font-medium truncate">
+      {/* Footer: nama, role, titik 3 */}
+      <SidebarFooter className="border-t p-2">
+        <div className="flex items-center gap-2 px-1 py-1.5">
+          {/* Avatar inisial */}
+          <div
+            className={cn(
+              "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white",
+              isSuperadmin
+                ? "bg-yellow-500"
+                : isAdmin
+                ? "bg-green-600"
+                : "bg-blue-500"
+            )}
+          >
+            {(profile?.name || "?").charAt(0).toUpperCase()}
+          </div>
+
+          {/* Nama & Role */}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold truncate leading-tight">
               {profile?.name || "Pengguna"}
             </p>
-            <p
-              className={cn(
-                "text-xs font-medium",
-                isSuperadmin
-                  ? "text-yellow-600 dark:text-yellow-400"
-                  : isAdmin
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-blue-600 dark:text-blue-400"
-              )}
-            >
-              {isSuperadmin ? "Superadmin" : isAdmin ? "Bendahara" : "Wali Siswa"}
+            <p className={cn("text-xs font-medium leading-tight", roleColor)}>
+              {roleLabel}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
-          </Button>
+
+          {/* Tombol titik 3 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                aria-label="Menu pengguna"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="end" className="w-48 mb-1">
+              <DropdownMenuItem
+                onClick={handleGantiPassword}
+                className="cursor-pointer gap-2"
+              >
+                <KeyRound className="w-4 h-4" />
+                Ganti Password
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="cursor-pointer gap-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </SidebarFooter>
     </Sidebar>
