@@ -2,31 +2,13 @@
 
 // src/app/(dashboard)/admin/changelog/_components/changelog.tsx
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  History,
-  PlusCircle,
-  Pencil,
-  Trash2,
-  Search,
-  Filter,
-} from "lucide-react";
+import { History, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import useDataTable from "@/hooks/use-data-table";
 import DataTable from "@/components/common/data-table";
-
-type JenisAksi = "SEMUA" | "TAMBAH" | "UBAH" | "HAPUS";
 
 // ─── Badge jenis aksi ─────────────────────────────────────────────────────────
 function AksiBadge({ jenis }: { jenis: string }) {
@@ -75,39 +57,11 @@ export default function ChangelogPage() {
     handleChangeLimit,
   } = useDataTable();
 
-  const [search, setSearch] = useState("");
-  const [filterAksi, setFilterAksi] = useState<JenisAksi>("SEMUA");
-
-  // Stats per jenis aksi
-  const { data: statsData } = useQuery({
-    queryKey: ["changelog-stats"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("changelog")
-        .select("jenisaksi");
-      const counts = { TAMBAH: 0, UBAH: 0, HAPUS: 0, total: 0 };
-      (data || []).forEach((row: any) => {
-        counts.total++;
-        if (row.jenisaksi in counts) {
-          counts[row.jenisaksi as keyof typeof counts] =
-            (counts[row.jenisaksi as keyof typeof counts] as number) + 1;
-        }
-      });
-      return counts;
-    },
-  });
-
-  // Data changelog dengan filter
+  // Data changelog
   const { data: changelogData, isLoading } = useQuery({
-    queryKey: [
-      "changelog-list",
-      currentPage,
-      currentLimit,
-      search,
-      filterAksi,
-    ],
+    queryKey: ["changelog-list", currentPage, currentLimit],
     queryFn: async () => {
-      let query = supabase
+      const result = await supabase
         .from("changelog")
         .select("*", { count: "exact" })
         .range(
@@ -116,20 +70,10 @@ export default function ChangelogPage() {
         )
         .order("createdat", { ascending: false });
 
-      if (filterAksi !== "SEMUA") {
-        query = query.eq("jenisaksi", filterAksi);
-      }
-
-      if (search) {
-        query = query.or(
-          `namaaktor.ilike.%${search}%,namamenu.ilike.%${search}%,deskripsi.ilike.%${search}%`
-        );
-      }
-
-      const result = await query;
       if (result.error) {
         toast.error("Gagal memuat changelog");
       }
+
       return result;
     },
   });
@@ -160,7 +104,11 @@ export default function ChangelogPage() {
       <div key={`aktor-${item.idchangelog}`}>
         <p className="font-medium text-sm">{item.namaaktor || "-"}</p>
         <p className="text-xs text-muted-foreground">
-          {item.idadmin ? "Bendahara" : item.idsuperadmin ? "Superadmin" : "-"}
+          {item.idadmin
+            ? "Bendahara"
+            : item.idsuperadmin
+            ? "Superadmin"
+            : "-"}
         </p>
       </div>,
 
@@ -207,94 +155,9 @@ export default function ChangelogPage() {
         </p>
       </div>
 
-      {/* Kartu Statistik */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          {
-            label: "Total Aktivitas",
-            value: statsData?.total || 0,
-            color: "text-gray-700 dark:text-gray-200",
-            bg: "bg-muted",
-          },
-          {
-            label: "Penambahan",
-            value: statsData?.TAMBAH || 0,
-            color: "text-green-700 dark:text-green-400",
-            bg: "bg-green-50 dark:bg-green-950",
-          },
-          {
-            label: "Perubahan",
-            value: statsData?.UBAH || 0,
-            color: "text-blue-700 dark:text-blue-400",
-            bg: "bg-blue-50 dark:bg-blue-950",
-          },
-          {
-            label: "Penghapusan",
-            value: statsData?.HAPUS || 0,
-            color: "text-red-700 dark:text-red-400",
-            bg: "bg-red-50 dark:bg-red-950",
-          },
-        ].map((stat) => (
-          <Card key={stat.label} className={stat.bg}>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground mb-1">
-                {stat.label}
-              </p>
-              <p className={`text-3xl font-bold ${stat.color}`}>
-                {stat.value}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Filter & Search */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Filter Aktivitas
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari pelaku, menu, atau deskripsi..."
-                className="pl-9"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <Select
-              value={filterAksi}
-              onValueChange={(v) => setFilterAksi(v as JenisAksi)}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Semua Aksi" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SEMUA">Semua Aksi</SelectItem>
-                <SelectItem value="TAMBAH">Penambahan</SelectItem>
-                <SelectItem value="UBAH">Perubahan</SelectItem>
-                <SelectItem value="HAPUS">Penghapusan</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabel */}
+      {/* Tabel langsung */}
       <DataTable
-        header={[
-          "No",
-          "Waktu",
-          "Pelaku",
-          "Menu",
-          "Aksi",
-          "Keterangan",
-        ]}
+        header={["No", "Waktu", "Pelaku", "Menu", "Aksi", "Keterangan"]}
         data={filteredData}
         isLoading={isLoading}
         totalPages={totalPages}
