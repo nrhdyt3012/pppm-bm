@@ -146,7 +146,6 @@ export default function ChangelogPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <History className="w-6 h-6 text-purple-600" />
           Riwayat Aktivitas (Changelog)
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
