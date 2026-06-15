@@ -143,13 +143,6 @@ export default function AppSidebar() {
                   />
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="font-semibold truncate">KB/TK ABA 1 BUDURAN</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {isSuperadmin
-                        ? "Superadmin"
-                        : isAdmin
-                        ? "Bendahara"
-                        : "Wali Siswa"}
-                    </span>
                   </div>
                 </div>
               </Link>
@@ -236,7 +229,12 @@ export default function AppSidebar() {
               {profile?.name || "Pengguna"}
             </p>
             <p className={cn("text-xs font-medium leading-tight", roleColor)}>
-              {roleLabel}
+              {isSuperadmin
+                        ? "Superadmin"
+                        : isAdmin
+                        ? "Bendahara"
+                        : "Wali Siswa"
+                        }
             </p>
           </div>
 
