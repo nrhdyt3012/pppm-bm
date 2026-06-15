@@ -41,8 +41,7 @@ export default function AngkatanFilter() {
   if (!isDashboardPage) return null;
 
   return (
-    <div className="flex items-center gap-2">
-      <Filter className="w-4 h-4 text-muted-foreground" />
+    <div className="flex items-center gap-4">
       <Select value={angkatan} onValueChange={setAngkatan}>
         <SelectTrigger className="w-[160px] h-8 text-sm">
           <SelectValue placeholder="Semua Angkatan" />

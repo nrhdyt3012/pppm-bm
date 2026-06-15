@@ -13,7 +13,7 @@ import { Fragment } from "react";
 
 // Map path segment ke label yang lebih bersih
 const PATH_LABELS: Record<string, string> = {
-  admin: "Admin",
+  admin: "Bendahara",
   siswa: "Siswa",
   tagihan: "Tagihan",
   riwayat: "Riwayat Pembayaran",

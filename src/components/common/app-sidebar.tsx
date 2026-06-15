@@ -142,7 +142,7 @@ export default function AppSidebar() {
                     className="rounded-full"
                   />
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="font-semibold truncate">PAUD ABA 1</span>
+                    <span className="font-semibold truncate">KB/TK ABA 1 BUDURAN</span>
                     <span className="text-xs text-muted-foreground truncate">
                       {isSuperadmin
                         ? "Superadmin"
