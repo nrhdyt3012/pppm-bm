@@ -17,19 +17,19 @@ function AksiBadge({ jenis }: { jenis: string }) {
     { label: string; className: string; icon: React.ReactNode }
   > = {
     TAMBAH: {
-      label: "Tambah",
+      label: "Menambahkan Data",
       className:
         "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
       icon: <PlusCircle className="w-3 h-3" />,
     },
     UBAH: {
-      label: "Ubah",
+      label: "Mengubah Data",
       className:
         "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
       icon: <Pencil className="w-3 h-3" />,
     },
     HAPUS: {
-      label: "Hapus",
+      label: "Menghapus Data",
       className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
       icon: <Trash2 className="w-3 h-3" />,
     },
