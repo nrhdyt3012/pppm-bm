@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { data: siswaFiltered } = useQuery({
     queryKey: ["siswa-by-angkatan", angkatan],
     queryFn: async () => {
-      let query = supabase.from("siswa").select("id, kelas, status, angkatan");
+      let query = supabase.from("siswa").select("id, kelas, status, angkatan, jeniskelamin");
       if (angkatan !== "semua") query = query.eq("angkatan", angkatan);
       const { data } = await query;
       return data || [];
@@ -31,12 +31,22 @@ export default function Dashboard() {
     enabled: !!siswaFiltered,
     queryFn: async () => {
       const aktif = (siswaFiltered || []).filter((s: any) => s.status === "aktif");
+      const lakiLaki = aktif.filter(
+        (s: any) =>
+          s.jeniskelamin === "Laki-laki" ||
+          s.jeniskelamin === "laki-laki" ||
+          s.jeniskelamin === "L"
+      ).length;
+      const perempuan = aktif.filter(
+        (s: any) =>
+          s.jeniskelamin === "Perempuan" ||
+          s.jeniskelamin === "perempuan" ||
+          s.jeniskelamin === "P"
+      ).length;
       return {
-        total: siswaFiltered?.length || 0,
-        aktif: aktif.length,
-        kb: aktif.filter((s: any) => s.kelas === "KB").length,
-        tka: aktif.filter((s: any) => s.kelas === "TK A").length,
-        tkb: aktif.filter((s: any) => s.kelas === "TK B").length,
+        total: aktif.length,
+        lakiLaki,
+        perempuan,
       };
     },
   });
@@ -114,7 +124,6 @@ export default function Dashboard() {
     year: "numeric",
   });
 
-
   return (
     <div className="w-full space-y-6">
       <div>
@@ -126,24 +135,41 @@ export default function Dashboard() {
 
       {/* Sensus Siswa */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Data Siswa Aktif</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Total Aktif", value: siswaStats?.aktif || 0, color: "green" },
-            { label: "Kelompok Bermain", value: siswaStats?.kb || 0, color: "blue" },
-            { label: "TK A", value: siswaStats?.tka || 0, color: "purple" },
-            { label: "TK B", value: siswaStats?.tkb || 0, color: "orange" },
-          ].map((item) => (
-            <Card key={item.label}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{item.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">siswa</p>
-              </CardContent>
-            </Card>
-          ))}
+        <h2 className="text-lg font-semibold mb-3">Sensus Siswa</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Siswa Laki-laki</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">
+                {siswaStats?.lakiLaki ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">siswa aktif</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Siswa Perempuan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-pink-600">
+                {siswaStats?.perempuan ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">siswa aktif</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">
+                {siswaStats?.total ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">siswa aktif</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -153,41 +179,44 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Tagihan</CardTitle>
+              <CardTitle className="text-sm font-medium">Tagihan Terbit Bulan Ini</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{tagihanStats?.total || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">tagihan</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Sudah Lunas</CardTitle>
+              <CardTitle className="text-sm font-medium">Tagihan Sudah Terbayar</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">
                 {tagihanStats?.lunas || 0}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">tagihan</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Belum Bayar</CardTitle>
+              <CardTitle className="text-sm font-medium">Tagihan Belum Terbayar</CardTitle>
               <AlertCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-red-600">
                 {tagihanStats?.belumBayar || 0}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">tagihan</p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Pemasukan & Tunggakan Bulan Ini */}
+      {/* Ringkasan Keuangan Bulan Ini */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Keuangan — {bulanNama}</h2>
+        <h2 className="text-lg font-semibold mb-3">Ringkasan Keuangan Bulan Ini</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">

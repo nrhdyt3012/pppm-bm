@@ -2,11 +2,12 @@
 
 // src/app/(dashboard)/admin/changelog/_components/changelog.tsx
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { History, PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import useDataTable from "@/hooks/use-data-table";
 import DataTable from "@/components/common/data-table";
 
@@ -57,11 +58,13 @@ export default function ChangelogPage() {
     handleChangeLimit,
   } = useDataTable();
 
+  const [search, setSearch] = useState("");
+
   // Data changelog
   const { data: changelogData, isLoading } = useQuery({
-    queryKey: ["changelog-list", currentPage, currentLimit],
+    queryKey: ["changelog-list", currentPage, currentLimit, search],
     queryFn: async () => {
-      const result = await supabase
+      let query = supabase
         .from("changelog")
         .select("*", { count: "exact" })
         .range(
@@ -69,6 +72,14 @@ export default function ChangelogPage() {
           currentPage * currentLimit - 1
         )
         .order("createdat", { ascending: false });
+
+      if (search) {
+        query = query.or(
+          `namaaktor.ilike.%${search}%,namamenu.ilike.%${search}%,deskripsi.ilike.%${search}%`
+        );
+      }
+
+      const result = await query;
 
       if (result.error) {
         toast.error("Gagal memuat changelog");
@@ -83,7 +94,19 @@ export default function ChangelogPage() {
       // No
       currentLimit * (currentPage - 1) + index + 1,
 
-      // Waktu
+      // Nama Aktor
+      <div key={`aktor-${item.idchangelog}`}>
+        <p className="font-medium text-sm">{item.namaaktor || "-"}</p>
+        <p className="text-xs text-muted-foreground">
+          {item.idadmin
+            ? "Bendahara"
+            : item.idsuperadmin
+            ? "Superadmin"
+            : "-"}
+        </p>
+      </div>,
+
+      // Waktu Perubahan
       <div key={`time-${item.idchangelog}`} className="min-w-[120px]">
         <p className="text-sm font-medium">
           {new Date(item.createdat).toLocaleDateString("id-ID", {
@@ -100,28 +123,13 @@ export default function ChangelogPage() {
         </p>
       </div>,
 
-      // Pelaku
-      <div key={`aktor-${item.idchangelog}`}>
-        <p className="font-medium text-sm">{item.namaaktor || "-"}</p>
-        <p className="text-xs text-muted-foreground">
-          {item.idadmin
-            ? "Bendahara"
-            : item.idsuperadmin
-            ? "Superadmin"
-            : "-"}
-        </p>
-      </div>,
-
-      // Menu
+      // Menu yang Diubah
       <span
         key={`menu-${item.idchangelog}`}
         className="px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground font-medium"
       >
         {item.namamenu || "-"}
       </span>,
-
-      // Jenis Aksi
-      <AksiBadge key={`aksi-${item.idchangelog}`} jenis={item.jenisaksi} />,
 
       // Deskripsi
       <p
@@ -143,20 +151,28 @@ export default function ChangelogPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          Riwayat Aktivitas (Changelog)
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Rekam jejak seluruh perubahan data yang dilakukan oleh bendahara dan
-          superadmin
-        </p>
+      {/* Header + Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Riwayat Aktivitas</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Rekam jejak seluruh perubahan data yang dilakukan
+          </p>
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari aktor, menu, atau keterangan..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* Tabel langsung */}
+      {/* Tabel */}
       <DataTable
-        header={["No", "Waktu", "Pelaku", "Menu", "Aksi", "Keterangan"]}
+        header={["No", "Nama Aktor", "Waktu Perubahan", "Menu yang Diubah", "Deskripsi"]}
         data={filteredData}
         isLoading={isLoading}
         totalPages={totalPages}
