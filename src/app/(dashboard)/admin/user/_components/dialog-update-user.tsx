@@ -16,7 +16,7 @@ export default function DialogUpdateUser({
   handleChangeAction,
 }: {
   refetch: () => void;
-  currentData?: Profile;
+  currentData?: any; // pakai any dulu untuk debug
   open?: boolean;
   handleChangeAction?: (open: boolean) => void;
 }) {
@@ -30,20 +30,22 @@ export default function DialogUpdateUser({
   );
 
   const onSubmit = form.handleSubmit((data) => {
+    console.log("=== FORM DATA DIKIRIM ===", data);
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (key === "avatar_url") return;
       formData.append(key, (value as string) || "");
     });
     formData.append("id", currentData?.id ?? "");
+    console.log("=== ID SISWA ===", currentData?.id);
     startTransition(() => {
       action(formData);
     });
   });
 
-  // Handle state setelah submit
   useEffect(() => {
     if (state?.status === "error") {
+      console.error("=== ERROR STATE ===", state.errors);
       toast.error("Gagal Mengubah Data", {
         description: state.errors?._form?.[0],
       });
@@ -56,36 +58,53 @@ export default function DialogUpdateUser({
     }
   }, [state]);
 
-  // ← FIX: tambahkan open ke dependency agar form terisi ulang
-  // setiap kali dialog dibuka dengan data baru
   useEffect(() => {
     if (currentData && open) {
-      form.setValue(
-        "nama_siswa",
-        (currentData.namaSiswa || currentData.name || "") as string
-      );
-      form.setValue("NIS", (currentData.NIS || "") as string);
-      form.setValue(
-        "jenis_kelamin",
-        ((currentData as any).jeniskelamin ||
-          (currentData as any).jenis_kelamin ||
-          "") as "Laki-laki" | "Perempuan"
-      );
-      form.setValue("kelas", (currentData.kelas || "") as string);
-      form.setValue("angkatan", (currentData.angkatan || "") as string);
-      form.setValue("nama_wali", (currentData.namaWali || "") as string);
-      form.setValue("no_wa", (currentData.noWa || "") as string);
-      form.setValue(
-        "tempat_lahir",
-        (currentData.tempatLahir || "") as string
-      );
-      form.setValue(
-        "tanggal_lahir",
-        (currentData.tanggalLahir || "") as string
-      );
+      // DEBUG: lihat semua key yang ada di currentData
+      console.log("=== CURRENT DATA LENGKAP ===", JSON.stringify(currentData, null, 2));
+      console.log("=== KEYS ===", Object.keys(currentData));
+
+      form.setValue("nama_siswa", currentData.namaSiswa || currentData.namasiswa || currentData.name || "");
+      form.setValue("NIS", currentData.NIS || currentData.nis || "");
+
+      // Ambil jenis kelamin dari semua kemungkinan field
+      const rawJK =
+        currentData.jeniskelamin ??
+        currentData.jenis_kelamin ??
+        currentData.jenisKelamin ??
+        "";
+
+      console.log("=== RAW JENIS KELAMIN ===", rawJK);
+
+      // Normalisasi ke "Laki-laki" atau "Perempuan"
+      let normalizedJK: "Laki-laki" | "Perempuan" | undefined;
+      const jkLower = String(rawJK).toLowerCase().trim();
+      if (jkLower === "laki-laki" || jkLower === "l" || jkLower === "laki") {
+        normalizedJK = "Laki-laki";
+      } else if (jkLower === "perempuan" || jkLower === "p") {
+        normalizedJK = "Perempuan";
+      }
+
+      console.log("=== NORMALIZED JK ===", normalizedJK);
+
+      if (normalizedJK) {
+        form.setValue("jenis_kelamin", normalizedJK);
+      }
+
+      form.setValue("kelas", currentData.kelas || "");
+      form.setValue("angkatan", currentData.angkatan || "");
+      form.setValue("nama_wali", currentData.namaWali || currentData.namawali || "");
+      form.setValue("no_wa", currentData.noWa || currentData.nowa || "");
+      form.setValue("tempat_lahir", currentData.tempatLahir || currentData.tempatlahir || "");
+      form.setValue("tanggal_lahir", currentData.tanggalLahir || currentData.tanggallahir || "");
       form.setValue("role", "siswa");
+
+      // DEBUG: lihat nilai form setelah di-set
+      setTimeout(() => {
+        console.log("=== FORM VALUES SETELAH SET ===", form.getValues());
+      }, 100);
     }
-  }, [currentData, open]); // ← open ditambahkan di sini
+  }, [currentData, open]);
 
   return (
     <Dialog open={open} onOpenChange={handleChangeAction}>

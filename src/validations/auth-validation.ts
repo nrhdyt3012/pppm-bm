@@ -6,31 +6,43 @@ export const createUserSchema = z.object({
   password: z.string().min(6, "Password minimal 6 karakter"),
   nama_siswa: z.string().min(1, "Nama siswa wajib diisi"),
   NIS: z.string().optional(),
-  jenis_kelamin: z.enum(["Laki-laki", "Perempuan"], {
-    required_error: "Jenis kelamin wajib dipilih",
-  }),
+  // FIX: jenis_kelamin tidak wajib saat create juga
+  jenis_kelamin: z
+    .enum(["Laki-laki", "Perempuan"])
+    .optional()
+    .or(z.literal("")),
   kelas: z.string().min(1, "Kelas wajib dipilih"),
   angkatan: z.string().optional(),
   nama_wali: z.string().min(1, "Nama wali wajib diisi"),
   no_wa: z.string().min(1, "Nomor WhatsApp wali wajib diisi"),
-  email_wali: z.string().email("Format email wali tidak valid").optional().or(z.literal("")),
+  email_wali: z
+    .string()
+    .email("Format email wali tidak valid")
+    .optional()
+    .or(z.literal("")),
   tempat_lahir: z.string().optional(),
   tanggal_lahir: z.string().optional(),
   role: z.string().default("siswa"),
 });
 
-// ─── Schema Update (sama tapi tanpa email & password) ────────────────────────
+// ─── Schema Update ────────────────────────────────────────────────────────────
 export const updateUserSchema = z.object({
   nama_siswa: z.string().min(1, "Nama siswa wajib diisi"),
   NIS: z.string().optional(),
-  jenis_kelamin: z.enum(["Laki-laki", "Perempuan"], {
-    required_error: "Jenis kelamin wajib dipilih",
-  }),
+  // FIX: jenis_kelamin opsional — boleh kosong, boleh "Laki-laki"/"Perempuan"
+  jenis_kelamin: z
+    .enum(["Laki-laki", "Perempuan"])
+    .optional()
+    .or(z.literal("")),
   kelas: z.string().min(1, "Kelas wajib dipilih"),
   angkatan: z.string().optional(),
   nama_wali: z.string().min(1, "Nama wali wajib diisi"),
   no_wa: z.string().min(1, "Nomor WhatsApp wali wajib diisi"),
-  email_wali: z.string().email("Format email wali tidak valid").optional().or(z.literal("")),
+  email_wali: z
+    .string()
+    .email("Format email wali tidak valid")
+    .optional()
+    .or(z.literal("")),
   tempat_lahir: z.string().optional(),
   tanggal_lahir: z.string().optional(),
   role: z.string().default("siswa"),

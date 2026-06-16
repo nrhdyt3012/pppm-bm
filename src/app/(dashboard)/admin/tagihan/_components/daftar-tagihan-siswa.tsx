@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR, cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FileText,
   CheckCircle2,
@@ -25,7 +25,6 @@ import DialogCreateTagihan from "./dialog-create-tagihan";
 import DialogDeleteTagihanSiswa from "./dialog-delete-tagihan-siswa";
 import DialogBayarManual from "./dialog-bayar-manual";
 
-// Helper: cek permission berdasarkan riwayat pembayaran
 function getTagihanPermissions(item: any) {
   const pembayaran: any[] = item.pembayaran ?? [];
 
@@ -35,9 +34,7 @@ function getTagihanPermissions(item: any) {
   const hasAnySuccess = pembayaran.some((p) => p.statuspembayaran === "SUCCESS");
 
   return {
-    // Boleh bayar manual jika belum ada pembayaran Midtrans dan belum LUNAS
     canBayarManual: !hasMidtrans && item.statuspembayaran !== "LUNAS",
-    // Boleh delete hanya jika belum ada pembayaran sama sekali
     canDelete: !hasAnySuccess,
     hasMidtrans,
   };
@@ -45,6 +42,7 @@ function getTagihanPermissions(item: any) {
 
 export default function DaftarTagihanSiswa() {
   const supabase = createClient();
+  const queryClient = useQueryClient(); // ← tambahkan ini
   const {
     currentPage,
     currentLimit,
@@ -54,7 +52,6 @@ export default function DaftarTagihanSiswa() {
     handleChangeSearch,
   } = useDataTable();
 
-  // Stats ringkasan
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["tagihan-admin-stats"],
     queryFn: async () => {
@@ -80,7 +77,6 @@ export default function DaftarTagihanSiswa() {
     },
   });
 
-  // List tagihan dengan info pembayaran untuk permission check
   const { data: tagihanList, isLoading, refetch } = useQuery({
     queryKey: ["tagihan-siswa-list", currentPage, currentLimit, currentSearch],
     queryFn: async () => {
@@ -115,6 +111,12 @@ export default function DaftarTagihanSiswa() {
     if (!open) setSelectedAction(null);
   };
 
+  // ← Fungsi invalidate semua query tagihan sekaligus
+  const invalidateTagihanQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["tagihan-siswa-list"] });
+    queryClient.invalidateQueries({ queryKey: ["tagihan-admin-stats"] });
+  };
+
   // Realtime subscription untuk auto-refresh
   useEffect(() => {
     const channel = supabase
@@ -123,8 +125,7 @@ export default function DaftarTagihanSiswa() {
         "postgres_changes",
         { event: "*", schema: "public", table: "tagihan_siswa" },
         () => {
-          refetch();
-          refetchStats();
+          invalidateTagihanQueries();
         }
       )
       .subscribe();
@@ -132,7 +133,7 @@ export default function DaftarTagihanSiswa() {
     return () => {
       channel.unsubscribe();
     };
-  }, [refetch, refetchStats]);
+  }, []);
 
   const filteredData = useMemo(() => {
     return (tagihanList?.data || []).map((item: any, index: number) => {
@@ -141,12 +142,10 @@ export default function DaftarTagihanSiswa() {
       return [
         currentLimit * (currentPage - 1) + index + 1,
 
-        // ID
         <span key={`id-${item.idtagihansiswa}`} className="font-mono text-sm">
           #{item.idtagihansiswa}
         </span>,
 
-        // Nama Siswa
         <div key={`siswa-${item.idtagihansiswa}`}>
           <p className="font-medium">{item.siswa?.namasiswa || "-"}</p>
           <p className="text-xs text-muted-foreground">
@@ -154,7 +153,6 @@ export default function DaftarTagihanSiswa() {
           </p>
         </div>,
 
-        // Tagihan
         <div key={`tagihan-${item.idtagihansiswa}`}>
           <p className="font-semibold">
             {item.master_tagihan?.namatagihan || "-"}
@@ -164,12 +162,10 @@ export default function DaftarTagihanSiswa() {
           </p>
         </div>,
 
-        // Nominal
         <span key={`nominal-${item.idtagihansiswa}`} className="font-semibold">
           {convertIDR(parseFloat(item.jumlahtagihan) || 0)}
         </span>,
 
-        // Sisa Tagihan
         <span
           key={`sisa-${item.idtagihansiswa}`}
           className={cn(
@@ -182,7 +178,6 @@ export default function DaftarTagihanSiswa() {
           {convertIDR(parseFloat(item.sisa) || 0)}
         </span>,
 
-        // Status + Lock indicator
         <div key={`status-${item.idtagihansiswa}`} className="flex flex-col gap-1">
           <span
             className={cn(
@@ -196,7 +191,6 @@ export default function DaftarTagihanSiswa() {
           >
             {item.statuspembayaran}
           </span>
-          {/* Badge sumber pembayaran */}
           {!perms.canDelete && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Lock className="w-3 h-3" />
@@ -205,14 +199,12 @@ export default function DaftarTagihanSiswa() {
           )}
         </div>,
 
-        // Tanggal
         new Date(item.createdat).toLocaleDateString("id-ID", {
           day: "numeric",
           month: "short",
           year: "numeric",
         }),
 
-        // Aksi
         <DropdownAction
           key={`act-${item.idtagihansiswa}`}
           menu={[
@@ -273,7 +265,6 @@ export default function DaftarTagihanSiswa() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header */}
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
         <div>
           <h1 className="text-2xl font-bold">Tagihan Siswa</h1>
@@ -294,45 +285,47 @@ export default function DaftarTagihanSiswa() {
                 Buat Tagihan
               </Button>
             </DialogTrigger>
-            <DialogCreateTagihan refetch={refetch} />
+            <DialogCreateTagihan refetch={invalidateTagihanQueries} />
           </Dialog>
         </div>
       </div>
 
-      {/* Stats */}
-<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm">Total Tagihan</CardTitle>
-      <FileText className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{stats?.total || 0}</div>
-    </CardContent>
-  </Card>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm">Total Tagihan</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.total || 0}</div>
+          </CardContent>
+        </Card>
 
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm">Belum Bayar</CardTitle>
-      <AlertCircle className="h-4 w-4 text-red-500" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-red-600">{stats?.belumBayar || 0}</div>
-    </CardContent>
-  </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm">Belum Bayar</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {stats?.belumBayar || 0}
+            </div>
+          </CardContent>
+        </Card>
 
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm">Lunas</CardTitle>
-      <CheckCircle2 className="h-4 w-4 text-green-500" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-green-600">{stats?.lunas || 0}</div>
-    </CardContent>
-  </Card>
-</div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm">Lunas</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {stats?.lunas || 0}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Tabel */}
       <DataTable
         header={[
           "No",
@@ -358,18 +351,16 @@ export default function DaftarTagihanSiswa() {
         onChangeLimit={handleChangeLimit}
       />
 
-      {/* Dialog Bayar Manual */}
       <DialogBayarManual
         open={selectedAction?.type === "bayar"}
-        refetch={refetch}
+        refetch={invalidateTagihanQueries}
         currentData={selectedAction?.data}
         handleChangeAction={handleChangeAction}
       />
 
-      {/* Dialog Delete */}
       <DialogDeleteTagihanSiswa
         open={selectedAction?.type === "delete"}
-        refetch={refetch}
+        refetch={invalidateTagihanQueries}
         currentData={selectedAction?.data}
         handleChangeAction={handleChangeAction}
       />

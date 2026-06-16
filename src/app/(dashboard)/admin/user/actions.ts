@@ -13,30 +13,31 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     password: formData.get("password"),
     nama_siswa: formData.get("nama_siswa"),
     NIS: formData.get("NIS"),
-    jenis_kelamin: formData.get("jenis_kelamin"),
+    jenis_kelamin: formData.get("jenis_kelamin") || undefined,
     kelas: formData.get("kelas"),
     angkatan: formData.get("angkatan"),
     nama_wali: formData.get("nama_wali"),
     no_wa: formData.get("no_wa"),
-    email_wali: formData.get("email_wali"),
+    email_wali: formData.get("email_wali") || undefined,
     tempat_lahir: formData.get("tempat_lahir"),
     tanggal_lahir: formData.get("tanggal_lahir"),
     role: formData.get("role") || "siswa",
   });
 
   if (!validatedFields.success) {
+    const fieldErrors = validatedFields.error.flatten().fieldErrors;
+    console.error("[createUser] Validation error:", fieldErrors);
     return {
       status: "error",
       errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
+        ...fieldErrors,
+        _form: [] as string[],
       },
     };
   }
 
   const supabase = await createClient({ isAdmin: true });
 
-  // Buat akun di Supabase Auth
   const { error: authError, data } = await supabase.auth.admin.createUser({
     email: validatedFields.data.email,
     password: validatedFields.data.password,
@@ -50,7 +51,7 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
   if (authError) {
     return {
       status: "error",
-      errors: { ...prevState.errors, _form: [authError.message] },
+      errors: { ...prevState?.errors, _form: [authError.message] },
     };
   }
 
@@ -71,7 +72,7 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
     });
 
     if (insertError) {
-      console.error("Insert siswa error:", insertError.message);
+      console.error("[createUser] Insert siswa error:", insertError.message);
     } else {
       await writeChangelog({
         supabase,
@@ -88,32 +89,58 @@ export async function createUser(prevState: AuthFormState, formData: FormData) {
 
 // ─── Update User ──────────────────────────────────────────────────────────────
 export async function updateUser(prevState: AuthFormState, formData: FormData) {
+  const jenisKelaminRaw = formData.get("jenis_kelamin") as string;
+
+  // Normalisasi jenis kelamin agar cocok dengan enum Zod
+  let jenisKelamin: "Laki-laki" | "Perempuan" | undefined;
+  if (jenisKelaminRaw) {
+    const jkLower = jenisKelaminRaw.toLowerCase().trim();
+    if (jkLower === "laki-laki" || jkLower === "l" || jkLower === "laki") {
+      jenisKelamin = "Laki-laki";
+    } else if (jkLower === "perempuan" || jkLower === "p") {
+      jenisKelamin = "Perempuan";
+    }
+  }
+
   const validatedFields = updateUserSchema.safeParse({
     nama_siswa: formData.get("nama_siswa"),
     NIS: formData.get("NIS"),
-    jenis_kelamin: formData.get("jenis_kelamin"),
+    jenis_kelamin: jenisKelamin,
     kelas: formData.get("kelas"),
     angkatan: formData.get("angkatan"),
     nama_wali: formData.get("nama_wali"),
     no_wa: formData.get("no_wa"),
-    email_wali: formData.get("email_wali"),
+    email_wali: formData.get("email_wali") || undefined,
     tempat_lahir: formData.get("tempat_lahir"),
     tanggal_lahir: formData.get("tanggal_lahir"),
     role: formData.get("role") || "siswa",
   });
 
   if (!validatedFields.success) {
+    const fieldErrors = validatedFields.error.flatten().fieldErrors;
+    console.error("[updateUser] Validation error:", fieldErrors);
+    // Kirim pesan error yang informatif
+    const errorMessages = Object.entries(fieldErrors)
+      .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
+      .join(" | ");
     return {
       status: "error",
       errors: {
-        ...validatedFields.error.flatten().fieldErrors,
-        _form: [],
+        ...fieldErrors,
+        _form: [errorMessages || "Validasi form gagal"],
       },
     };
   }
 
   const supabase = await createClient({ isAdmin: true });
   const userId = formData.get("id") as string;
+
+  if (!userId) {
+    return {
+      status: "error",
+      errors: { _form: ["ID siswa tidak ditemukan"] },
+    };
+  }
 
   const { error: siswaError } = await supabase
     .from("siswa")
@@ -132,10 +159,11 @@ export async function updateUser(prevState: AuthFormState, formData: FormData) {
     .eq("id", userId);
 
   if (siswaError) {
+    console.error("[updateUser] Supabase error:", siswaError);
     return {
       status: "error",
       errors: {
-        ...prevState.errors,
+        ...prevState?.errors,
         _form: [`Gagal update: ${siswaError.message}`],
       },
     };
@@ -157,7 +185,13 @@ export async function deleteUser(prevState: AuthFormState, formData: FormData) {
   const supabase = await createClient({ isAdmin: true });
   const userId = formData.get("id") as string;
 
-  // Ambil nama siswa untuk changelog sebelum dihapus
+  if (!userId) {
+    return {
+      status: "error",
+      errors: { _form: ["ID siswa tidak valid"] },
+    };
+  }
+
   const { data: siswaData } = await supabase
     .from("siswa")
     .select("namasiswa")
@@ -166,13 +200,12 @@ export async function deleteUser(prevState: AuthFormState, formData: FormData) {
 
   const namaSiswa = siswaData?.namasiswa || userId;
 
-  // Hapus akun auth (cascade ke tabel siswa via FK)
   const { error } = await supabase.auth.admin.deleteUser(userId);
 
   if (error) {
     return {
       status: "error",
-      errors: { ...prevState.errors, _form: [error.message] },
+      errors: { ...prevState?.errors, _form: [error.message] },
     };
   }
 

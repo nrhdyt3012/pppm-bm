@@ -1,100 +1,228 @@
-import { INITIAL_STATE_UPDATE_USER } from "@/constants/auth-constant";
-import { UpdateUserForm, updateUserSchema } from "@/validations/auth-validation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { startTransition, useActionState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { updateUser } from "../actions";
-import { toast } from "sonner";
-import FormUser from "./form-user";
-import { Profile } from "@/types/auth";
-import { Dialog } from "@radix-ui/react-dialog";
+"use client";
 
-export default function DialogUpdateUser({
-  refetch,
-  currentData,
-  open,
-  handleChangeAction,
-}: {
-  refetch: () => void;
-  currentData?: Profile;
-  open?: boolean;
-  handleChangeAction?: (open: boolean) => void;
-}) {
-  const form = useForm<UpdateUserForm>({
-    resolver: zodResolver(updateUserSchema),
+import DataTable from "@/components/common/data-table";
+import DropdownAction from "@/components/common/dropdown-action";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import useDataTable from "@/hooks/use-data-table";
+import { createClient } from "@/lib/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { HEADER_TABLE_USER } from "@/constants/user-constant";
+import DialogCreateUser from "./dialog-create-user";
+import DialogUpdateUser from "./dialog-update-user";
+import DialogDeleteUser from "./dialog-delete-user";
+import { Profile } from "@/types/auth";
+
+export default function UserManagement() {
+  const supabase = createClient();
+  const {
+    currentPage,
+    currentLimit,
+    currentSearch,
+    handleChangePage,
+    handleChangeLimit,
+    handleChangeSearch,
+  } = useDataTable();
+
+  const { data: users, isLoading, refetch } = useQuery({
+    queryKey: ["siswa-list", currentPage, currentLimit, currentSearch],
+    queryFn: async () => {
+      let query = supabase
+        .from("siswa")
+        .select("*", { count: "exact" })
+        .range((currentPage - 1) * currentLimit, currentPage * currentLimit - 1)
+        .order("createdat", { ascending: false });
+
+      if (currentSearch) {
+        query = query.or(
+          `namasiswa.ilike.%${currentSearch}%,nis.ilike.%${currentSearch}%,kelas.ilike.%${currentSearch}%`
+        );
+      }
+
+      const result = await query;
+      if (result.error) {
+        toast.error("Gagal memuat data siswa", { description: result.error.message });
+      }
+      return result;
+    },
   });
 
-  const [state, action, isPending] = useActionState(
-    updateUser,
-    INITIAL_STATE_UPDATE_USER
+  const [selectedAction, setSelectedAction] = useState<{
+    data: Profile;
+    type: "update" | "delete";
+  } | null>(null);
+
+  const handleChangeAction = (open: boolean) => {
+    if (!open) setSelectedAction(null);
+  };
+
+  const filteredData = useMemo(() => {
+    return (users?.data || []).map((item: any, index: number) => [
+      currentLimit * (currentPage - 1) + index + 1,
+
+      // NIS
+      <span key={`nis-${item.id}`} className="font-mono text-sm">
+        {item.nis || "-"}
+      </span>,
+
+      // Nama Siswa
+      <div key={`nama-${item.id}`}>
+        <p className="font-medium">{item.namasiswa || "-"}</p>
+      </div>,
+
+      // Jenis Kelamin
+      item.jeniskelamin || "-",
+
+      // Tempat Lahir
+      item.tempatlahir || "-",
+
+      // Tanggal Lahir
+      item.tanggallahir
+        ? new Date(item.tanggallahir).toLocaleDateString("id-ID")
+        : "-",
+
+      // Nama Wali
+      item.namawali || "-",
+
+      // No WA
+      item.nowa || "-",
+
+      // Kelas
+      <span
+        key={`kelas-${item.id}`}
+        className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+      >
+        {item.kelas || "-"}
+      </span>,
+
+      // Angkatan
+      item.angkatan || "-",
+
+      // Status
+      <span
+        key={`status-${item.id}`}
+        className={`px-2 py-1 rounded-full text-xs font-medium ${
+          item.status === "aktif"
+            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        }`}
+      >
+        {item.status || "aktif"}
+      </span>,
+
+      // Aksi
+      <DropdownAction
+        key={`act-${item.id}`}
+        menu={[
+          {
+            label: (
+              <span className="flex items-center gap-2">
+                <Pencil className="w-4 h-4" />
+                Edit
+              </span>
+            ),
+            action: () =>
+              setSelectedAction({
+                data: {
+                  id: item.id,
+                  name: item.namasiswa,
+                  namaSiswa: item.namasiswa,
+                  NIS: item.nis,
+                  kelas: item.kelas,
+                  angkatan: item.angkatan,
+                  namaWali: item.namawali,
+                  noWa: item.nowa,
+                  tempatLahir: item.tempatlahir,
+                  tanggalLahir: item.tanggallahir,
+                  jeniskelamin: item.jeniskelamin,
+                  status: item.status,
+                  role: "siswa",
+                } as Profile & { jeniskelamin?: string },
+                type: "update",
+              }),
+          },
+          {
+            label: (
+              <span className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-red-400" />
+                Hapus
+              </span>
+            ),
+            variant: "destructive" as const,
+            action: () =>
+              setSelectedAction({
+                data: {
+                  id: item.id,
+                  name: item.namasiswa,
+                  namaSiswa: item.namasiswa,
+                  avatar_url: item.avatarurl,
+                  role: "siswa",
+                } as Profile,
+                type: "delete",
+              }),
+          },
+        ]}
+      />,
+    ]);
+  }, [users, currentLimit, currentPage]);
+
+  const totalPages = useMemo(
+    () => (users?.count ? Math.ceil(users.count / currentLimit) : 0),
+    [users, currentLimit]
   );
 
-  const onSubmit = form.handleSubmit((data) => {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (key === "avatar_url") return;
-      formData.append(key, (value as string) || "");
-    });
-    formData.append("id", currentData?.id ?? "");
-    startTransition(() => {
-      action(formData);
-    });
-  });
-
-  // Handle state setelah submit
-  useEffect(() => {
-    if (state?.status === "error") {
-      toast.error("Gagal Mengubah Data", {
-        description: state.errors?._form?.[0],
-      });
-    }
-    if (state?.status === "success") {
-      toast.success("Data siswa berhasil diubah");
-      form.reset();
-      handleChangeAction?.(false);
-      refetch();
-    }
-  }, [state]);
-
-  // ← FIX: tambahkan open ke dependency agar form terisi ulang
-  // setiap kali dialog dibuka dengan data baru
-  useEffect(() => {
-    if (currentData && open) {
-      form.setValue(
-        "nama_siswa",
-        (currentData.namaSiswa || currentData.name || "") as string
-      );
-      form.setValue("NIS", (currentData.NIS || "") as string);
-      form.setValue(
-        "jenis_kelamin",
-        ((currentData as any).jeniskelamin ||
-          (currentData as any).jenis_kelamin ||
-          "") as "Laki-laki" | "Perempuan"
-      );
-      form.setValue("kelas", (currentData.kelas || "") as string);
-      form.setValue("angkatan", (currentData.angkatan || "") as string);
-      form.setValue("nama_wali", (currentData.namaWali || "") as string);
-      form.setValue("no_wa", (currentData.noWa || "") as string);
-      form.setValue(
-        "tempat_lahir",
-        (currentData.tempatLahir || "") as string
-      );
-      form.setValue(
-        "tanggal_lahir",
-        (currentData.tanggalLahir || "") as string
-      );
-      form.setValue("role", "siswa");
-    }
-  }, [currentData, open]); // ← open ditambahkan di sini
-
   return (
-    <Dialog open={open} onOpenChange={handleChangeAction}>
-      <FormUser
-        form={form}
-        onSubmit={onSubmit}
-        isLoading={isPending}
-        type="Update"
+    <div className="w-full">
+      <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
+        <div>
+          <h1 className="text-2xl font-bold">Data Siswa</h1>
+          <p className="text-sm text-muted-foreground">Kelola data siswa KB, TK A, dan TK B</p>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Cari nama, NIS, atau kelas..."
+            onChange={(e) => handleChangeSearch(e.target.value)}
+          />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-green-600 hover:bg-green-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Tambah
+              </Button>
+            </DialogTrigger>
+            <DialogCreateUser refetch={refetch} />
+          </Dialog>
+        </div>
+      </div>
+
+      <DataTable
+        header={HEADER_TABLE_USER}
+        data={filteredData}
+        isLoading={isLoading}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        currentLimit={currentLimit}
+        onChangePage={handleChangePage}
+        onChangeLimit={handleChangeLimit}
       />
-    </Dialog>
+
+      <DialogUpdateUser
+        open={selectedAction?.type === "update"}
+        refetch={refetch}
+        currentData={selectedAction?.data}
+        handleChangeAction={handleChangeAction}
+      />
+
+      <DialogDeleteUser
+        open={selectedAction?.type === "delete"}
+        refetch={refetch}
+        currentData={selectedAction?.data}
+        handleChangeAction={handleChangeAction}
+      />
+    </div>
   );
 }
