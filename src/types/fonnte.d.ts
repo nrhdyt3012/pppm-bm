@@ -15,7 +15,14 @@ export interface FontneSendMessageRequest {
 
 export interface FontneSendMessageResponse {
   status: boolean;
-  message: string;
+  detail?: string;
+  reason?: string;
+  id?: (string | number)[];
+  process?: string;
+  requestid?: number;
+  target?: string[];
+  quota?: Record<string, any>;
+  message?: string; // dipertahankan untuk kompatibilitas lama
   data?: {
     id: string;
     message: string;

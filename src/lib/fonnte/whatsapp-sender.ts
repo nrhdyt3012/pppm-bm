@@ -104,26 +104,47 @@ class WhatsAppNotificationService {
           message,
         });
 
-        if (response.status && response.data?.id) {
+        // ─── DEBUG LOG — lihat response asli dari Fonnte ──────────────────
+        console.log(
+          `[WhatsAppService] Fonnte response (attempt ${attempt}):`,
+          JSON.stringify(response)
+        );
+        // ────────────────────────────────────────────────────────────────
+
+        // FIX: Fonnte mengembalikan id sebagai array di response.id,
+        // bukan di response.data.id. Cukup cek response.status === true
+        // untuk menentukan sukses.
+        if (response.status) {
+          const messageId = Array.isArray(response.id)
+            ? String(response.id[0])
+            : response.data?.id || String(response.requestid || '');
+
           console.log(
             `[WhatsAppService] Message sent successfully (attempt ${attempt}):`,
-            response.data.id
+            messageId
           );
 
           await this.logNotification(
             payload,
             'SENT',
-            response.data.id,
+            messageId,
             response
           );
 
           return {
             success: true,
-            messageId: response.data.id,
+            messageId,
           };
         }
 
-        throw new Error(response.message || 'Unknown error');
+        // ─── tampilkan alasan kegagalan sesungguhnya dari Fonnte ─────
+        const fonnteReason =
+          response.reason ||
+          response.message ||
+          JSON.stringify(response) ||
+          'Unknown error';
+        throw new Error(fonnteReason);
+        // ────────────────────────────────────────────────────────────────
       } catch (error) {
         console.error(
           `[WhatsAppService] Attempt ${attempt}/${maxRetries} failed:`,
@@ -185,6 +206,9 @@ class WhatsAppNotificationService {
 
   /**
    * Log notification to database
+   * FIX: pakai isAdmin: true karena method ini dipanggil dari context
+   * server-to-server (API route tanpa session user) — ANON key akan
+   * selalu kena RLS block untuk tabel whatsapp_notification_logs.
    */
   private async logNotification(
     payload: NotificationPayload,
@@ -193,7 +217,7 @@ class WhatsAppNotificationService {
     response: any
   ): Promise<void> {
     try {
-      const supabase = await createClient();
+      const supabase = await createClient({ isAdmin: true });
 
       const logEntry: Omit<WhatsAppNotificationLog, 'id' | 'created_at'> = {
         recipient_phone: payload.recipientPhone,

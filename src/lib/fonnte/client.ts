@@ -29,10 +29,15 @@ class FontteClient {
     payload: FontneSendMessageRequest
   ): Promise<FontneSendMessageResponse> {
     try {
+      console.log('[FontteClient] Sending to target:', payload.target);
+
       const response = await fetch(`${this.baseUrl}/send`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          // FIX: Fonnte mengharapkan token mentah di header Authorization,
+          // BUKAN format "Bearer <token>". Mengirim "Bearer xxx" membuat
+          // seluruh string itu dibaca sebagai token → selalu "invalid token".
+          'Authorization': this.apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -42,14 +47,29 @@ class FontteClient {
         }),
       });
 
+      // ─── DEBUG LOG — selalu log raw body, baik sukses maupun gagal ──────
+      const rawText = await response.text();
+      console.log(
+        `[FontteClient] HTTP ${response.status} response body:`,
+        rawText
+      );
+      // ──────────────────────────────────────────────────────────────────
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          `Fonnte API Error: ${response.status} - ${JSON.stringify(errorData)}`
+          `Fonnte API Error: ${response.status} - ${rawText}`
         );
       }
 
-      const data: FontneSendMessageResponse = await response.json();
+      let data: FontneSendMessageResponse;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(
+          `Fonnte API returned non-JSON response: ${rawText}`
+        );
+      }
+
       return data;
     } catch (error) {
       console.error('[FontteClient] Send message error:', error);
@@ -67,7 +87,8 @@ class FontteClient {
       const response = await fetch(`${this.baseUrl}/message/check`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
+          // FIX: sama seperti sendMessage, token mentah tanpa "Bearer "
+          'Authorization': this.apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ id: payload.id }),
