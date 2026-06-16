@@ -2,10 +2,34 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/auth-store";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { User, Calendar, MapPin, Phone, BookOpen, Loader2 } from "lucide-react";
+
+// Helper: ambil inisial dari nama lengkap (maks 2 huruf)
+function getInitials(name?: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+// Warna background avatar berdasarkan inisial (konsisten per nama)
+function getAvatarColor(name?: string | null): string {
+  const colors = [
+    "bg-green-500",
+    "bg-blue-500",
+    "bg-purple-500",
+    "bg-orange-500",
+    "bg-teal-500",
+    "bg-rose-500",
+    "bg-indigo-500",
+    "bg-amber-500",
+  ];
+  if (!name) return colors[0];
+  const idx = name.charCodeAt(0) % colors.length;
+  return colors[idx];
+}
 
 export default function InfoSiswa() {
   const profile = useAuthStore((state) => state.profile);
@@ -33,7 +57,19 @@ export default function InfoSiswa() {
     );
   }
 
-  const InfoItem = ({ icon: Icon, label, value }: { icon: any; label: string; value?: string | null }) => (
+  const namaLengkap = siswaData?.namasiswa || profile.name || "";
+  const initials = getInitials(namaLengkap);
+  const avatarColor = getAvatarColor(namaLengkap);
+
+  const InfoItem = ({
+    icon: Icon,
+    label,
+    value,
+  }: {
+    icon: any;
+    label: string;
+    value?: string | null;
+  }) => (
     <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50">
       <Icon className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
       <div>
@@ -47,23 +83,30 @@ export default function InfoSiswa() {
     <div className="w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Info Siswa</h1>
-        <p className="text-muted-foreground text-sm">PAUD Aisyiyah Bustanul Athfal 1 Buduran</p>
+        <p className="text-muted-foreground text-sm">
+          PAUD Aisyiyah Bustanul Athfal 1 Buduran
+        </p>
       </div>
 
-      {/* Header profil */}
+      {/* Header profil — avatar inisial, tanpa foto */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <Avatar className="w-28 h-28 border-4 border-green-500">
-              <AvatarImage src={siswaData?.avatarUrl || profile.avatar_url} alt={siswaData?.namaSiswa} className="object-cover" />
-              <AvatarFallback className="text-2xl bg-green-100 text-green-700">
-                {(siswaData?.namaSiswa || profile.name)?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            {/* Avatar inisial */}
+            <div
+              className={`w-28 h-28 rounded-full flex items-center justify-center shrink-0 border-4 border-white shadow-md ${avatarColor}`}
+            >
+              <span className="text-white text-4xl font-bold select-none">
+                {initials}
+              </span>
+            </div>
+
             <div className="flex-1 text-center md:text-left space-y-2">
-              <h2 className="text-3xl font-bold">{siswaData?.namasiswa || profile.name}</h2>
-              {siswaData?.NIS && (
-                <p className="text-muted-foreground text-sm">NIS: {siswaData.nis}</p>
+              <h2 className="text-3xl font-bold">{namaLengkap}</h2>
+              {siswaData?.nis && (
+                <p className="text-muted-foreground text-sm">
+                  NIS: {siswaData.nis}
+                </p>
               )}
               <div className="flex flex-wrap gap-2 justify-center md:justify-start mt-3">
                 {siswaData?.kelas && (
@@ -76,11 +119,13 @@ export default function InfoSiswa() {
                     Angkatan {siswaData.angkatan}
                   </span>
                 )}
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  siswaData?.status === "aktif"
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100"
-                    : "bg-gray-100 text-gray-700"
-                }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    siswaData?.status === "aktif"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
                   {siswaData?.status || "Aktif"}
                 </span>
               </div>
@@ -107,9 +152,15 @@ export default function InfoSiswa() {
             <InfoItem
               icon={Calendar}
               label="Tanggal Lahir"
-              value={siswaData?.tanggallahir
-                ? new Date(siswaData.tanggallahir).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-                : null}
+              value={
+                siswaData?.tanggallahir
+                  ? new Date(siswaData.tanggallahir).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : null
+              }
             />
           </CardContent>
         </Card>
@@ -135,7 +186,9 @@ export default function InfoSiswa() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Jika ada data yang kurang tepat atau perlu diperbarui, silakan hubungi admin/bendahara PAUD Aisyiyah Bustanul Athfal 1 Buduran untuk melakukan perubahan.
+              Jika ada data yang kurang tepat atau perlu diperbarui, silakan
+              hubungi admin/bendahara PAUD Aisyiyah Bustanul Athfal 1 Buduran
+              untuk melakukan perubahan.
             </p>
           </CardContent>
         </Card>

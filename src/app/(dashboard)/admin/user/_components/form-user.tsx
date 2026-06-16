@@ -1,4 +1,3 @@
-import FormImage from "@/components/common/form-image";
 import FormInput from "@/components/common/form-input";
 import FormSelect from "@/components/common/form-select";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { KELAS_LIST } from "@/constants/auth-constant";
-import { Preview } from "@/types/general";
 import { Loader2 } from "lucide-react";
 import { FormEvent } from "react";
 import { FieldValues, Path, UseFormReturn } from "react-hook-form";
@@ -22,15 +20,11 @@ export default function FormUser<T extends FieldValues>({
   onSubmit,
   isLoading,
   type,
-  preview,
-  setPreview,
 }: {
   form: UseFormReturn<T>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
   type: "Create" | "Update";
-  preview?: Preview;
-  setPreview?: (preview: Preview) => void;
 }) {
   return (
     <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
@@ -120,21 +114,19 @@ export default function FormUser<T extends FieldValues>({
                 type="date"
               />
             </div>
-
-            <FormImage
-              form={form}
-              name={"avatar_url" as Path<T>}
-              label="Foto Siswa (Opsional)"
-              preview={preview}
-              setPreview={setPreview}
-            />
           </div>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Batal</Button>
             </DialogClose>
             <Button type="submit" className="bg-green-600 hover:bg-green-700">
-              {isLoading ? <Loader2 className="animate-spin" /> : type === "Create" ? "Simpan" : "Update"}
+              {isLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : type === "Create" ? (
+                "Simpan"
+              ) : (
+                "Update"
+              )}
             </Button>
           </DialogFooter>
         </form>

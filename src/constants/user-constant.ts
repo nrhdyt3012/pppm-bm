@@ -1,15 +1,17 @@
 // src/constants/user-constant.ts
+
+// Header tabel Data Siswa — tanpa kolom Foto
 export const HEADER_TABLE_USER = [
   "No",
-  "Foto",
-  "Nama Lengkap Siswa",
   "NIS",
-  "Kelas",
-  "Angkatan",
-  "Nama Wali",
-  "No. WA Wali",
+  "Nama Siswa",
+  "Jenis Kelamin",
   "Tempat Lahir",
   "Tanggal Lahir",
+  "Nama Wali",
+  "No WA Wali",
+  "Kelas",
+  "Angkatan",
   "Status",
   "Action",
 ];
