@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { KELAS_LIST } from "@/constants/auth-constant";
+import { KELAS_LIST, JENIS_KELAMIN_LIST } from "@/constants/auth-constant";
 import { Loader2 } from "lucide-react";
 import { FormEvent } from "react";
 import { FieldValues, Path, UseFormReturn } from "react-hook-form";
@@ -72,18 +72,26 @@ export default function FormUser<T extends FieldValues>({
               />
               <FormSelect
                 form={form}
+                name={"jenis_kelamin" as Path<T>}
+                label="Jenis Kelamin"
+                selectItem={JENIS_KELAMIN_LIST}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormSelect
+                form={form}
                 name={"kelas" as Path<T>}
                 label="Kelas"
                 selectItem={KELAS_LIST}
               />
+              <FormInput
+                form={form}
+                name={"angkatan" as Path<T>}
+                label="Angkatan (Tahun Masuk)"
+                placeholder="Contoh: 2024"
+              />
             </div>
-
-            <FormInput
-              form={form}
-              name={"angkatan" as Path<T>}
-              label="Angkatan (Tahun Masuk)"
-              placeholder="Contoh: 2024"
-            />
 
             <FormInput
               form={form}

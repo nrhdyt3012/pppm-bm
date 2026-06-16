@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     const periode = `${bulanArray[tagihan.bulan - 1] || "Bulan " + tagihan.bulan} ${tagihan.tahun}`;
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const linkPembayaran = `${appUrl}/(dashboard)/siswa/payment?id=${tagihan.idtagihansiswa}`;
+    const linkPembayaran = `${appUrl}/siswa/payment?id=${tagihan.idtagihansiswa}`;
 
     const whatsAppService = getWhatsAppNotificationService();
 
