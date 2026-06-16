@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache";
 
 const first = (v: any) => (Array.isArray(v) ? v[0] : v);
 
+// ─── Helper permission ────────────────────────────────────────────────────────
 async function getTagihanPermission(supabase: any, idTagihan: string) {
-  const { data: tagihan } = await supabase
+  const { data: tagihan, error } = await supabase
     .from("tagihan_siswa")
     .select(`
       idtagihansiswa,
@@ -28,11 +29,17 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
     .eq("idtagihansiswa", idTagihan)
     .single();
 
-  if (!tagihan) {
+  if (error || !tagihan) {
+    console.error("[getTagihanPermission] error:", error);
     return { ok: false, reason: "Tagihan tidak ditemukan", tagihan: null };
   }
 
-  const pembayaranList = tagihan.pembayaran ?? [];
+  // Pastikan pembayaranList selalu array
+  const pembayaranList: any[] = Array.isArray(tagihan.pembayaran)
+    ? tagihan.pembayaran
+    : tagihan.pembayaran
+    ? [tagihan.pembayaran]
+    : [];
 
   const hasSuccessPayment = pembayaranList.some(
     (p: any) => p.statuspembayaran === "SUCCESS"
@@ -43,6 +50,14 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
       p.statuspembayaran === "SUCCESS" && p.metodepembayaran !== "cash"
   );
 
+  // Semua ID pembayaran yang bukan SUCCESS (PENDING, FAILED, EXPIRED)
+  const nonSuccessIds = pembayaranList
+    .filter((p: any) => p.statuspembayaran !== "SUCCESS")
+    .map((p: any) => p.idpembayaran);
+
+  // Semua ID pembayaran (untuk hapus gateway log)
+  const allPembayaranIds = pembayaranList.map((p: any) => p.idpembayaran);
+
   return {
     ok: true,
     tagihan,
@@ -51,9 +66,12 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
     canBayarManual:
       !hasMidtransPayment && tagihan.statuspembayaran !== "LUNAS",
     canDelete: !hasSuccessPayment,
+    nonSuccessIds,
+    allPembayaranIds,
   };
 }
 
+// ─── Bayar Manual ─────────────────────────────────────────────────────────────
 export async function bayarTagihanManual(prevState: any, formData: FormData) {
   const idTagihan = formData.get("idtagihansiswa") as string;
   const jumlahBayar = parseFloat(formData.get("jumlahbayar") as string);
@@ -129,7 +147,7 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
     .single();
 
   if (insertError) {
-    console.error("Error insert pembayaran:", insertError);
+    console.error("[bayarTagihanManual] Error insert pembayaran:", insertError);
   }
 
   const namaSiswa = first(tagihan.siswa)?.namasiswa || "-";
@@ -139,7 +157,9 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
     supabase,
     namamenu: "Tagihan Siswa",
     jenisaksi: "UBAH",
-    deskripsi: `Mencatat pembayaran cash sebesar Rp${jumlahBayar.toLocaleString("id-ID")} untuk ${namaSiswa} - ${namaTagihan} (${tagihan.bulan}/${tagihan.tahun})`,
+    deskripsi: `Mencatat pembayaran cash sebesar Rp${jumlahBayar.toLocaleString(
+      "id-ID"
+    )} untuk ${namaSiswa} - ${namaTagihan} (${tagihan.bulan}/${tagihan.tahun})`,
   });
 
   revalidatePath("/admin/tagihan");
@@ -147,7 +167,6 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   if (pembayaranData?.idpembayaran) {
-    // Kirim email kwitansi
     try {
       await fetch(`${appUrl}/api/send-receipt`, {
         method: "POST",
@@ -166,7 +185,6 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
       console.error("[EMAIL] Gagal kirim kwitansi:", e);
     }
 
-    // Kirim notifikasi WhatsApp
     if (process.env.FONNTE_API_KEY) {
       try {
         await fetch(`${appUrl}/api/notifications/send-payment-status`, {
@@ -195,6 +213,7 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   };
 }
 
+// ─── Delete Tagihan ───────────────────────────────────────────────────────────
 export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   const idTagihan = formData.get("idtagihansiswa") as string;
 
@@ -205,7 +224,6 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
     };
   }
 
-  // ← FIX: wajib isAdmin: true agar tidak kena RLS block
   const supabase = await createClient({ isAdmin: true });
   const perm = await getTagihanPermission(supabase, idTagihan);
 
@@ -218,8 +236,7 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
       status: "error",
       errors: {
         _form: [
-          "Tidak dapat menghapus tagihan yang sudah memiliki riwayat pembayaran. " +
-            "Hubungi developer jika ini adalah kesalahan data.",
+          "Tidak dapat menghapus tagihan yang sudah memiliki riwayat pembayaran berhasil.",
         ],
       },
     };
@@ -229,13 +246,55 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   const namaSiswa = first(tagihan.siswa)?.namasiswa || "-";
   const namaTagihan = first(tagihan.master_tagihan)?.namatagihan || "-";
 
-  const { error } = await supabase
+  // STEP 1: Hapus whatsapp_notification_logs yang FK ke tagihan ini
+  await supabase
+    .from("whatsapp_notification_logs")
+    .delete()
+    .eq("target_id", parseInt(idTagihan));
+
+  // STEP 2: Hapus payment_gateway_log yang FK ke pembayaran non-SUCCESS
+  if (perm.nonSuccessIds && perm.nonSuccessIds.length > 0) {
+    await supabase
+      .from("payment_gateway_log")
+      .delete()
+      .in("idpembayaran", perm.nonSuccessIds);
+  }
+
+  // STEP 3: Hapus pembayaran non-SUCCESS (PENDING, FAILED, EXPIRED)
+  if (perm.nonSuccessIds && perm.nonSuccessIds.length > 0) {
+    const { error: deletePembayaranError } = await supabase
+      .from("pembayaran")
+      .delete()
+      .in("idpembayaran", perm.nonSuccessIds);
+
+    if (deletePembayaranError) {
+      console.error(
+        "[deleteTagihanSiswa] Gagal hapus pembayaran:",
+        deletePembayaranError
+      );
+      return {
+        status: "error",
+        errors: {
+          _form: [
+            `Gagal membersihkan data pembayaran: ${deletePembayaranError.message}`,
+          ],
+        },
+      };
+    }
+  }
+
+  // STEP 4: Hapus tagihan
+  const { error: deleteError } = await supabase
     .from("tagihan_siswa")
     .delete()
     .eq("idtagihansiswa", idTagihan);
 
-  if (error) {
-    return { status: "error", errors: { _form: [error.message] } };
+  if (deleteError) {
+    console.error("[deleteTagihanSiswa] Gagal hapus tagihan:", deleteError);
+    return {
+      status: "error",
+      errors: { _form: [deleteError.message] },
+    };
   }
 
   await writeChangelog({
@@ -249,6 +308,7 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   return { status: "success" };
 }
 
+// ─── Create Batch ─────────────────────────────────────────────────────────────
 export async function createTagihanBatch(
   prevState: any,
   formData: FormData | null
@@ -316,9 +376,7 @@ export async function createTagihanBatch(
     return {
       status: "error",
       errors: {
-        _form: [
-          `Siswa berikut sudah memiliki tagihan periode ini: ${names}`,
-        ],
+        _form: [`Siswa berikut sudah memiliki tagihan periode ini: ${names}`],
       },
     };
   }
