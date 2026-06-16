@@ -3,7 +3,6 @@ import { environment } from "./configs/environtment";
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
-// Helper function to get user role from cookie
 function getUserRole(request: NextRequest): string | null {
   const profileCookie = request.cookies.get("user_profile")?.value;
   if (!profileCookie) return null;
@@ -20,11 +19,13 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // ✅ PALING ATAS: Bypass webhook Midtrans & API payment dari semua auth check
-  // Midtrans server tidak punya cookie/session user → harus dibebaskan sebelum apapun
+  // ✅ Bypass semua API route yang dipanggil server-to-server (tanpa cookie user)
+  // Midtrans webhook, email kwitansi, dan notifikasi WA semuanya dipanggil
+  // dari server action / webhook eksternal — tidak punya session user
   const isPublicApiRoute =
     pathname.startsWith("/api/payment/") ||
-    pathname.startsWith("/api/send-receipt");
+    pathname.startsWith("/api/send-receipt") ||
+    pathname.startsWith("/api/notifications/"); // ← TAMBAHAN FIX
 
   if (isPublicApiRoute) {
     return NextResponse.next();
@@ -58,7 +59,6 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = pathname === "/login";
   const isApiRoute = pathname.startsWith("/api/");
 
-  // ✅ File SEO — harus selalu bisa diakses tanpa login (termasuk oleh Googlebot)
   const isSeoFile =
     pathname === "/sitemap.xml" ||
     pathname === "/robots.txt" ||
@@ -68,7 +68,6 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Halaman publik yang bisa diakses tanpa login
   const publicPages = [
     "/login",
     "/forgot-password",
@@ -92,7 +91,7 @@ export async function middleware(request: NextRequest) {
       (page) => pathname === page || pathname.startsWith(page + "/")
     );
 
-  // API routes privat (selain yang sudah di-bypass di atas) → wajib login
+  // API routes privat selain yang sudah di-bypass → wajib login
   if (isApiRoute) {
     if (!user) {
       return NextResponse.json(
@@ -116,10 +115,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // ✅ ROLE-BASED ROUTE PROTECTION
-  // Cek apakah user memiliki role
   const userRole = getUserRole(request);
 
-  // Guard /superadmin/* — hanya superadmin yang bisa akses
   if (pathname.startsWith("/superadmin")) {
     if (userRole !== "superadmin") {
       const url = request.nextUrl.clone();
@@ -128,7 +125,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Guard /admin/* — hanya admin dan superadmin yang bisa akses
   if (pathname.startsWith("/admin")) {
     if (userRole !== "admin" && userRole !== "superadmin") {
       const url = request.nextUrl.clone();
@@ -137,7 +133,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Guard /siswa/* — hanya siswa yang bisa akses
   if (pathname.startsWith("/siswa")) {
     if (userRole !== "siswa") {
       const url = request.nextUrl.clone();
