@@ -87,13 +87,15 @@ export async function POST(request: NextRequest) {
 
     let result;
 
+    // FIX: targetId harus idTagihan (FK whatsapp_logs_tagihan_fk merujuk
+    // ke tagihan_siswa.idtagihansiswa), BUKAN idPembayaran.
     if (status === "SUCCESS") {
       // Send payment success notification
       const linkKwitansi = `${appUrl}/kwitansi/${idPembayaran}`;
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_SUCCESS",
-        targetId: idPembayaran,
+        targetId: idTagihan,
         recipientName: siswa.namawali || "Wali Murid",
         studentName: siswa.namasiswa,
         data: {
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_FAILED",
-        targetId: idPembayaran,
+        targetId: idTagihan,
         recipientName: siswa.namawali || "Wali Murid",
         studentName: siswa.namasiswa,
         data: {
@@ -131,7 +133,7 @@ export async function POST(request: NextRequest) {
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_FAILED",
-        targetId: idPembayaran,
+        targetId: idTagihan,
         recipientName: siswa.namawali || "Wali Murid",
         studentName: siswa.namasiswa,
         data: {
