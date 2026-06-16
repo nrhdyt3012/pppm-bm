@@ -26,6 +26,14 @@ export const INITIAL_STATE_UPDATE_USER = {
   errors: { _form: [] as string[] },
 };
 
+// ← FIX: ini yang diminta auth-store.ts tapi belum ada
+export const INITIAL_STATE_PROFILE = {
+  id: undefined,
+  name: undefined,
+  avatar_url: undefined,
+  role: undefined,
+};
+
 // Daftar kelas PAUD
 export const KELAS_LIST = [
   { value: "KB", label: "KB (Kelompok Bermain)" },
@@ -38,3 +46,14 @@ export const JENIS_KELAMIN_LIST = [
   { value: "Laki-laki", label: "Laki-laki" },
   { value: "Perempuan", label: "Perempuan" },
 ];
+
+export const INITIAL_LOGIN_FORM = {
+  email: "",
+  password: "",
+};
+
+export const INITIAL_STATE_LOGIN_FORM = {
+  status: "idle",
+  errors: { _form: [] as string[] },
+  data: undefined as any,
+};

@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 
 const first = (v: any) => (Array.isArray(v) ? v[0] : v);
 
-// Helper: cek permission tagihan berdasarkan riwayat pembayaran
 async function getTagihanPermission(supabase: any, idTagihan: string) {
   const { data: tagihan } = await supabase
     .from("tagihan_siswa")
@@ -53,7 +52,6 @@ async function getTagihanPermission(supabase: any, idTagihan: string) {
   };
 }
 
-// Bayar tagihan secara cash/manual oleh admin
 export async function bayarTagihanManual(prevState: any, formData: FormData) {
   const idTagihan = formData.get("idtagihansiswa") as string;
   const jumlahBayar = parseFloat(formData.get("jumlahbayar") as string);
@@ -123,7 +121,6 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
     console.error("Error insert pembayaran:", insertError);
   }
 
-  // ─── Changelog ─────────────────────────────────────────────────────────
   const namaSiswa = first(tagihan.siswa)?.namasiswa || "-";
   const namaTagihan = first(tagihan.master_tagihan)?.namatagihan || "-";
 
@@ -138,10 +135,26 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  // ─── Kirim email kwitansi ──────────────────────────────────────────────
+  // ============================================================
+  // DEBUG LOG #1 — Cek env vars & hasil insert pembayaran
+  // Hapus bagian ini setelah masalah ditemukan
+  // ============================================================
+  console.log("====== DEBUG BAYAR CASH ======");
+  console.log("[ENV] FONNTE_API_KEY  :", process.env.FONNTE_API_KEY ? `ADA (${process.env.FONNTE_API_KEY.slice(0, 6)}...)` : "TIDAK ADA ❌");
+  console.log("[ENV] NEXT_PUBLIC_APP_URL:", appUrl);
+  console.log("[ENV] RESEND_API_KEY  :", process.env.RESEND_API_KEY ? "ADA ✅" : "TIDAK ADA ❌");
+  console.log("[DATA] idTagihan      :", idTagihan);
+  console.log("[DATA] jumlahBayar    :", jumlahBayar);
+  console.log("[DATA] statusBaru     :", statusBaru);
+  console.log("[DATA] pembayaranData :", pembayaranData);
+  console.log("[DATA] insertError    :", insertError ?? "null (ok)");
+  console.log("==============================");
+
   if (pembayaranData?.idpembayaran) {
+    // ─── Kirim email kwitansi ──────────────────────────────────────────────
     try {
-      await fetch(`${appUrl}/api/send-receipt`, {
+      console.log("[EMAIL] Mencoba kirim ke:", `${appUrl}/api/send-receipt`);
+      const emailRes = await fetch(`${appUrl}/api/send-receipt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -154,26 +167,47 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
           metodePembayaran: "cash",
         }),
       });
+      // DEBUG LOG #2 — Hasil fetch email
+      console.log("[EMAIL] Status response:", emailRes.status, emailRes.statusText);
+      const emailBody = await emailRes.text();
+      console.log("[EMAIL] Response body  :", emailBody);
     } catch (e) {
-      console.error("Gagal kirim email:", e);
+      console.error("[EMAIL] Fetch GAGAL (kemungkinan URL salah atau server down):", e);
     }
 
     // ─── Kirim notifikasi WhatsApp pembayaran sukses ──────────────────────
+    // DEBUG LOG #3 — Sebelum kirim WA
+    console.log("[WA] FONNTE_API_KEY tersedia:", !!process.env.FONNTE_API_KEY);
+
     if (process.env.FONNTE_API_KEY) {
       try {
-        await fetch(`${appUrl}/api/notifications/send-payment-status`, {
+        const waUrl = `${appUrl}/api/notifications/send-payment-status`;
+        const waPayload = {
+          idPembayaran: pembayaranData.idpembayaran,
+          idTagihan: parseInt(idTagihan),
+          status: "SUCCESS",
+        };
+        console.log("[WA] Mencoba kirim ke:", waUrl);
+        console.log("[WA] Payload         :", JSON.stringify(waPayload));
+
+        const waRes = await fetch(waUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            idPembayaran: pembayaranData.idpembayaran,
-            idTagihan: parseInt(idTagihan),
-            status: "SUCCESS",
-          }),
+          body: JSON.stringify(waPayload),
         });
+
+        // DEBUG LOG #4 — Hasil fetch WA
+        console.log("[WA] Status response :", waRes.status, waRes.statusText);
+        const waBody = await waRes.text();
+        console.log("[WA] Response body   :", waBody);
       } catch (e) {
-        console.error("Gagal kirim notifikasi WA:", e);
+        console.error("[WA] Fetch GAGAL (kemungkinan URL salah atau server down):", e);
       }
+    } else {
+      console.warn("[WA] SKIP — FONNTE_API_KEY tidak diset, notifikasi WA tidak dikirim");
     }
+  } else {
+    console.warn("[SKIP] pembayaranData kosong, email & WA tidak dikirim");
   }
 
   return {
@@ -187,7 +221,6 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   };
 }
 
-// Hapus tagihan — hanya boleh jika belum ada pembayaran
 export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   const idTagihan = formData.get("idtagihansiswa") as string;
 
@@ -238,7 +271,6 @@ export async function deleteTagihanSiswa(prevState: any, formData: FormData) {
   return { status: "success" };
 }
 
-// Buat tagihan batch untuk beberapa siswa
 export async function createTagihanBatch(prevState: any, formData: FormData | null) {
   if (!formData) {
     return { status: "error", errors: { _form: ["Data tidak valid"] } };
@@ -320,18 +352,37 @@ export async function createTagihanBatch(prevState: any, formData: FormData | nu
 
   revalidatePath("/admin/tagihan");
 
-  // ─── Kirim notifikasi WhatsApp tagihan baru ke setiap siswa ─────────────
+  // ============================================================
+  // DEBUG LOG #5 — Cek env vars sebelum kirim WA notif tagihan baru
+  // Hapus bagian ini setelah masalah ditemukan
+  // ============================================================
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  console.log("====== DEBUG BUAT TAGIHAN BATCH ======");
+  console.log("[ENV] FONNTE_API_KEY  :", process.env.FONNTE_API_KEY ? `ADA (${process.env.FONNTE_API_KEY.slice(0, 6)}...)` : "TIDAK ADA ❌");
+  console.log("[ENV] NEXT_PUBLIC_APP_URL:", appUrl);
+  console.log("[DATA] insertedTagihan :", insertedTagihan);
+  console.log("======================================");
+
   if (process.env.FONNTE_API_KEY && insertedTagihan?.length) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    await Promise.allSettled(
-      insertedTagihan.map((t: any) =>
-        fetch(`${appUrl}/api/notifications/send-bill`, {
+    console.log(`[WA] Mencoba kirim ${insertedTagihan.length} notifikasi tagihan baru...`);
+    const results = await Promise.allSettled(
+      insertedTagihan.map(async (t: any) => {
+        const waUrl = `${appUrl}/api/notifications/send-bill`;
+        console.log(`[WA] Kirim ke: ${waUrl} — idTagihan: ${t.idtagihansiswa}`);
+        const res = await fetch(waUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idTagihan: t.idtagihansiswa }),
-        })
-      )
+        });
+        // DEBUG LOG #6 — Hasil tiap notif tagihan
+        const body = await res.text();
+        console.log(`[WA] idTagihan ${t.idtagihansiswa} → status: ${res.status}, body: ${body}`);
+        return { id: t.idtagihansiswa, status: res.status };
+      })
     );
+    console.log("[WA] Semua hasil:", JSON.stringify(results));
+  } else {
+    console.warn("[WA] SKIP — FONNTE_API_KEY tidak ada atau tidak ada tagihan yang dibuat");
   }
 
   return { status: "success" };

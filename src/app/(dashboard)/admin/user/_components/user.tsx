@@ -76,8 +76,7 @@ export default function UserManagement() {
         <p className="font-medium">{user.namasiswa || "-"}</p>
       </div>,
 
-      // Jenis Kelamin — kolom baru pengganti foto, sesuai kebutuhan proposal
-      // (jika kolom jeniskelamin ada di tabel siswa, tampilkan; jika tidak ada, hapus baris ini)
+      // Jenis Kelamin
       <span key={`jk-${user.id}`} className="text-sm">
         {user.jeniskelamin || "-"}
       </span>,
@@ -151,6 +150,9 @@ export default function UserManagement() {
                   name: user.namasiswa,
                   namaSiswa: user.namasiswa,
                   NIS: user.nis,
+                  // ← pass jeniskelamin agar form bisa pre-fill
+                  jeniskelamin: user.jeniskelamin,
+                  jenis_kelamin: user.jeniskelamin,
                   namaWali: user.namawali,
                   noWa: user.nowa,
                   tempatLahir: user.tempatlahir,

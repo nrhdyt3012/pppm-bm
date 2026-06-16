@@ -32,7 +32,7 @@ export default function DialogUpdateUser({
   const onSubmit = form.handleSubmit((data) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      if (key === "avatar_url") return; // abaikan avatar
+      if (key === "avatar_url") return;
       formData.append(key, (value as string) || "");
     });
     formData.append("id", currentData?.id ?? "");
@@ -60,6 +60,10 @@ export default function DialogUpdateUser({
     if (currentData) {
       form.setValue("nama_siswa", (currentData.namaSiswa || currentData.name || "") as string);
       form.setValue("NIS", (currentData.NIS || "") as string);
+      form.setValue(
+        "jenis_kelamin",
+        ((currentData as any).jeniskelamin || (currentData as any).jenis_kelamin || "") as "Laki-laki" | "Perempuan"
+      );
       form.setValue("kelas", (currentData.kelas || "") as string);
       form.setValue("angkatan", (currentData.angkatan || "") as string);
       form.setValue("nama_wali", (currentData.namaWali || "") as string);
