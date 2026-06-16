@@ -1,4 +1,13 @@
-import { z } from "zod";
+// src/validations/auth-validation.ts
+import z from "zod";
+
+export const loginSchemaForm = z.object({
+  email: z
+    .string()
+    .min(1, "Email wajib diisi")
+    .email("Format email tidak valid"),
+  password: z.string().min(1, "Password wajib diisi"),
+});
 
 // ─── Schema Create ────────────────────────────────────────────────────────────
 export const createUserSchema = z.object({

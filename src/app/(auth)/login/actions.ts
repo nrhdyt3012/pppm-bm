@@ -1,7 +1,5 @@
 "use server";
 
-// src/app/(auth)/login/actions.ts — VERSI BARU dengan superadmin
-
 import { INITIAL_STATE_LOGIN_FORM } from "@/constants/auth-constant";
 import { createClient } from "@/lib/supabase/server";
 import { AuthFormState } from "@/types/auth";
@@ -94,6 +92,12 @@ export async function login(
         NIS: siswaData.nis,
       };
     } else {
+      // PENTING: sign out dari Supabase Auth supaya session tidak nyangkut
+      // di browser ketika profil tidak ditemukan di tabel manapun.
+      // Tanpa ini, cookie sb-*-auth-token tetap tersimpan walau login
+      // dianggap gagal, sehingga user harus hapus cookie manual.
+      await supabase.auth.signOut();
+
       return {
         status: "error",
         errors: {
