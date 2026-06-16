@@ -41,6 +41,7 @@ export default function DialogUpdateUser({
     });
   });
 
+  // Handle state setelah submit
   useEffect(() => {
     if (state?.status === "error") {
       toast.error("Gagal Mengubah Data", {
@@ -55,24 +56,36 @@ export default function DialogUpdateUser({
     }
   }, [state]);
 
-  // Isi form saat data berubah
+  // ← FIX: tambahkan open ke dependency agar form terisi ulang
+  // setiap kali dialog dibuka dengan data baru
   useEffect(() => {
-    if (currentData) {
-      form.setValue("nama_siswa", (currentData.namaSiswa || currentData.name || "") as string);
+    if (currentData && open) {
+      form.setValue(
+        "nama_siswa",
+        (currentData.namaSiswa || currentData.name || "") as string
+      );
       form.setValue("NIS", (currentData.NIS || "") as string);
       form.setValue(
         "jenis_kelamin",
-        ((currentData as any).jeniskelamin || (currentData as any).jenis_kelamin || "") as "Laki-laki" | "Perempuan"
+        ((currentData as any).jeniskelamin ||
+          (currentData as any).jenis_kelamin ||
+          "") as "Laki-laki" | "Perempuan"
       );
       form.setValue("kelas", (currentData.kelas || "") as string);
       form.setValue("angkatan", (currentData.angkatan || "") as string);
       form.setValue("nama_wali", (currentData.namaWali || "") as string);
       form.setValue("no_wa", (currentData.noWa || "") as string);
-      form.setValue("tempat_lahir", (currentData.tempatLahir || "") as string);
-      form.setValue("tanggal_lahir", (currentData.tanggalLahir || "") as string);
+      form.setValue(
+        "tempat_lahir",
+        (currentData.tempatLahir || "") as string
+      );
+      form.setValue(
+        "tanggal_lahir",
+        (currentData.tanggalLahir || "") as string
+      );
       form.setValue("role", "siswa");
     }
-  }, [currentData]);
+  }, [currentData, open]); // ← open ditambahkan di sini
 
   return (
     <Dialog open={open} onOpenChange={handleChangeAction}>

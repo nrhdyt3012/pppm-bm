@@ -1,7 +1,6 @@
 /**
  * API Endpoint: POST /api/notifications/send-payment-status
  * Mengirim notifikasi status pembayaran ke wali siswa via WhatsApp
- * Dipanggil dari payment webhook setelah pembayaran berhasil/gagal
  */
 
 export const dynamic = "force-dynamic";
@@ -27,17 +26,13 @@ export async function POST(request: NextRequest) {
 
     if (!idPembayaran || !idTagihan || !status) {
       return NextResponse.json(
-        {
-          error:
-            "idPembayaran, idTagihan, dan status harus disediakan",
-        },
+        { error: "idPembayaran, idTagihan, dan status harus disediakan" },
         { status: 400 }
       );
     }
 
     const supabase = await createClient({ isAdmin: true });
 
-    // Ambil data pembayaran + tagihan + siswa
     const { data: pembayaran, error: pembayaranError } = await supabase
       .from("pembayaran")
       .select(
@@ -52,7 +47,7 @@ export async function POST(request: NextRequest) {
           jumlahtagihan,
           master_tagihan(namatagihan)
         ),
-        siswa(namasiswa, nowa, namawali)
+        siswa(namasiswa, nowa, namawali, kelas)
       `
       )
       .eq("idpembayaran", idPembayaran)
@@ -87,11 +82,21 @@ export async function POST(request: NextRequest) {
 
     let result;
 
-    // FIX: targetId harus idTagihan (FK whatsapp_logs_tagihan_fk merujuk
-    // ke tagihan_siswa.idtagihansiswa), BUKAN idPembayaran.
     if (status === "SUCCESS") {
-      // Send payment success notification
       const linkKwitansi = `${appUrl}/kwitansi/${idPembayaran}`;
+
+      // Format tanggal pembayaran dengan WIB
+      const tanggalFormatted = new Date(pembayaran.tanggalpembayaran).toLocaleDateString(
+        "id-ID",
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }
+      ) + " WIB";
+
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_SUCCESS",
@@ -101,20 +106,12 @@ export async function POST(request: NextRequest) {
         data: {
           namaTagihan: masterTagihan?.namatagihan || "Tagihan",
           nominalBayar: Math.floor(pembayaran.jumlahdibayar),
-          tanggalPembayaran: new Date(
-            pembayaran.tanggalpembayaran
-          ).toLocaleDateString("id-ID", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          tanggalPembayaran: tanggalFormatted,
           linkKwitansi,
+          kelas: siswa.kelas || "",
         },
       });
     } else if (status === "FAILED") {
-      // Send payment failed notification
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_FAILED",
@@ -126,10 +123,10 @@ export async function POST(request: NextRequest) {
           nominalBayar: Math.floor(pembayaran.jumlahdibayar),
           alasan: "Pembayaran ditolak, silakan coba metode pembayaran lain",
           nomorAdmin: process.env.NEXT_PUBLIC_ADMIN_PHONE || "085711675058",
+          kelas: siswa.kelas || "",
         },
       });
     } else if (status === "EXPIRED") {
-      // Send payment expired notification
       result = await whatsAppService.sendNotification({
         recipientPhone: siswa.nowa,
         messageType: "PAYMENT_FAILED",
@@ -141,13 +138,11 @@ export async function POST(request: NextRequest) {
           nominalBayar: Math.floor(pembayaran.jumlahdibayar),
           alasan: "Waktu pembayaran telah kadaluarsa, silakan lakukan pembayaran baru",
           nomorAdmin: process.env.NEXT_PUBLIC_ADMIN_PHONE || "085711675058",
+          kelas: siswa.kelas || "",
         },
       });
     } else {
-      return NextResponse.json(
-        { error: "Status tidak valid" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Status tidak valid" }, { status: 400 });
     }
 
     if (!result.success) {
@@ -160,12 +155,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update pembayaran dengan timestamp notifikasi
     const { error: updateError } = await supabase
       .from("pembayaran")
-      .update({
-        whatsapp_status_notified_at: new Date().toISOString(),
-      })
+      .update({ whatsapp_status_notified_at: new Date().toISOString() })
       .eq("idpembayaran", idPembayaran);
 
     if (updateError) {

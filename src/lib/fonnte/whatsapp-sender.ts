@@ -20,15 +20,12 @@ interface SendNotificationOptions {
 class WhatsAppNotificationService {
   private fontteClient: FontteClient;
   private maxRetries: number = 3;
-  private retryDelay: number = 1000; // 1 second
+  private retryDelay: number = 1000;
 
   constructor(apiKey: string) {
     this.fontteClient = new FontteClient({ apiKey });
   }
 
-  /**
-   * Send notification with retry logic
-   */
   async sendNotification(
     payload: NotificationPayload,
     options?: SendNotificationOptions
@@ -36,7 +33,6 @@ class WhatsAppNotificationService {
     const maxRetries = options?.retries ?? this.maxRetries;
     const retryDelay = options?.retryDelay ?? this.retryDelay;
 
-    // Validate phone number
     if (!FontteClient.isValidPhoneNumber(payload.recipientPhone)) {
       const error = `Invalid phone number: ${payload.recipientPhone}`;
       console.error('[WhatsAppService]', error);
@@ -44,7 +40,6 @@ class WhatsAppNotificationService {
       return { success: false, error };
     }
 
-    // Generate message based on type
     let message: string;
     try {
       switch (payload.messageType) {
@@ -54,9 +49,9 @@ class WhatsAppNotificationService {
             studentName: payload.studentName,
             periode: payload.data.periode || '-',
             namaTagihan: payload.data.namaTagihan || '-',
-            nominal: payload.data.nominal?.toString() || '0',
+            nominal: payload.data.nominal || 0,
             linkPembayaran: payload.data.linkPembayaran || '#',
-            batasPembayaran: payload.data.batasPembayaran,
+            kelas: payload.data.kelas || '',
           });
           break;
 
@@ -65,9 +60,10 @@ class WhatsAppNotificationService {
             recipientName: payload.recipientName,
             studentName: payload.studentName,
             namaTagihan: payload.data.namaTagihan || '-',
-            nominalBayar: payload.data.nominalBayar?.toString() || '0',
+            nominalBayar: payload.data.nominalBayar || 0,
             tanggalPembayaran: payload.data.tanggalPembayaran || '-',
             linkKwitansi: payload.data.linkKwitansi || '#',
+            kelas: payload.data.kelas || '',
           });
           break;
 
@@ -76,9 +72,10 @@ class WhatsAppNotificationService {
             recipientName: payload.recipientName,
             studentName: payload.studentName,
             namaTagihan: payload.data.namaTagihan || '-',
-            nominalBayar: payload.data.nominalBayar?.toString() || '0',
+            nominalBayar: payload.data.nominalBayar || 0,
             alasan: payload.data.alasan,
             nomorAdmin: payload.data.nomorAdmin,
+            kelas: payload.data.kelas || '',
           });
           break;
 
@@ -92,28 +89,20 @@ class WhatsAppNotificationService {
       return { success: false, error: 'Failed to generate message' };
     }
 
-    // Send with retry
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const formattedPhone = FontteClient.formatPhoneNumber(
-          payload.recipientPhone
-        );
+        const formattedPhone = FontteClient.formatPhoneNumber(payload.recipientPhone);
 
         const response = await this.fontteClient.sendMessage({
           target: formattedPhone,
           message,
         });
 
-        // ─── DEBUG LOG — lihat response asli dari Fonnte ──────────────────
         console.log(
           `[WhatsAppService] Fonnte response (attempt ${attempt}):`,
           JSON.stringify(response)
         );
-        // ────────────────────────────────────────────────────────────────
 
-        // FIX: Fonnte mengembalikan id sebagai array di response.id,
-        // bukan di response.data.id. Cukup cek response.status === true
-        // untuk menentukan sukses.
         if (response.status) {
           const messageId = Array.isArray(response.id)
             ? String(response.id[0])
@@ -124,27 +113,17 @@ class WhatsAppNotificationService {
             messageId
           );
 
-          await this.logNotification(
-            payload,
-            'SENT',
-            messageId,
-            response
-          );
+          await this.logNotification(payload, 'SENT', messageId, response);
 
-          return {
-            success: true,
-            messageId,
-          };
+          return { success: true, messageId };
         }
 
-        // ─── tampilkan alasan kegagalan sesungguhnya dari Fonnte ─────
         const fonnteReason =
           response.reason ||
           response.message ||
           JSON.stringify(response) ||
           'Unknown error';
         throw new Error(fonnteReason);
-        // ────────────────────────────────────────────────────────────────
       } catch (error) {
         console.error(
           `[WhatsAppService] Attempt ${attempt}/${maxRetries} failed:`,
@@ -152,38 +131,21 @@ class WhatsAppNotificationService {
         );
 
         if (attempt === maxRetries) {
-          await this.logNotification(
-            payload,
-            'FAILED',
-            null,
-            {
-              error: String(error),
-              lastAttempt: attempt,
-            }
-          );
-          return {
-            success: false,
+          await this.logNotification(payload, 'FAILED', null, {
             error: String(error),
-          };
+            lastAttempt: attempt,
+          });
+          return { success: false, error: String(error) };
         }
 
-        // Wait before retry
         await this.delay(retryDelay);
       }
     }
 
-    return {
-      success: false,
-      error: 'Max retries exceeded',
-    };
+    return { success: false, error: 'Max retries exceeded' };
   }
 
-  /**
-   * Check message delivery status
-   */
-  async checkDeliveryStatus(
-    messageId: string
-  ): Promise<{
+  async checkDeliveryStatus(messageId: string): Promise<{
     status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
     timestamp?: string;
   }> {
@@ -191,10 +153,7 @@ class WhatsAppNotificationService {
       const response = await this.fontteClient.checkStatus({ id: messageId });
 
       if (response.status && response.data) {
-        return {
-          status: response.data.status,
-          timestamp: response.data.timestamp,
-        };
+        return { status: response.data.status, timestamp: response.data.timestamp };
       }
 
       throw new Error(response.message || 'Failed to check status');
@@ -204,12 +163,6 @@ class WhatsAppNotificationService {
     }
   }
 
-  /**
-   * Log notification to database
-   * FIX: pakai isAdmin: true karena method ini dipanggil dari context
-   * server-to-server (API route tanpa session user) — ANON key akan
-   * selalu kena RLS block untuk tabel whatsapp_notification_logs.
-   */
   private async logNotification(
     payload: NotificationPayload,
     status: 'PENDING' | 'SENT' | 'DELIVERED' | 'FAILED',
@@ -223,7 +176,7 @@ class WhatsAppNotificationService {
         recipient_phone: payload.recipientPhone,
         message_type: payload.messageType,
         target_id: payload.targetId || null,
-        message_content: '', // Store actual message if needed
+        message_content: '',
         delivery_status: status,
         fonnte_message_id: messageId,
         fonnte_response: response,
@@ -242,15 +195,11 @@ class WhatsAppNotificationService {
     }
   }
 
-  /**
-   * Helper: delay function
-   */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
-// Export singleton instance
 let instance: WhatsAppNotificationService | null = null;
 
 export function getWhatsAppNotificationService(): WhatsAppNotificationService {

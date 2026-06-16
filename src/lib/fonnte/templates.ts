@@ -1,6 +1,6 @@
 /**
  * WhatsApp Message Templates
- * Template messages untuk berbagai notifikasi
+ * Template messages untuk notifikasi KB TK Aisyiyah Bustanul Athfal 1 Buduran
  */
 
 interface MessageTemplateParams {
@@ -16,27 +16,36 @@ export const whatsappTemplates = {
   notifikasiTagihan: (params: MessageTemplateParams & {
     periode: string;
     namaTagihan: string;
-    nominal: string;
+    nominal: string | number;
     linkPembayaran: string;
     batasPembayaran?: string;
+    kelas?: string;
   }): string => {
+    const nominalFormatted =
+      typeof params.nominal === 'number'
+        ? new Intl.NumberFormat('id-ID').format(params.nominal)
+        : params.nominal;
+
     return `🔔 *PEMBERITAHUAN TAGIHAN*
 
-Halo ${params.recipientName},
+Assalamu'alaikum Wr. Wb.
 
-Anak Anda ${params.studentName} telah diterbitkan tagihan pembayaran sebagai berikut:
+Yth. Bapak/Ibu *${params.recipientName}*
 
-📋 *Detail Tagihan:*
-Periode: ${params.periode}
-Jenis Tagihan: ${params.namaTagihan}
-Jumlah: *Rp ${params.nominal}*
-${params.batasPembayaran ? `Batas Pembayaran: ${params.batasPembayaran}` : ''}
+Kami informasikan bahwa telah diterbitkan tagihan pembayaran untuk Ananda *${params.studentName}*${params.kelas ? ` (${params.kelas})` : ''} dengan rincian sebagai berikut:
 
-💳 *Untuk melakukan pembayaran, silakan klik link di bawah:*
+📋 *Detail Tagihan*
+- Periode: ${params.periode}
+- Jenis Tagihan: ${params.namaTagihan}
+- Nominal: Rp${nominalFormatted}
+
+Untuk melakukan pembayaran, silakan mengakses tautan berikut:
 ${params.linkPembayaran}
 
-Terima kasih,
-*Pihak Sekolah*`;
+Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih.
+
+Wassalamu'alaikum Wr. Wb.
+*KB TK Aisyiyah Bustanul Athfal 1 Buduran*`;
   },
 
   /**
@@ -44,94 +53,129 @@ Terima kasih,
    */
   notifikasiPembayaranBerhasil: (params: MessageTemplateParams & {
     namaTagihan: string;
-    nominalBayar: string;
+    nominalBayar: string | number;
     tanggalPembayaran: string;
     linkKwitansi: string;
+    kelas?: string;
   }): string => {
+    const nominalFormatted =
+      typeof params.nominalBayar === 'number'
+        ? new Intl.NumberFormat('id-ID').format(params.nominalBayar)
+        : params.nominalBayar;
+
     return `✅ *PEMBAYARAN BERHASIL*
 
-Halo ${params.recipientName},
+Assalamu'alaikum Wr. Wb.
 
-Pembayaran tagihan anak Anda ${params.studentName} telah berhasil diproses.
+Yth. Bapak/Ibu *${params.recipientName}*
 
-✔️ *Detail Pembayaran:*
-Jenis Tagihan: ${params.namaTagihan}
-Jumlah Pembayaran: *Rp ${params.nominalBayar}*
-Tanggal Pembayaran: ${params.tanggalPembayaran}
-Status: *LUNAS*
+Alhamdulillah, pembayaran tagihan untuk Ananda *${params.studentName}*${params.kelas ? ` (${params.kelas})` : ''} telah kami terima dengan rincian sebagai berikut:
 
-📄 *Lihat Kwitansi:*
+📄 *Detail Pembayaran*
+- Jenis Tagihan: ${params.namaTagihan}
+- Nominal Pembayaran: Rp${nominalFormatted}
+- Tanggal Pembayaran: ${params.tanggalPembayaran}
+- Status: *LUNAS* ✓
+
+Kwitansi pembayaran dapat dilihat melalui tautan berikut:
 ${params.linkKwitansi}
 
-Terima kasih atas pembayaran Anda!
-*Pihak Sekolah*`;
+Jazakumullahu khairan atas kepercayaan dan kerja sama Bapak/Ibu.
+
+Wassalamu'alaikum Wr. Wb.
+*KB TK Aisyiyah Bustanul Athfal 1 Buduran*`;
   },
 
   /**
-   * Notifikasi Pembayaran Gagal
+   * Notifikasi Pembayaran Gagal / Kadaluarsa
    */
   notifikasiPembayaranGagal: (params: MessageTemplateParams & {
     namaTagihan: string;
-    nominalBayar: string;
+    nominalBayar: string | number;
     alasan?: string;
     nomorAdmin?: string;
+    kelas?: string;
   }): string => {
+    const nominalFormatted =
+      typeof params.nominalBayar === 'number'
+        ? new Intl.NumberFormat('id-ID').format(params.nominalBayar)
+        : params.nominalBayar;
+
     return `⚠️ *PEMBAYARAN GAGAL*
 
-Halo ${params.recipientName},
+Assalamu'alaikum Wr. Wb.
 
-Pembayaran tagihan anak Anda ${params.studentName} gagal diproses.
+Yth. Bapak/Ibu *${params.recipientName}*
 
-❌ *Detail Pembayaran:*
-Jenis Tagihan: ${params.namaTagihan}
-Jumlah: *Rp ${params.nominalBayar}*
-${params.alasan ? `Alasan: ${params.alasan}` : 'Silakan coba kembali'}
+Kami informasikan bahwa pembayaran tagihan untuk Ananda *${params.studentName}*${params.kelas ? ` (${params.kelas})` : ''} belum berhasil diproses.
 
-🔄 *Silakan coba kembali atau hubungi pihak sekolah untuk bantuan.*
+❌ *Detail Pembayaran*
+- Jenis Tagihan: ${params.namaTagihan}
+- Nominal: Rp${nominalFormatted}
+- Keterangan: ${params.alasan || 'Pembayaran tidak berhasil, silakan coba kembali'}
 
-${params.nomorAdmin ? `📱 Hubungi Admin: ${params.nomorAdmin}` : ''}
+Mohon Bapak/Ibu melakukan pembayaran ulang melalui aplikasi atau menghubungi pihak sekolah untuk bantuan lebih lanjut.${params.nomorAdmin ? `\n\n📱 Hubungi Admin: *${params.nomorAdmin}*` : ''}
 
-*Pihak Sekolah*`;
+Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih.
+
+Wassalamu'alaikum Wr. Wb.
+*KB TK Aisyiyah Bustanul Athfal 1 Buduran*`;
   },
 
   /**
-   * Notifikasi Remider Tagihan Tertunggak
+   * Pengingat Tagihan Tertunggak — dipakai dari menu Rekapan Tunggakan
    */
   remiderTagihanTertunggak: (params: MessageTemplateParams & {
     namaTagihan: string;
-    nominalTertunggak: string;
+    nominalTertunggak: string | number;
     periode: string;
     linkPembayaran: string;
+    kelas?: string;
   }): string => {
-    return `📢 *PENGINGAT TAGIHAN TERTUNGGAK*
+    const nominalFormatted =
+      typeof params.nominalTertunggak === 'number'
+        ? new Intl.NumberFormat('id-ID').format(params.nominalTertunggak)
+        : params.nominalTertunggak;
 
-Halo ${params.recipientName},
+    return `🔔 *PENGINGAT PEMBAYARAN*
 
-Masih ada tagihan tertunggak dari anak Anda ${params.studentName} yang perlu dibayarkan.
+Assalamu'alaikum Wr. Wb.
 
-⚠️ *Detail Tagihan Tertunggak:*
-Jenis Tagihan: ${params.namaTagihan}
-Periode: ${params.periode}
-Jumlah: *Rp ${params.nominalTertunggak}*
+Yth. Bapak/Ibu Wali Murid Ananda *${params.studentName}*${params.kelas ? ` (${params.kelas})` : ''}
 
-💳 *Silakan lakukan pembayaran melalui link berikut:*
+Dengan hormat, kami informasikan bahwa hingga saat ini masih terdapat tagihan administrasi yang belum terbayarkan:
+
+- ${params.namaTagihan} ${params.periode} — Rp${nominalFormatted}
+
+*Total Tunggakan: Rp${nominalFormatted}*
+
+Mohon kesediaan Bapak/Ibu untuk segera melakukan pembayaran melalui tautan berikut:
 ${params.linkPembayaran}
 
-Terima kasih,
-*Pihak Sekolah*`;
+Apabila pembayaran telah dilakukan, mohon abaikan pesan ini.
+
+Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih.
+
+Wassalamu'alaikum Wr. Wb.
+*KB TK Aisyiyah Bustanul Athfal 1 Buduran*`;
   },
 
   /**
    * Test Message
    */
   testMessage: (params: MessageTemplateParams): string => {
-    return `👋 Halo ${params.recipientName}!
+    return `👋 *TES NOTIFIKASI*
 
-Ini adalah pesan test dari sistem notifikasi WhatsApp PPPM-BM.
+Assalamu'alaikum Wr. Wb.
+
+Halo *${params.recipientName}*!
+
+Ini adalah pesan tes dari sistem notifikasi WhatsApp KB TK Aisyiyah Bustanul Athfal 1 Buduran.
 
 Sistem sudah siap untuk mengirimkan notifikasi tagihan dan pembayaran.
 
-*Pihak Sekolah*`;
+Wassalamu'alaikum Wr. Wb.
+*KB TK Aisyiyah Bustanul Athfal 1 Buduran*`;
   },
 };
 

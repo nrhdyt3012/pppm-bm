@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         paymenttoken,
         whatsapp_notified_at,
         master_tagihan(namatagihan),
-        siswa(namasiswa, nowa, namawali)
+        siswa(namasiswa, nowa, namawali, kelas)
       `
       )
       .eq("idtagihansiswa", idTagihan)
@@ -86,18 +86,8 @@ export async function POST(request: NextRequest) {
     }
 
     const bulanArray = [
-      "Januari",
-      "Februari",
-      "Maret",
-      "April",
-      "Mei",
-      "Juni",
-      "Juli",
-      "Agustus",
-      "September",
-      "Oktober",
-      "November",
-      "Desember",
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember",
     ];
     const periode = `${bulanArray[tagihan.bulan - 1] || "Bulan " + tagihan.bulan} ${tagihan.tahun}`;
 
@@ -117,7 +107,7 @@ export async function POST(request: NextRequest) {
         namaTagihan: masterTagihan?.namatagihan || "Tagihan",
         nominal: Math.floor(tagihan.jumlahtagihan),
         linkPembayaran,
-        batasPembayaran: "Secepatnya",
+        kelas: siswa.kelas || "",
       },
     });
 
