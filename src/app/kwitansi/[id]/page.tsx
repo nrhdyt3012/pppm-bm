@@ -1,11 +1,41 @@
-import { getPembayaranDetail } from "@/app/(dashboard)/siswa/payment/actions";
-import KwitansiPublic from "./_components/kwitansi-public";
+// src/app/kwitansi/[id]/page.tsx
+// Halaman publik untuk menampilkan kwitansi — ini URL yang dikirim via
+// WhatsApp (linkKwitansi) dan yang dijadikan isi QR code di kwitansi itu
+// sendiri, supaya orang yang scan QR bisa memverifikasi keasliannya.
+
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { generateQrCodeDataUrl } from "@/lib/kwitansi-helper";
+import KwitansiTemplate, {
+  KwitansiData,
+} from "@/components/common/kwitansi-template";
 import { notFound } from "next/navigation";
 
-export const metadata = {
-  title: "PAUD BA 1 Buduran | Kwitansi Pembayaran",
-  icons: { icon: "/favicon.ico" },
-};
+export const dynamic = "force-dynamic";
+
+const BULAN_NAMA = [
+  "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+function getAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return {
+    title: `PAUD BA 1 Buduran | Kwitansi #${id}`,
+    icons: { icon: "/favicon.ico" },
+  };
+}
 
 export default async function KwitansiPage({
   params,
@@ -15,13 +45,120 @@ export default async function KwitansiPage({
   const { id } = await params;
   const idPembayaran = parseInt(id);
 
-  if (isNaN(idPembayaran)) notFound();
-
-  const result = await getPembayaranDetail(idPembayaran);
-
-  if (result.status === "error" || !result.data) {
+  if (!idPembayaran || isNaN(idPembayaran)) {
     notFound();
   }
 
-  return <KwitansiPublic data={result.data} />;
+  const supabase = getAdminClient();
+
+  const { data: pembayaran, error } = await supabase
+    .from("pembayaran")
+    .select(
+      `
+      idpembayaran,
+      jumlahdibayar,
+      tanggalpembayaran,
+      metodepembayaran,
+      statuspembayaran,
+      tagihan_siswa:tagihan_siswa!idtagihansiswa(
+        idtagihansiswa,
+        jumlahtagihan,
+        jumlahterbayar,
+        statuspembayaran,
+        bulan,
+        tahun,
+        idsiswa,
+        siswa:siswa!idsiswa(id, namasiswa, kelas, namawali),
+        master_tagihan:master_tagihan!idmastertagihan(namatagihan, jenjang, jenistagihan)
+      )
+    `
+    )
+    .eq("idpembayaran", idPembayaran)
+    .single();
+
+  if (error || !pembayaran) {
+    notFound();
+  }
+
+  const tagihan: any = pembayaran.tagihan_siswa;
+  const siswa: any = tagihan?.siswa;
+  const masterTagihan: any = tagihan?.master_tagihan;
+
+  if (!tagihan || !siswa) {
+    notFound();
+  }
+
+  // Ambil tagihan lain milik siswa yang sama yang masih BELUM BAYAR
+  // (info ini ditampilkan di kwitansi sebagai pengingat)
+  const { data: tagihanLainRaw } = await supabase
+    .from("tagihan_siswa")
+    .select(
+      `
+      idtagihansiswa,
+      jumlahtagihan,
+      bulan,
+      tahun,
+      master_tagihan:master_tagihan!idmastertagihan(namatagihan)
+    `
+    )
+    .eq("idsiswa", siswa.id)
+    .eq("statuspembayaran", "BELUM BAYAR")
+    .neq("idtagihansiswa", tagihan.idtagihansiswa)
+    .order("tahun", { ascending: false })
+    .order("bulan", { ascending: false });
+
+  const tagihanLain = (tagihanLainRaw || []).map((t: any) => ({
+    idtagihansiswa: t.idtagihansiswa,
+    jumlahtagihan: t.jumlahtagihan,
+    bulan: t.bulan,
+    tahun: t.tahun,
+    namatagihan: t.master_tagihan?.namatagihan || "-",
+  }));
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const linkKwitansi = `${appUrl}/kwitansi/${idPembayaran}`;
+  const qrCodeDataUrl = await generateQrCodeDataUrl(linkKwitansi);
+
+  const totalTagihan = parseFloat(tagihan.jumlahtagihan || "0");
+  const jumlahDibayar = parseFloat(pembayaran.jumlahdibayar || "0");
+  const sisaTagihan = Math.max(
+    0,
+    totalTagihan - parseFloat(tagihan.jumlahterbayar || "0")
+  );
+  const isLunas =
+    tagihan.statuspembayaran === "LUNAS" &&
+    pembayaran.statuspembayaran === "SUCCESS";
+
+  const tglBayar = new Date(pembayaran.tanggalpembayaran);
+  const noKwitansi = `${tagihan.idtagihansiswa}/${pembayaran.idpembayaran}/${tglBayar.getFullYear()}`;
+
+  const kwitansiData: KwitansiData = {
+    noKwitansi,
+    tanggalCetak: tglBayar.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+    jamCetak:
+      tglBayar
+        .toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+        .replace(":", ".") + " WIB",
+    namaSiswa: siswa.namasiswa || "-",
+    kelas: siswa.kelas || "-",
+    namaWali: siswa.namawali || "-",
+    namaTagihan: masterTagihan?.namatagihan || "-",
+    periode: `${BULAN_NAMA[tagihan.bulan]} ${tagihan.tahun}`,
+    jumlahDibayar,
+    totalTagihan,
+    sisaTagihan,
+    isLunas,
+    qrCodeDataUrl,
+    tagihanLain,
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <KwitansiTemplate data={kwitansiData} />
+    </div>
+  );
 }
