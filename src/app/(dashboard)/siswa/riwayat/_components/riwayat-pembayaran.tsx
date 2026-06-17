@@ -7,7 +7,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import { convertIDR, cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Receipt, Printer, ChevronDown, ChevronUp, Mail } from "lucide-react";
+import { Loader2, Receipt, Printer, ChevronDown, ChevronUp } from "lucide-react";
+// ✅ HAPUS: import Mail (tidak dipakai lagi)
 import { Fragment, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 
@@ -40,6 +41,17 @@ type TagihanItem = {
     nominal: number;
   };
   pembayaran?: PembayaranItem[];
+};
+
+// ✅ Tipe untuk sisa tagihan yang belum lunas
+type SisaTagihanItem = {
+  idtagihansiswa: number;
+  jumlahtagihan: string;
+  bulan: number;
+  tahun: number;
+  master_tagihan: {
+    namatagihan: string;
+  } | null;
 };
 
 export default function RiwayatPembayaran() {
@@ -91,6 +103,29 @@ export default function RiwayatPembayaran() {
         return [];
       }
       return (data as unknown as TagihanItem[]) || [];
+    },
+  });
+
+  // ✅ BARU: Query semua tagihan BELUM BAYAR milik siswa ini
+  // Dipakai untuk ditampilkan di kwitansi cetak
+  const { data: sisaTagihanList } = useQuery({
+    queryKey: ["sisa-tagihan-belum-bayar", profile.id],
+    enabled: !!profile.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tagihan_siswa")
+        .select(`
+          idtagihansiswa,
+          jumlahtagihan,
+          bulan,
+          tahun,
+          master_tagihan:master_tagihan!idmastertagihan(namatagihan)
+        `)
+        .eq("idsiswa", profile.id)
+        .eq("statuspembayaran", "BELUM BAYAR")
+        .order("tahun", { ascending: false })
+        .order("bulan", { ascending: false });
+      return (data as unknown as SisaTagihanItem[]) || [];
     },
   });
 
@@ -178,7 +213,6 @@ export default function RiwayatPembayaran() {
                     const successPembayaran = getSuccessPembayaran(item);
 
                     return (
-                      // ✅ FIX: gunakan Fragment dengan key, bukan <> yang menyebabkan ESLint error
                       <Fragment key={`tagihan-${item.idtagihansiswa}`}>
                         <tr
                           className={cn(
@@ -270,16 +304,16 @@ export default function RiwayatPembayaran() {
                                             </p>
                                           </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                          <SendEmailButton pembayaranId={p.idpembayaran} />
-                                          <PrintButtonSingle
-                                            pembayaran={p}
-                                            tagihan={item}
-                                            siswaData={siswaData}
-                                            indexTransaksi={pIdx + 1}
-                                            totalTagihan={totalTagihan}
-                                          />
-                                        </div>
+                                        {/* ✅ HAPUS: <SendEmailButton /> */}
+                                        {/* ✅ Hanya ada tombol cetak kwitansi */}
+                                        <PrintButtonSingle
+                                          pembayaran={p}
+                                          tagihan={item}
+                                          siswaData={siswaData}
+                                          indexTransaksi={pIdx + 1}
+                                          totalTagihan={totalTagihan}
+                                          sisaTagihanBelumBayar={sisaTagihanList || []}
+                                        />
                                       </div>
                                     ))}
                                 </div>
@@ -300,63 +334,8 @@ export default function RiwayatPembayaran() {
   );
 }
 
-// ─── Tombol Kirim Email Kwitansi ──────────────────────────────────────────────
-function SendEmailButton({ pembayaranId }: { pembayaranId: number }) {
-  const [isSending, setIsSending] = useState(false);
-
-  const handleSend = async () => {
-    try {
-      setIsSending(true);
-      console.log("[riwayat] Mengirim kwitansi untuk pembayaranId:", pembayaranId);
-      
-      const res = await fetch("/api/send-receipt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pembayaranId }),
-      });
-      
-      const result = await res.json();
-      console.log("[riwayat] Response dari API:", result, "Status:", res.status);
-      
-      if (!res.ok) {
-        const errorMsg = result.error || `Server error (${res.status})`;
-        console.error("[riwayat] Error:", errorMsg);
-        toast.error("Gagal kirim email", { description: errorMsg });
-      } else if (result.skipped) {
-        toast.warning("Email provider belum dikonfigurasi", {
-          description: "Hubungi admin untuk mengatur RESEND_API_KEY.",
-        });
-      } else {
-        toast.success("Kwitansi berhasil dikirim ke email", {
-          description: result.email,
-        });
-      }
-    } catch (err: any) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error("[riwayat] Fetch error:", errorMsg);
-      toast.error("Terjadi kesalahan saat mengirim", { description: errorMsg });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  return (
-    <Button
-      onClick={handleSend}
-      disabled={isSending}
-      size="sm"
-      variant="outline"
-      className="gap-1 text-xs h-8 text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
-    >
-      {isSending ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : (
-        <Mail className="h-3 w-3" />
-      )}
-      {isSending ? "Mengirim..." : "Kirim Email"}
-    </Button>
-  );
-}
+// ✅ HAPUS SELURUH KOMPONEN SendEmailButton
+// Tidak ada lagi fungsi kirim email dari halaman riwayat
 
 // ─── Komponen print per transaksi ─────────────────────────────────────────────
 function PrintButtonSingle({
@@ -365,12 +344,14 @@ function PrintButtonSingle({
   siswaData,
   indexTransaksi,
   totalTagihan,
+  sisaTagihanBelumBayar, // ✅ BARU: prop sisa tagihan
 }: {
   pembayaran: PembayaranItem;
   tagihan: TagihanItem;
   siswaData: any;
   indexTransaksi: number;
   totalTagihan: number;
+  sisaTagihanBelumBayar: SisaTagihanItem[]; // ✅ BARU
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
@@ -384,7 +365,12 @@ function PrintButtonSingle({
   const isLunas = tagihan.statuspembayaran === "LUNAS" && pembayaran.statuspembayaran === "SUCCESS";
   const metode = pembayaran.metodepembayaran === "cash" ? "Tunai/Cash" : "Transfer/Online (Midtrans)";
 
-  // Suppress unused var warning
+  // ✅ Hitung total nominal sisa tagihan yang belum dibayar
+  const totalSisaBelumBayar = sisaTagihanBelumBayar.reduce(
+    (sum, s) => sum + parseFloat(s.jumlahtagihan || "0"),
+    0
+  );
+
   void indexTransaksi;
 
   return (
@@ -405,7 +391,7 @@ function PrintButtonSingle({
           className="p-8 max-w-2xl mx-auto bg-white text-black font-sans text-sm"
           style={{ fontFamily: "serif" }}
         >
-          {/* Header */}
+          {/* ─── Header ─────────────────────────────────────────────────────── */}
           <div className="text-center border-b-2 border-gray-800 pb-4 mb-5">
             <h1 className="text-2xl font-bold uppercase tracking-widest">
               PAUD Aisyiyah Bustanul Athfal 1 Buduran
@@ -423,7 +409,7 @@ function PrintButtonSingle({
             No. {tagihan.idtagihansiswa}/{pembayaran.idpembayaran}/{new Date(pembayaran.tanggalpembayaran).getFullYear()}
           </p>
 
-          {/* Grid info */}
+          {/* ─── Grid Info ──────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             <div className="space-y-1">
               <p className="font-bold text-xs uppercase text-gray-500 border-b pb-1 mb-2">Data Siswa</p>
@@ -463,7 +449,10 @@ function PrintButtonSingle({
             </div>
           </div>
 
-          {/* Tabel rincian */}
+          {/* ─── Tabel Rincian Pembayaran ────────────────────────────────────── */}
+          <p className="font-bold text-xs uppercase text-gray-500 border-b pb-1 mb-2">
+            Rincian Pembayaran
+          </p>
           <table className="w-full mb-4 border-collapse">
             <thead>
               <tr className="bg-gray-100 border-y-2 border-gray-400">
@@ -496,7 +485,7 @@ function PrintButtonSingle({
               </tr>
               <tr>
                 <td colSpan={3} className="py-1 px-3 text-right text-gray-600">
-                  Sisa Tagihan:
+                  Sisa Tagihan Ini:
                 </td>
                 <td className={`py-1 px-3 text-right font-semibold ${sisaSetelahIni > 0 ? "text-red-700" : "text-green-700"}`}>
                   {sisaSetelahIni > 0 ? convertIDR(sisaSetelahIni) : "LUNAS ✓"}
@@ -505,21 +494,67 @@ function PrintButtonSingle({
             </tfoot>
           </table>
 
-          {/* Status box */}
+          {/* ─── Status Box ─────────────────────────────────────────────────── */}
           <div className={`border-2 rounded p-3 mb-6 text-center font-bold ${
             isLunas
               ? "border-green-500 bg-green-50 text-green-800"
               : "border-amber-500 bg-amber-50 text-amber-800"
           }`}>
-            STATUS TAGIHAN: {isLunas ? "✓ LUNAS" : "⚠ BELUM LUNAS"}
+            STATUS TAGIHAN INI: {isLunas ? "✓ LUNAS" : "⚠ BELUM LUNAS"}
             {!isLunas && (
               <p className="font-normal text-xs mt-1">
-                Sisa tagihan: {convertIDR(sisaSetelahIni)}
+                Sisa tagihan ini: {convertIDR(sisaSetelahIni)}
               </p>
             )}
           </div>
 
-          {/* Tanda tangan */}
+          {/* ─── BARU: Tabel Sisa Tagihan Lain yang Belum Dibayar ───────────── */}
+          {sisaTagihanBelumBayar.length > 0 && (
+            <div className="mb-6">
+              <p className="font-bold text-xs uppercase text-gray-500 border-b pb-1 mb-2">
+                Tagihan Lain yang Belum Dibayar
+              </p>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-red-50 border-y border-red-200">
+                    <th className="text-left py-2 px-3 text-xs text-red-700">Nama Tagihan</th>
+                    <th className="text-center py-2 px-3 text-xs text-red-700">Periode</th>
+                    <th className="text-right py-2 px-3 text-xs text-red-700">Nominal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sisaTagihanBelumBayar.map((s) => (
+                    <tr key={s.idtagihansiswa} className="border-b border-gray-200">
+                      <td className="py-1.5 px-3 text-xs">
+                        {s.master_tagihan?.namatagihan || "-"}
+                      </td>
+                      <td className="py-1.5 px-3 text-xs text-center">
+                        {BULAN_NAMA[s.bulan]} {s.tahun}
+                      </td>
+                      <td className="py-1.5 px-3 text-xs text-right text-red-700 font-semibold">
+                        {convertIDR(parseFloat(s.jumlahtagihan || "0"))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-red-300">
+                    <td colSpan={2} className="py-2 px-3 text-right text-xs font-bold text-red-700">
+                      Total Belum Dibayar:
+                    </td>
+                    <td className="py-2 px-3 text-right text-xs font-bold text-red-700">
+                      {convertIDR(totalSisaBelumBayar)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+              <p className="text-xs text-gray-500 mt-2 italic">
+                * Mohon segera melunasi tagihan di atas melalui aplikasi atau menghubungi bendahara.
+              </p>
+            </div>
+          )}
+
+          {/* ─── Tanda Tangan ───────────────────────────────────────────────── */}
           <div className="flex justify-between mt-8">
             <div className="text-center text-sm">
               <p className="mb-14">Wali Siswa,</p>
@@ -535,7 +570,7 @@ function PrintButtonSingle({
             </div>
           </div>
 
-          {/* Footer */}
+          {/* ─── Footer ─────────────────────────────────────────────────────── */}
           <div className="mt-8 text-center text-xs text-gray-400 border-t pt-4">
             <p>Kwitansi ini dicetak secara digital dan sah sebagai bukti pembayaran</p>
             <p className="mt-1">
