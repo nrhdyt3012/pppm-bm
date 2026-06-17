@@ -223,48 +223,58 @@ export default function TagihanSiswaPage() {
       setShowDialog(false);
       setIsPaymentLoading(false);
 
-      window.snap.pay(result.token, {
+       window.snap.pay(result.token, {
         onSuccess: async (snapResult: any) => {
           console.log("[Snap] onSuccess:", snapResult);
-
-          // ✅ FIX: Panggil confirmPayment untuk update DB
-          // Ini sebagai fallback jika webhook Midtrans terlambat / belum terpanggil
+ 
+          // FIX DUPLIKASI: confirmPayment sekarang HANYA polling/membaca
+          // status dari database (webhook Midtrans adalah satu-satunya
+          // yang menulis). Ini menghindari race condition yang dulu
+          // menyebabkan baris pembayaran tercatat dobel.
+          toast.loading("Memverifikasi pembayaran...", { id: "confirm-toast" });
+ 
           try {
-            toast.loading("Memverifikasi pembayaran...", { id: "confirm-toast" });
-
             const confirmResult = await confirmPayment(
               tagihanId,
               rawOrderId || snapResult.order_id || tagihanId,
               nominalBayar,
               pembayaranId
             );
-
+ 
             if (confirmResult.status === "success") {
               toast.success("Pembayaran berhasil! Tagihan sudah lunas.", {
                 id: "confirm-toast",
                 duration: 5000,
               });
+            } else if (confirmResult.status === "pending") {
+              // Webhook belum selesai dalam waktu polling — beri tahu user
+              // tanpa menganggap ini error. Realtime subscription yang sudah
+              // ada di komponen ini akan otomatis update begitu webhook selesai.
+              toast.info("Pembayaran sedang diverifikasi sistem...", {
+                id: "confirm-toast",
+                duration: 6000,
+                description:
+                  "Status akan berubah otomatis dalam beberapa saat. Anda tidak perlu mengulang pembayaran.",
+              });
             } else {
-              // confirmPayment gagal tapi mungkin webhook sudah handle
-              toast.success("Pembayaran berhasil! Status sedang diperbarui...", {
+              toast.info("Pembayaran sedang diproses, status akan diperbarui otomatis.", {
                 id: "confirm-toast",
                 duration: 5000,
               });
             }
           } catch (err) {
             console.error("[Snap] confirmPayment error:", err);
-            // Jangan tampilkan error ke user — webhook mungkin sudah handle
-            toast.success("Pembayaran berhasil! Status sedang diperbarui...", {
+            toast.info("Pembayaran sedang diproses, status akan diperbarui otomatis.", {
               id: "confirm-toast",
               duration: 5000,
             });
           }
-
+ 
           // Refresh data tagihan
           refetch();
           handleRealtimeUpdate();
         },
-
+ 
         onPending: (snapResult: any) => {
           console.log("[Snap] onPending:", snapResult);
           toast.info("Pembayaran sedang menunggu konfirmasi", {
@@ -275,14 +285,14 @@ export default function TagihanSiswaPage() {
           });
           refetch();
         },
-
+ 
         onError: (snapResult: any) => {
           console.error("[Snap] onError:", snapResult);
           toast.error("Pembayaran gagal", {
             description: "Silakan coba lagi.",
           });
         },
-
+ 
         onClose: () => {
           console.log("[Snap] onClose");
           toast.info("Pembayaran belum diselesaikan", {
@@ -468,7 +478,7 @@ export default function TagihanSiswaPage() {
 
       {/* Dialog Konfirmasi */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-green-600" />
