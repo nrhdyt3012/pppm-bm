@@ -57,5 +57,6 @@ export const updateUserSchema = z.object({
   role: z.string().default("siswa"),
 });
 
+export type LoginForm = z.infer<typeof loginSchemaForm>;
 export type CreateUserForm = z.infer<typeof createUserSchema>;
 export type UpdateUserForm = z.infer<typeof updateUserSchema>;

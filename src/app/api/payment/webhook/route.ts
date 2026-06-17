@@ -320,24 +320,6 @@ export async function POST(request: NextRequest) {
       (transaction_status === "settlement" || transaction_status === "capture")
     ) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      try {
-        await fetch(`${appUrl}/api/send-receipt`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            idPembayaran: pembayaranId,
-            idTagihan: parseInt(tagihanId),
-            jumlahBayar: nominalBayar,
-            totalTagihan: jumlahTagihan,
-            sisaTagihan: 0,
-            statusBaru: statuspembayaranTagihan,
-            metodePembayaran: metodepembayaran,
-          }),
-        });
-        console.log(`📧 [WEBHOOK] Receipt email queued for pembayaran ${pembayaranId}`);
-      } catch (emailError) {
-        console.error(`⚠️ [WEBHOOK] Gagal kirim email kwitansi:`, emailError);
-      }
 
       if (process.env.FONNTE_API_KEY) {
         try {

@@ -167,24 +167,6 @@ export async function bayarTagihanManual(prevState: any, formData: FormData) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   if (pembayaranData?.idpembayaran) {
-    try {
-      await fetch(`${appUrl}/api/send-receipt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idPembayaran: pembayaranData.idpembayaran,
-          idTagihan: parseInt(idTagihan),
-          jumlahBayar,
-          totalTagihan,
-          sisaTagihan: totalTagihan - terbayarBaru,
-          statusBaru,
-          metodePembayaran: "cash",
-        }),
-      });
-    } catch (e) {
-      console.error("[EMAIL] Gagal kirim kwitansi:", e);
-    }
-
     if (process.env.FONNTE_API_KEY) {
       try {
         await fetch(`${appUrl}/api/notifications/send-payment-status`, {
