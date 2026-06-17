@@ -8,7 +8,6 @@ import { convertIDR, cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Receipt, Printer, ChevronDown, ChevronUp } from "lucide-react";
-// ✅ HAPUS: import Mail (tidak dipakai lagi)
 import { Fragment, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 
@@ -43,7 +42,6 @@ type TagihanItem = {
   pembayaran?: PembayaranItem[];
 };
 
-// ✅ Tipe untuk sisa tagihan yang belum lunas
 type SisaTagihanItem = {
   idtagihansiswa: number;
   jumlahtagihan: string;
@@ -106,8 +104,7 @@ export default function RiwayatPembayaran() {
     },
   });
 
-  // ✅ BARU: Query semua tagihan BELUM BAYAR milik siswa ini
-  // Dipakai untuk ditampilkan di kwitansi cetak
+  // Query semua tagihan BELUM BAYAR milik siswa ini untuk ditampilkan di kwitansi
   const { data: sisaTagihanList } = useQuery({
     queryKey: ["sisa-tagihan-belum-bayar", profile.id],
     enabled: !!profile.id,
@@ -304,8 +301,6 @@ export default function RiwayatPembayaran() {
                                             </p>
                                           </div>
                                         </div>
-                                        {/* ✅ HAPUS: <SendEmailButton /> */}
-                                        {/* ✅ Hanya ada tombol cetak kwitansi */}
                                         <PrintButtonSingle
                                           pembayaran={p}
                                           tagihan={item}
@@ -334,9 +329,6 @@ export default function RiwayatPembayaran() {
   );
 }
 
-// ✅ HAPUS SELURUH KOMPONEN SendEmailButton
-// Tidak ada lagi fungsi kirim email dari halaman riwayat
-
 // ─── Komponen print per transaksi ─────────────────────────────────────────────
 function PrintButtonSingle({
   pembayaran,
@@ -344,14 +336,14 @@ function PrintButtonSingle({
   siswaData,
   indexTransaksi,
   totalTagihan,
-  sisaTagihanBelumBayar, // ✅ BARU: prop sisa tagihan
+  sisaTagihanBelumBayar,
 }: {
   pembayaran: PembayaranItem;
   tagihan: TagihanItem;
   siswaData: any;
   indexTransaksi: number;
   totalTagihan: number;
-  sisaTagihanBelumBayar: SisaTagihanItem[]; // ✅ BARU
+  sisaTagihanBelumBayar: SisaTagihanItem[];
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
@@ -365,7 +357,6 @@ function PrintButtonSingle({
   const isLunas = tagihan.statuspembayaran === "LUNAS" && pembayaran.statuspembayaran === "SUCCESS";
   const metode = pembayaran.metodepembayaran === "cash" ? "Tunai/Cash" : "Transfer/Online (Midtrans)";
 
-  // ✅ Hitung total nominal sisa tagihan yang belum dibayar
   const totalSisaBelumBayar = sisaTagihanBelumBayar.reduce(
     (sum, s) => sum + parseFloat(s.jumlahtagihan || "0"),
     0
@@ -394,7 +385,7 @@ function PrintButtonSingle({
           {/* ─── Header ─────────────────────────────────────────────────────── */}
           <div className="text-center border-b-2 border-gray-800 pb-4 mb-5">
             <h1 className="text-2xl font-bold uppercase tracking-widest">
-              PAUD Aisyiyah Bustanul Athfal 1 Buduran
+              KB/TK Aisyiyah Bustanul Athfal 1 Buduran
             </h1>
             <p className="text-sm text-gray-600 mt-1">
               Jl. Kavling Persada Asri C-37, Damarsi, Buduran, Sidoarjo
@@ -508,7 +499,7 @@ function PrintButtonSingle({
             )}
           </div>
 
-          {/* ─── BARU: Tabel Sisa Tagihan Lain yang Belum Dibayar ───────────── */}
+          {/* ─── Tabel Sisa Tagihan Lain yang Belum Dibayar ─────────────────── */}
           {sisaTagihanBelumBayar.length > 0 && (
             <div className="mb-6">
               <p className="font-bold text-xs uppercase text-gray-500 border-b pb-1 mb-2">

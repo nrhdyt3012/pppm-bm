@@ -2,15 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -18,8 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  MessageCircle,
-  Users,
   Calendar,
 } from "lucide-react";
 import { useMemo, useState, useRef, useEffect } from "react";
@@ -50,21 +39,6 @@ const BULAN_SINGKAT = [
 
 const COLOR_ACTIVE = "#dc2626";
 const COLOR_INACTIVE = "#fca5a5";
-
-type SiswaTunggakan = {
-  id: string;
-  nis: string;
-  namaSiswa: string;
-  kelas: string;
-  noWa: string;
-  totalTunggakan: number;
-  daftarTagihan: {
-    namaTagihan: string;
-    jumlah: number;
-    bulan: number;
-    tahun: number;
-  }[];
-};
 
 // ─── Custom Tooltip ────────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -173,9 +147,6 @@ export default function RekapanTunggakan() {
   const [showPicker, setShowPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  const [showWaDialog, setShowWaDialog] = useState(false);
-  const [selectedSiswaIds, setSelectedSiswaIds] = useState<string[]>([]);
-
   // Tutup picker ketika klik di luar
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -266,38 +237,6 @@ export default function RekapanTunggakan() {
     [tunggakanData]
   );
 
-  // Kelompokkan tunggakan per siswa
-  const siswaTunggakanList = useMemo<SiswaTunggakan[]>(() => {
-    if (!tunggakanData?.length) return [];
-    const map = new Map<string, SiswaTunggakan>();
-    tunggakanData.forEach((item: any) => {
-      const siswa = item.siswa;
-      if (!siswa?.id) return;
-      if (!map.has(siswa.id)) {
-        map.set(siswa.id, {
-          id: siswa.id,
-          nis: siswa.nis || "-",
-          namaSiswa: siswa.namasiswa || "-",
-          kelas: siswa.kelas || "-",
-          noWa: siswa.nowa || "",
-          totalTunggakan: 0,
-          daftarTagihan: [],
-        });
-      }
-      const entry = map.get(siswa.id)!;
-      entry.totalTunggakan += parseFloat(item.jumlahtagihan || 0);
-      entry.daftarTagihan.push({
-        namaTagihan: item.master_tagihan?.namatagihan || "-",
-        jumlah: parseFloat(item.jumlahtagihan || 0),
-        bulan: item.bulan,
-        tahun: item.tahun,
-      });
-    });
-    return Array.from(map.values()).sort((a, b) =>
-      a.namaSiswa.localeCompare(b.namaSiswa)
-    );
-  }, [tunggakanData]);
-
   const handlePrevMonth = () => {
     if (selectedMonth === 1) {
       setSelectedMonth(12);
@@ -332,76 +271,6 @@ export default function RekapanTunggakan() {
     XLSX.writeFile(wb, `Tunggakan_${BULAN_NAMA[selectedMonth]}_${selectedYear}.xlsx`);
     toast.success("Data berhasil diekspor");
   };
-
-  const handleOpenWaDialog = () => {
-    setSelectedSiswaIds([]);
-    setShowWaDialog(true);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    setSelectedSiswaIds(checked ? siswaTunggakanList.map((s) => s.id) : []);
-  };
-
-  const handleSelectSiswa = (id: string, checked: boolean) => {
-    setSelectedSiswaIds((prev) =>
-      checked ? [...prev, id] : prev.filter((s) => s !== id)
-    );
-  };
-
-  const buildWaMessage = (siswa: SiswaTunggakan): string => {
-    const rincian = siswa.daftarTagihan
-      .map(
-        (t, i) =>
-          `${i + 1}. ${t.namaTagihan} (${BULAN_NAMA[t.bulan]} ${t.tahun}) — ${convertIDR(t.jumlah)}`
-      )
-      .join("\n");
-
-    return (
-      `Assalamu'alaikum Wr. Wb.\n\n` +
-      `Yth. Wali Murid *${siswa.namaSiswa}* (${siswa.kelas})\n\n` +
-      `Kami menginformasikan bahwa terdapat tagihan yang belum dibayarkan:\n\n` +
-      `${rincian}\n\n` +
-      `*Total Tunggakan: ${convertIDR(siswa.totalTunggakan)}*\n\n` +
-      `Mohon segera melakukan pembayaran agar proses administrasi dapat berjalan lancar.\n\n` +
-      `Terima kasih atas perhatian dan kerjasamanya.\n\n` +
-      `Wassalamu'alaikum Wr. Wb.\n` +
-      `KB TK Aisyiyah Bustanul Athfal 1 Buduran`
-    );
-  };
-
-  const handleKirimSatu = (siswa: SiswaTunggakan) => {
-    if (!siswa.noWa) {
-      toast.error(`Nomor WA wali ${siswa.namaSiswa} tidak tersedia`);
-      return;
-    }
-    const noWa = siswa.noWa.replace(/^0/, "62").replace(/\D/g, "");
-    const pesan = encodeURIComponent(buildWaMessage(siswa));
-    window.open(`https://wa.me/${noWa}?text=${pesan}`, "_blank");
-  };
-
-  const handleKirimSemua = () => {
-    const dipilih = siswaTunggakanList.filter((s) => selectedSiswaIds.includes(s.id));
-    if (!dipilih.length) { toast.error("Pilih minimal 1 siswa"); return; }
-    const tidakAdaWa = dipilih.filter((s) => !s.noWa);
-    if (tidakAdaWa.length) {
-      toast.warning(`${tidakAdaWa.length} siswa tidak memiliki nomor WA: ${tidakAdaWa.map((s) => s.namaSiswa).join(", ")}`);
-    }
-    const adaWa = dipilih.filter((s) => !!s.noWa);
-    if (!adaWa.length) { toast.error("Tidak ada siswa yang memiliki nomor WA"); return; }
-    adaWa.forEach((siswa, idx) => {
-      setTimeout(() => {
-        const noWa = siswa.noWa.replace(/^0/, "62").replace(/\D/g, "");
-        const pesan = encodeURIComponent(buildWaMessage(siswa));
-        window.open(`https://wa.me/${noWa}?text=${pesan}`, "_blank");
-      }, idx * 800);
-    });
-    toast.success(`Membuka ${adaWa.length} chat WhatsApp... Pastikan browser mengizinkan pop-up.`);
-    setShowWaDialog(false);
-  };
-
-  const isAllSelected =
-    siswaTunggakanList.length > 0 &&
-    selectedSiswaIds.length === siswaTunggakanList.length;
 
   return (
     <div className="w-full space-y-6">
@@ -457,7 +326,6 @@ export default function RekapanTunggakan() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          {/* Tombol periode — klik buka picker */}
           <div className="relative" ref={pickerRef}>
             <Button
               variant="outline"
@@ -486,24 +354,14 @@ export default function RekapanTunggakan() {
           </Button>
         </div>
 
-        <div className="flex gap-2">
-          <Button
-            onClick={handleOpenWaDialog}
-            disabled={!tunggakanData?.length}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            Tagihkan via WhatsApp
-          </Button>
-          <Button
-            onClick={handleExport}
-            disabled={!tunggakanData?.length}
-            variant="outline"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export Excel
-          </Button>
-        </div>
+        <Button
+          onClick={handleExport}
+          disabled={!tunggakanData?.length}
+          variant="outline"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Excel
+        </Button>
       </div>
 
       {/* ─── Kartu statistik ────────────────────────────────────────────────── */}
@@ -514,7 +372,8 @@ export default function RekapanTunggakan() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-red-600">
-              {siswaTunggakanList.length} Siswa
+              {/* Hitung unik per siswa */}
+              {new Set(tunggakanData?.map((item: any) => item.siswa?.id).filter(Boolean)).size} Siswa
             </p>
           </CardContent>
         </Card>
@@ -585,121 +444,6 @@ export default function RekapanTunggakan() {
           )}
         </CardContent>
       </Card>
-
-      {/* ─── Dialog Tagihkan via WhatsApp ──────────────────────────────────── */}
-      <Dialog open={showWaDialog} onOpenChange={setShowWaDialog}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5 text-green-600" />
-              Tagihkan via WhatsApp
-            </DialogTitle>
-            <DialogDescription>
-              Pilih siswa yang akan dikirimkan pesan tagihan ke WhatsApp wali.
-              Periode: {BULAN_NAMA[selectedMonth]} {selectedYear}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center justify-between px-1 py-2 border-b">
-            <div className="flex items-center gap-3">
-              <Checkbox
-                checked={isAllSelected}
-                onCheckedChange={(c) => handleSelectAll(c as boolean)}
-                id="select-all"
-              />
-              <label htmlFor="select-all" className="text-sm font-medium cursor-pointer select-none">
-                {isAllSelected ? "Batal Pilih Semua" : "Pilih Semua"}
-              </label>
-            </div>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Users className="h-4 w-4" />
-              <span>{selectedSiswaIds.length} dipilih</span>
-            </div>
-          </div>
-
-          <div className="overflow-y-auto flex-1 min-h-0">
-            {!siswaTunggakanList.length ? (
-              <p className="text-center py-8 text-muted-foreground text-sm">Tidak ada data tunggakan</p>
-            ) : (
-              <table className="w-full text-sm border-collapse">
-                <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                  <tr className="border-b">
-                    <th className="p-3 text-left w-10"></th>
-                    <th className="p-3 text-left">NIS</th>
-                    <th className="p-3 text-left">Nama Lengkap</th>
-                    <th className="p-3 text-left">Kelas</th>
-                    <th className="p-3 text-right">Jumlah Tunggakan</th>
-                    <th className="p-3 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {siswaTunggakanList.map((siswa) => {
-                    const isChecked = selectedSiswaIds.includes(siswa.id);
-                    return (
-                      <tr
-                        key={siswa.id}
-                        className={`border-b transition-colors cursor-pointer ${
-                          isChecked ? "bg-green-50 dark:bg-green-950/30" : "hover:bg-muted/50"
-                        }`}
-                        onClick={() => handleSelectSiswa(siswa.id, !isChecked)}
-                      >
-                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={(c) => handleSelectSiswa(siswa.id, c as boolean)}
-                          />
-                        </td>
-                        <td className="p-3 font-mono text-muted-foreground">{siswa.nis}</td>
-                        <td className="p-3">
-                          <p className="font-medium">{siswa.namaSiswa}</p>
-                          {!siswa.noWa && (
-                            <p className="text-xs text-red-500 mt-0.5">⚠ No. WA tidak tersedia</p>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
-                            {siswa.kelas}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right font-semibold text-red-600">
-                          {convertIDR(siswa.totalTunggakan)}
-                          <p className="text-xs text-muted-foreground font-normal">
-                            {siswa.daftarTagihan.length} tagihan
-                          </p>
-                        </td>
-                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 h-8 text-xs gap-1"
-                            onClick={() => handleKirimSatu(siswa)}
-                            disabled={!siswa.noWa}
-                            title={!siswa.noWa ? "Nomor WA tidak tersedia" : ""}
-                          >
-                            <MessageCircle className="h-3 w-3" />
-                            Tagihkan
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <DialogFooter className="border-t pt-4 gap-2">
-            <Button variant="outline" onClick={() => setShowWaDialog(false)}>Tutup</Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700 gap-2"
-              onClick={handleKirimSemua}
-              disabled={selectedSiswaIds.length === 0}
-            >
-              <MessageCircle className="h-4 w-4" />
-              Kirim ke {selectedSiswaIds.length} Siswa Terpilih
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
