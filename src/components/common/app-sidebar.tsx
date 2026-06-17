@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   KeyRound,
   LogOut,
+  History,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -72,7 +73,7 @@ const SUPERADMIN_EXCLUSIVE_MENU = [
 const SISWA_MENU = [
   { title: "Info Siswa", url: "/siswa/info", icon: Users },
   { title: "Tagihan", url: "/siswa/tagihan", icon: FileText },
-  { title: "Riwayat Pembayaran", url: "/siswa/riwayat", icon: Activity },
+  { title: "Riwayat Pembayaran", url: "/siswa/riwayat", icon: History },
 ];
 
 // ── Komponen Sidebar ──────────────────────────────────────────────────────────
