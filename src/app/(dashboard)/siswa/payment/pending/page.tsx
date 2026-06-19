@@ -1,7 +1,7 @@
 import Pending from "./_components/pending";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Menunggu Pembayaran",
+  title: "KB/TK ABA 1 Buduran | Menunggu Pembayaran",
   icons: { icon: "/favicon.ico" },
 };
 

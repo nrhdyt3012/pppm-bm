@@ -57,7 +57,7 @@ export default function Navbar() {
             />
             <div className="hidden md:block">
               <h1 className="font-bold text-lg text-gray-900 dark:text-white">
-                PAUD ABA 1 Buduran
+                KB/TK ABA 1 Buduran
               </h1>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 Sholih, Ceria, Mandiri

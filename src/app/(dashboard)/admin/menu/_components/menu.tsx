@@ -106,7 +106,7 @@ export default function MenuManagement() {
       <div className="flex flex-col lg:flex-row mb-4 gap-2 justify-between w-full">
         <div>
           <h1 className="text-2xl font-bold">Master Tagihan</h1>
-          <p className="text-sm text-muted-foreground">Kelola jenis tagihan PAUD</p>
+          <p className="text-sm text-muted-foreground">Kelola jenis tagihan</p>
         </div>
         <div className="flex gap-2">
           <Input placeholder="Cari nama tagihan..." onChange={(e) => handleChangeSearch(e.target.value)} />

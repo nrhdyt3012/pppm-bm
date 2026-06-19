@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "PAUD Aisyiyah Bustanul Athfal 1 Buduran",
-  description: "Sistem Informasi Manajemen Pembayaran PAUD Aisyiyah Bustanul Athfal 1 Buduran",
+  title: "KB/TK Aisyiyah Bustanul Athfal 1 Buduran",
+  description: "Sistem Informasi Manajemen Pembayaran KB/TK Aisyiyah Bustanul Athfal 1 Buduran",
   icons: { icon: "/favicon.ico" },
 };
 
@@ -37,16 +37,15 @@ export default async function AuthLayout({
     profile = {};
   }
 
-  // TIDAK PERLU <html> dan <body> di sini
-  // Cukup return children dengan provider yang diperlukan
   return (
     <ReactQueryProvider>
       <AuthStoreProvider profile={profile}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
+          forcedTheme="light"
         >
           {children}
           <Toaster />

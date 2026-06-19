@@ -84,7 +84,7 @@ export default function InfoSiswa() {
       <div>
         <h1 className="text-2xl font-bold">Info Siswa</h1>
         <p className="text-muted-foreground text-sm">
-          PAUD Aisyiyah Bustanul Athfal 1 Buduran
+          KB/TK Aisyiyah Bustanul Athfal 1 Buduran
         </p>
       </div>
 
@@ -187,7 +187,7 @@ export default function InfoSiswa() {
           <CardContent>
             <p className="text-sm text-muted-foreground">
               Jika ada data yang kurang tepat atau perlu diperbarui, silakan
-              hubungi admin/bendahara PAUD Aisyiyah Bustanul Athfal 1 Buduran
+              hubungi admin/bendahara KB/TK Aisyiyah Bustanul Athfal 1 Buduran
               untuk melakukan perubahan.
             </p>
           </CardContent>

@@ -44,7 +44,7 @@ export default function Failed() {
               </Link>
             </div>
             <p className="text-xs text-muted-foreground">
-              Jika masalah berlanjut, hubungi admin/bendahara PAUD.
+              Jika masalah berlanjut, hubungi admin/bendahara KB/TK.
             </p>
           </div>
         </CardContent>

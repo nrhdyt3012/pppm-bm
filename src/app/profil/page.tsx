@@ -2,8 +2,8 @@
 import ProfilPage from "./_components/profil";
 
 export const metadata = {
-  title: "PAUD ABA 1 Buduran | Profil",
-  description: "Profil PAUD ABA 1 Buduran",
+  title: "KB/TK ABA 1 Buduran | Profil",
+  description: "Profil KB/TK ABA 1 Buduran",
   icons: {
     icon: "/favicon.ico",
   },

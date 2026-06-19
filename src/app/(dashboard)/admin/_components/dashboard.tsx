@@ -129,7 +129,7 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground text-sm">
-          PAUD Aisyiyah Bustanul Athfal 1 Buduran
+          KB/TK Aisyiyah Bustanul Athfal 1 Buduran
         </p>
       </div>
 

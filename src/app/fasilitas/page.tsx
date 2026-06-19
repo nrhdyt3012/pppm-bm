@@ -2,8 +2,8 @@
 import FasilitasPage from "./_components/fasilitas";
 
 export const metadata = {
-  title: "PAUD ABA 1 Buduran | Fasilitas",
-  description: "Fasilitas PAUD ABA 1 Buduran",
+  title: "KB/TK ABA 1 Buduran | Fasilitas",
+  description: "Fasilitas KB/TK ABA 1 Buduran",
   icons: {
     icon: "/favicon.ico",
   },

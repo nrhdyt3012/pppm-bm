@@ -1,7 +1,7 @@
 import Login from "./_components/login";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Login",
+  title: "KB/TK BA 1 Buduran | Login",
   icons: { icon: "/favicon.ico" },
 };
 

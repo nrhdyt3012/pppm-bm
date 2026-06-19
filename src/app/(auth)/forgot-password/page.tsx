@@ -1,7 +1,7 @@
 import ForgotPassword from "./_components/forgot-password";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Lupa Password",
+  title: "KB/TK BA 1 Buduran | Lupa Password",
   icons: { icon: "/favicon.ico" },
 };
 

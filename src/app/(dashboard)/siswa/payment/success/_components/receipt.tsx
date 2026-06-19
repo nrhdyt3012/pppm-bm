@@ -34,7 +34,7 @@ export default function Receipt({
 
         {/* Data Sekolah */}
         <div className="mb-8">
-          <p className="font-bold text-lg">PAUD BA 1 Buduran</p>
+          <p className="font-bold text-lg">KB/TK ABA 1 Buduran</p>
           <p className="text-sm text-gray-600">Jl. Buduran, Surabaya</p>
           <p className="text-sm text-gray-600">Tanggal Cetak: {format(tanggalBayar, "dd MMMM yyyy", { locale: id })}</p>
         </div>

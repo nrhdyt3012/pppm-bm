@@ -32,7 +32,7 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   return {
-    title: `PAUD BA 1 Buduran | Kwitansi #${id}`,
+    title: `KB/TK ABA 1 Buduran | Kwitansi #${id}`,
     icons: { icon: "/favicon.ico" },
   };
 }
