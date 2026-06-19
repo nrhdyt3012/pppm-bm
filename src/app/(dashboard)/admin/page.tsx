@@ -1,7 +1,7 @@
 import Dashboard from "./_components/dashboard";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Dashboard",
+  title: "KB/TK BA 1 Buduran | Dashboard",
   icons: { icon: "/favicon.ico" },
 };
 

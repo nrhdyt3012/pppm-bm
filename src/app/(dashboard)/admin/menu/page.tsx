@@ -1,7 +1,7 @@
 import MenuManagement from "./_components/menu";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Master Tagihan",
+  title: "KB/TK BA 1 Buduran | Master Tagihan",
   icons: { icon: "/favicon.ico" },
 };
 

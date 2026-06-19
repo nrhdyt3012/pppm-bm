@@ -1,7 +1,7 @@
 import DaftarTagihanSiswa from "./_components/daftar-tagihan-siswa";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Tagihan Siswa",
+  title: "KB/TK ABA 1 Buduran | Tagihan Siswa",
   icons: { icon: "/favicon.ico" },
 };
 

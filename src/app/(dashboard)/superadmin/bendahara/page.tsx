@@ -4,7 +4,7 @@
 import BendaharaManagement from "./_components/bendahara";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Kelola Bendahara",
+  title: "KB/TK BA 1 Buduran | Kelola Bendahara",
   icons: { icon: "/favicon.ico" },
 };
 

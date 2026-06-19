@@ -70,14 +70,14 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
-      <div className="absolute top-4 right-4 z-50">
+      {/* <div className="absolute top-4 right-4 z-50">
         <DarkmodeToggle />
-      </div>
+      </div> */}
 
       <div className="mb-8">
         <Image
           src="/logo.jpg"
-          alt="Logo PAUD ABA 1 Buduran"
+          alt="Logo KB/TK ABA 1 Buduran"
           width={120}
           height={120}
           className="rounded-full shadow-lg"
@@ -121,6 +121,8 @@ export default function Login() {
                 placeholder="••••••••"
                 type="password"
               />
+
+              {/* Link lupa password — uncomment jika fitur sudah diaktifkan
               <div className="text-right">
                 <Link
                   href="/forgot-password"
@@ -129,6 +131,8 @@ export default function Login() {
                   Lupa password?
                 </Link>
               </div>
+              */}
+
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"

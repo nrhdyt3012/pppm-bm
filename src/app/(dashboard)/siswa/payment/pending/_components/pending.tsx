@@ -139,7 +139,7 @@ export default function Pending() {
 
             <p className="text-xs text-muted-foreground">
               Jika sudah membayar tapi status belum berubah dalam 15
-              menit, hubungi admin/bendahara PAUD.
+              menit, hubungi admin/bendahara KB/TK.
             </p>
           </div>
         </CardContent>

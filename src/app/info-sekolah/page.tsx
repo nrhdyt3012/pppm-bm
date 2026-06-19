@@ -2,8 +2,8 @@
 import InfoSekolahPage from "./_components/info-sekolah";
 
 export const metadata = {
-  title: "PAUD ABA 1 Buduran | Info Sekolah",
-  description: "Informasi Program Pendidikan PAUD ABA 1 Buduran",
+  title: "KB/TK ABA 1 Buduran | Info Sekolah",
+  description: "Informasi Program Pendidikan KB/TK ABA 1 Buduran",
   icons: {
     icon: "/favicon.ico",
   },

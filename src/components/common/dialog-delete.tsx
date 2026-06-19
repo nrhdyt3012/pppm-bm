@@ -28,18 +28,18 @@ export default function DialogDelete({
       <DialogContent className="sm:max-w-[425px]">
         <form className="grid gap-6">
           <DialogHeader>
-            <DialogTitle>Delete {title}</DialogTitle>
+            <DialogTitle>Hapus {title}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this{" "}
+              Apakah Anda yakin ingin menghapus {" "}
               <span className="lowercase">{title}</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">Batal</Button>
             </DialogClose>
             <Button variant="destructive" formAction={onSubmit}>
-              {isLoading ? <Loader2 className="animate-spin" /> : "Delete"}
+              {isLoading ? <Loader2 className="animate-spin" /> : " Hapus"}
             </Button>
           </DialogFooter>
         </form>

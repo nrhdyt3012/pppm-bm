@@ -1,5 +1,4 @@
 import AppSidebar from "@/components/common/app-sidebar";
-import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
@@ -25,9 +24,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <DashboardBreadcrumb />
             <AngkatanFilter />
           </div>
-          <div className="px-4">
-            <DarkmodeToggle />
-          </div>
+          {/* DarkmodeToggle dihapus — tema dikunci light */}
         </header>
         <main className="flex flex-1 flex-col items-start gap-4 p-4 pt-4">
           {children}

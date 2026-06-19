@@ -2,8 +2,8 @@
 import KontakPage from "./_components/kontak-page";
 
 export const metadata = {
-  title: "PAUD ABA 1 Buduran | Kontak",
-  description: "Informasi Kontak PAUD ABA 1 Buduran",
+  title: "KB/TK ABA 1 Buduran | Kontak",
+  description: "Informasi Kontak KB/TK ABA 1 Buduran",
   icons: {
     icon: "/favicon.ico",
   },

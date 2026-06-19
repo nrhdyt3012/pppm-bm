@@ -1,7 +1,7 @@
 import Success from "./_components/success";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Pembayaran Berhasil",
+  title: "KB/TK ABA 1 Buduran | Pembayaran Berhasil",
   icons: { icon: "/favicon.ico" },
 };
 

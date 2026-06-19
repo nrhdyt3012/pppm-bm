@@ -4,7 +4,7 @@
 import ChangelogPage from "./_components/changelog";
 
 export const metadata = {
-  title: "PAUD BA 1 Buduran | Riwayat Aktivitas",
+  title: "KB/TK BA 1 Buduran | Riwayat Aktivitas",
   icons: { icon: "/favicon.ico" },
 };
 
