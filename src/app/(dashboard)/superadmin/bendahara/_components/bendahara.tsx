@@ -92,7 +92,7 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Nama Lengkap */}
         <div className="space-y-2">
-          <Label htmlFor="nama-create">Nama Lengkap <span className="text-red-500">*</span></Label>
+          <Label htmlFor="nama-create">Nama Lengkap</Label>
           <Input
             id="nama-create"
             name="nama"
@@ -120,7 +120,7 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
 
         {/* No. HP */}
         <div className="space-y-2">
-          <Label htmlFor="nohp-create">No. Telepon (Opsional)</Label>
+          <Label htmlFor="nohp-create">No. Telepon</Label>
           <Input
             id="nohp-create"
             name="nohp"
@@ -130,7 +130,7 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
 
         {/* Email */}
         <div className="space-y-2">
-          <Label htmlFor="email-create">Email <span className="text-red-500">*</span></Label>
+          <Label htmlFor="email-create">Email</Label>
           <Input
             id="email-create"
             name="email"
@@ -142,7 +142,7 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
 
         {/* Password */}
         <div className="space-y-2">
-          <Label htmlFor="password-create">Password <span className="text-red-500">*</span></Label>
+          <Label htmlFor="password-create">Password</Label>
           <div className="relative">
             <Input
               id="password-create"
@@ -163,9 +163,6 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
               )}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Akun ini langsung dapat digunakan untuk login setelah disimpan.
-          </p>
         </div>
 
         <DialogFooter>
@@ -541,7 +538,7 @@ export default function BendaharaManagement() {
         <div>
           <h1 className="text-2xl font-bold">Kelola Bendahara</h1>
           <p className="text-sm text-muted-foreground">
-            Manajemen akun bendahara / admin sistem
+            Manajemen akun bendahara 
           </p>
         </div>
         <div className="flex gap-2">
