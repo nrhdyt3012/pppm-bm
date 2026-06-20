@@ -474,18 +474,13 @@ export default function BendaharaManagement() {
       // Nama Bendahara
       <div key={`nama-${item.id}`}>
         <p className="font-semibold">{item.nama || "-"}</p>
-        <p className="text-xs text-muted-foreground">Bendahara</p>
       </div>,
 
       // Jenis Kelamin
       item.jeniskelamin ? (
         <span
           key={`jk-${item.id}`}
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            item.jeniskelamin === "Laki-laki"
-              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
-              : "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100"
-          }`}
+          className={`px-2 py-1 rounded-full text-xs font-medium`}
         >
           {item.jeniskelamin}
         </span>
