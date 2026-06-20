@@ -20,6 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   Pencil,
   Trash2,
@@ -35,14 +42,22 @@ import useDataTable from "@/hooks/use-data-table";
 
 const INITIAL = { status: "idle", errors: { _form: [] as string[] } };
 
+const JENIS_KELAMIN_OPTIONS = [
+  { value: "Laki-laki", label: "Laki-laki" },
+  { value: "Perempuan", label: "Perempuan" },
+];
+
 // ─── Form Create ──────────────────────────────────────────────────────────────
 function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
   const [state, action, isPending] = useActionState(createBendahara, INITIAL);
   const [showPass, setShowPass] = useState(false);
+  const [jenisKelamin, setJenisKelamin] = useState("");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    // Tambahkan jeniskelamin dari state karena Select tidak otomatis masuk FormData
+    if (jenisKelamin) fd.set("jeniskelamin", jenisKelamin);
     startTransition(() => action(fd));
   };
 
@@ -54,8 +69,8 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
     }
     if (state.status === "success") {
       toast.success("Bendahara berhasil ditambahkan");
+      setJenisKelamin("");
       refetch();
-      // Tutup dialog
       document
         .querySelector<HTMLButtonElement>('[data-dialog-close="create"]')
         ?.click();
@@ -75,8 +90,9 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Nama Lengkap */}
         <div className="space-y-2">
-          <Label htmlFor="nama-create">Nama Lengkap</Label>
+          <Label htmlFor="nama-create">Nama Lengkap <span className="text-red-500">*</span></Label>
           <Input
             id="nama-create"
             name="nama"
@@ -84,8 +100,37 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
             required
           />
         </div>
+
+        {/* Jenis Kelamin */}
         <div className="space-y-2">
-          <Label htmlFor="email-create">Email</Label>
+          <Label>Jenis Kelamin</Label>
+          <Select value={jenisKelamin} onValueChange={setJenisKelamin}>
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih jenis kelamin" />
+            </SelectTrigger>
+            <SelectContent>
+              {JENIS_KELAMIN_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* No. HP */}
+        <div className="space-y-2">
+          <Label htmlFor="nohp-create">No. Telepon (Opsional)</Label>
+          <Input
+            id="nohp-create"
+            name="nohp"
+            placeholder="08xx xxxx xxxx"
+          />
+        </div>
+
+        {/* Email */}
+        <div className="space-y-2">
+          <Label htmlFor="email-create">Email <span className="text-red-500">*</span></Label>
           <Input
             id="email-create"
             name="email"
@@ -94,16 +139,10 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
             required
           />
         </div>
+
+        {/* Password */}
         <div className="space-y-2">
-          <Label htmlFor="nohp-create">No. HP (Opsional)</Label>
-          <Input
-            id="nohp-create"
-            name="nohp"
-            placeholder="08xx xxxx xxxx"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password-create">Password</Label>
+          <Label htmlFor="password-create">Password <span className="text-red-500">*</span></Label>
           <div className="relative">
             <Input
               id="password-create"
@@ -124,7 +163,11 @@ function DialogCreateBendahara({ refetch }: { refetch: () => void }) {
               )}
             </button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Akun ini langsung dapat digunakan untuk login setelah disimpan.
+          </p>
         </div>
+
         <DialogFooter>
           <DialogClose asChild>
             <Button
@@ -166,11 +209,20 @@ function DialogUpdateBendahara({
 }) {
   const [state, action, isPending] = useActionState(updateBendahara, INITIAL);
   const [showPass, setShowPass] = useState(false);
+  const [jenisKelamin, setJenisKelamin] = useState("");
+
+  // Isi nilai awal saat data berubah
+  useEffect(() => {
+    if (currentData && open) {
+      setJenisKelamin(currentData.jeniskelamin || "");
+    }
+  }, [currentData, open]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     fd.append("id", currentData?.id ?? "");
+    if (jenisKelamin) fd.set("jeniskelamin", jenisKelamin);
     startTransition(() => action(fd));
   };
 
@@ -201,8 +253,9 @@ function DialogUpdateBendahara({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Nama */}
           <div className="space-y-2">
-            <Label>Nama Lengkap</Label>
+            <Label>Nama Lengkap <span className="text-red-500">*</span></Label>
             <Input
               name="nama"
               defaultValue={currentData?.nama ?? ""}
@@ -210,6 +263,35 @@ function DialogUpdateBendahara({
               required
             />
           </div>
+
+          {/* Jenis Kelamin */}
+          <div className="space-y-2">
+            <Label>Jenis Kelamin</Label>
+            <Select value={jenisKelamin} onValueChange={setJenisKelamin}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih jenis kelamin" />
+              </SelectTrigger>
+              <SelectContent>
+                {JENIS_KELAMIN_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* No. HP */}
+          <div className="space-y-2">
+            <Label>No. Telepon (Opsional)</Label>
+            <Input
+              name="nohp"
+              defaultValue={currentData?.nohp ?? ""}
+              placeholder="08xx xxxx xxxx"
+            />
+          </div>
+
+          {/* Email (read-only) */}
           <div className="space-y-2">
             <Label>Email</Label>
             <Input
@@ -221,14 +303,8 @@ function DialogUpdateBendahara({
               Email tidak dapat diubah
             </p>
           </div>
-          <div className="space-y-2">
-            <Label>No. HP (Opsional)</Label>
-            <Input
-              name="nohp"
-              defaultValue={currentData?.nohp ?? ""}
-              placeholder="08xx xxxx xxxx"
-            />
-          </div>
+
+          {/* Password Baru */}
           <div className="space-y-2">
             <Label>Password Baru (Opsional)</Label>
             <div className="relative">
@@ -250,6 +326,7 @@ function DialogUpdateBendahara({
               </button>
             </div>
           </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -391,34 +468,39 @@ export default function BendaharaManagement() {
 
   const filteredData = useMemo(() => {
     return (bendaharaList?.data || []).map((item: any, index: number) => [
+      // No
       currentLimit * (currentPage - 1) + index + 1,
 
-      // Nama
+      // Nama Bendahara
       <div key={`nama-${item.id}`}>
         <p className="font-semibold">{item.nama || "-"}</p>
-        <p className="text-xs text-muted-foreground">{item.email || "-"}</p>
+        <p className="text-xs text-muted-foreground">Bendahara</p>
       </div>,
 
-      // No HP
+      // Jenis Kelamin
+      item.jeniskelamin ? (
+        <span
+          key={`jk-${item.id}`}
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            item.jeniskelamin === "Laki-laki"
+              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+              : "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100"
+          }`}
+        >
+          {item.jeniskelamin}
+        </span>
+      ) : (
+        <span key={`jk-${item.id}`} className="text-sm text-muted-foreground">-</span>
+      ),
+
+      // Email
+      <span key={`email-${item.id}`} className="text-sm">
+        {item.email || "-"}
+      </span>,
+
+      // No. Telepon
       <span key={`hp-${item.id}`} className="text-sm">
         {item.nohp || "-"}
-      </span>,
-
-      // Badge
-      <span
-        key={`role-${item.id}`}
-        className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-      >
-        Bendahara
-      </span>,
-
-      // Tanggal dibuat
-      <span key={`date-${item.id}`} className="text-sm text-muted-foreground">
-        {new Date(item.createdat).toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })}
       </span>,
 
       // Aksi
@@ -487,7 +569,7 @@ export default function BendaharaManagement() {
 
       {/* Tabel */}
       <DataTable
-        header={["No", "Nama / Email", "No. HP", "Role", "Bergabung", "Aksi"]}
+        header={["No", "Nama Bendahara", "Jenis Kelamin", "Email", "No. Telepon", "Aksi"]}
         data={filteredData}
         isLoading={isLoading}
         totalPages={totalPages}

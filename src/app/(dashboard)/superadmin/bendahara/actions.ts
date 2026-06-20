@@ -46,6 +46,7 @@ export async function createBendahara(prevState: any, formData: FormData) {
   const password = formData.get("password") as string;
   const nama = formData.get("nama") as string;
   const nohp = formData.get("nohp") as string | null;
+  const jeniskelamin = formData.get("jeniskelamin") as string | null;
 
   if (!email || !password || !nama) {
     return {
@@ -85,6 +86,7 @@ export async function createBendahara(prevState: any, formData: FormData) {
     email,
     nama,
     nohp: nohp || null,
+    jeniskelamin: jeniskelamin || null,
   });
 
   if (insertError) {
@@ -116,6 +118,7 @@ export async function updateBendahara(prevState: any, formData: FormData) {
   const id = formData.get("id") as string;
   const nama = formData.get("nama") as string;
   const nohp = formData.get("nohp") as string | null;
+  const jeniskelamin = formData.get("jeniskelamin") as string | null;
   const newPassword = formData.get("new_password") as string | null;
 
   if (!id || !nama) {
@@ -134,6 +137,7 @@ export async function updateBendahara(prevState: any, formData: FormData) {
     .update({
       nama,
       nohp: nohp || null,
+      jeniskelamin: jeniskelamin || null,
       updatedat: new Date().toISOString(),
     })
     .eq("id", id);
