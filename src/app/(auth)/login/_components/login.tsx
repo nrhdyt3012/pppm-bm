@@ -77,7 +77,7 @@ export default function Login() {
       <div className="mb-8">
         <Image
           src="/logo.jpg"
-          alt="Logo KB/TK ABA 1 Buduran"
+          alt="Logo KB/TK Aisyiyah Bustanul Athfal 1 Buduran"
           width={120}
           height={120}
           className="rounded-full shadow-lg"

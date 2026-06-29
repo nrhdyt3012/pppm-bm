@@ -8,28 +8,36 @@ import {
 import { ReactNode } from "react";
 import DashboardBreadcrumb from "./_components/dashboard-breadcrumbs";
 import AngkatanFilter from "./_components/angkatan-filter";
+import { ThemeProvider } from "@/providers/theme-provider";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="overflow-x-hidden">
-        <header className="flex justify-between h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="cursor-pointer" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <DashboardBreadcrumb />
-            <AngkatanFilter />
-          </div>
-          {/* DarkmodeToggle dihapus — tema dikunci light */}
-        </header>
-        <main className="flex flex-1 flex-col items-start gap-4 p-4 pt-4">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem={false}
+      disableTransitionOnChange
+      forcedTheme="light"
+    >
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset className="overflow-x-hidden">
+          <header className="flex justify-between h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="cursor-pointer" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
+              <DashboardBreadcrumb />
+              <AngkatanFilter />
+            </div>
+          </header>
+          <main className="flex flex-1 flex-col items-start gap-4 p-4 pt-4">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </ThemeProvider>
   );
 }

@@ -393,9 +393,6 @@ function DialogDeleteBendahara({
             <strong>{currentData?.nama}</strong> akan dihapus permanen.
           </DialogDescription>
         </DialogHeader>
-        <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
-          Bendahara yang dihapus tidak akan bisa login ke sistem.
-        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Batal

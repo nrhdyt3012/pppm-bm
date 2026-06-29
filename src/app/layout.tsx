@@ -1,4 +1,4 @@
-// src/app/layout.tsx - UPDATED dengan metadata SEO yang lengkap
+// src/app/layout.tsx
 
 import { Geist, Geist_Mono } from "next/font/google";
 import "../app/globals.css";
@@ -96,6 +96,21 @@ export default async function RootLayout({
 
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        {/* Paksa hapus class dark dari localStorage sebelum render — 
+            mencegah next-themes membaca preferensi dark mode lama */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                localStorage.removeItem('theme');
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -103,9 +118,10 @@ export default async function RootLayout({
           <AuthStoreProvider profile={profile}>
             <ThemeProvider
               attribute="class"
-              defaultTheme="system"
-              enableSystem
+              defaultTheme="light"
+              enableSystem={false}
               disableTransitionOnChange
+              forcedTheme="light"
             >
               {children}
               <Toaster />

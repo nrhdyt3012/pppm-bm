@@ -1,7 +1,7 @@
 import MenuManagement from "./_components/menu";
 
 export const metadata = {
-  title: "KB/TK BA 1 Buduran | Master Tagihan",
+  title: "KB/TK ABA 1 Buduran | Master Tagihan",
   icons: { icon: "/favicon.ico" },
 };
 

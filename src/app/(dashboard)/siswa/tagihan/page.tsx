@@ -1,7 +1,7 @@
 import TagihanSiswaPage from "./_components/tagihan-siswa";
 
 export const metadata = {
-  title: "KB/TK BA 1 Buduran | Tagihan",
+  title: "KB/TK ABA 1 Buduran | Tagihan",
   icons: { icon: "/favicon.ico" },
 };
 

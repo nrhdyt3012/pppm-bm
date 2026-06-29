@@ -525,7 +525,7 @@ export default function TagihanSiswaPage() {
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Jenis Tagihan:</span>
+                        <span className="text-muted-foreground">Nama Tagihan:</span>
                         <span className="font-medium">
                           {selectedTagihan.master_tagihan?.namatagihan}
                         </span>
