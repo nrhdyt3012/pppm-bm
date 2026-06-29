@@ -1,8 +1,8 @@
-# PPPM-BM (Pusat Pembayaran Pendidikan Modern - Buduran Management)
 
-PPPM-BM adalah sistem manajemen pembayaran dan tagihan pendidikan berbasis web yang dibangun dengan **Next.js 15** dan **TypeScript**. Aplikasi ini dirancang untuk PAUD BA 1 Buduran, menyediakan modul lengkap untuk siswa, wali murid, dan admin dalam mengelola tagihan, pembayaran, serta informasi pendidikan.
 
-**Live Demo:** [https://pppm-bm.vercel.app](https://pppm-bm.vercel.app)
+Proyek ini adalah sistem manajemen pembayaran dan tagihan pendidikan berbasis web yang dibangun dengan **Next.js 15** dan **TypeScript**. Aplikasi ini dirancang untuk PAUD BA 1 Buduran, menyediakan modul lengkap untuk siswa, wali murid, dan admin dalam mengelola tagihan, pembayaran, serta informasi pendidikan.
+
+[Live Demo](https://paudaba1buduran.my.id/)
 
 ---
 
