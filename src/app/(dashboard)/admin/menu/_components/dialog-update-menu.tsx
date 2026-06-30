@@ -1,3 +1,7 @@
+"use client";
+
+// src/app/(dashboard)/admin/menu/_components/dialog-update-menu.tsx
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -6,7 +10,72 @@ import { toast } from "sonner";
 import FormMenu from "./form-menu";
 import { Dialog } from "@radix-ui/react-dialog";
 import { Menu, MenuForm, menuFormSchema } from "@/validations/menu-validation";
-import { INITIAL_STATE_MENU } from "@/constants/menu-constant";
+import { INITIAL_STATE_MENU, generateNamaTagihan } from "@/constants/menu-constant";
+
+/**
+ * Parse namatagihan yang sudah tersimpan di DB ke bentuk form values.
+ * Ini digunakan saat Edit agar field kondisional terisi dengan benar.
+ */
+function parseNamaTagihanToFormValues(
+  namaTagihan: string,
+  jenisTagihanDB: string // "Reguler" | "Subsidi"
+): Partial<MenuForm> {
+  const nama = namaTagihan || "";
+
+  if (nama.startsWith("PPDB")) {
+    return { jenisTagihan: "PPDB" };
+  }
+
+  if (nama.startsWith("Daftar Ulang")) {
+    // Format: "Daftar Ulang {jenjang} Semester {semester} {tahun}"
+    const semesterMatch = nama.match(/Semester\s+(Ganjil|Genap)/);
+    const tahunMatch = nama.match(/(\d{4})/);
+    return {
+      jenisTagihan: "Daftar Ulang",
+      semesterDaftarUlang: semesterMatch?.[1] || "",
+      tahunDaftarUlang: tahunMatch?.[1] || "",
+    };
+  }
+
+  if (nama.startsWith("SPP Semesteran")) {
+    // Format: "SPP Semesteran {jenjang} Semester {semester} {tahun} {Reguler|Subsidi}"
+    const semesterMatch = nama.match(/Semester\s+(Ganjil|Genap)/);
+    const tahunMatch = nama.match(/(\d{4})/);
+    const jenis = jenisTagihanDB === "Subsidi" ? "SPP Subsidi" : "SPP Reguler";
+    return {
+      jenisTagihan: jenis,
+      tipeSPP: "Semesteran",
+      semesterSPP: semesterMatch?.[1] || "",
+      tahunSPP: tahunMatch?.[1] || "",
+    };
+  }
+
+  if (nama.startsWith("SPP Bulanan")) {
+    // Format: "SPP Bulanan {jenjang} {bulanNama} {tahun} {Reguler|Subsidi}"
+    const BULAN_MAP: Record<string, string> = {
+      Januari: "1", Februari: "2", Maret: "3", April: "4",
+      Mei: "5", Juni: "6", Juli: "7", Agustus: "8",
+      September: "9", Oktober: "10", November: "11", Desember: "12",
+    };
+    let bulanSPP = "";
+    for (const [namaBulan, val] of Object.entries(BULAN_MAP)) {
+      if (nama.includes(namaBulan)) { bulanSPP = val; break; }
+    }
+    const tahunMatch = nama.match(/(\d{4})/);
+    const jenis = jenisTagihanDB === "Subsidi" ? "SPP Subsidi" : "SPP Reguler";
+    return {
+      jenisTagihan: jenis,
+      tipeSPP: "Bulanan",
+      bulanSPP,
+      tahunSPP: tahunMatch?.[1] || "",
+    };
+  }
+
+  // Fallback: nama tidak dikenali, isi jenisTagihan berdasarkan DB value
+  return {
+    jenisTagihan: jenisTagihanDB === "Subsidi" ? "SPP Subsidi" : "SPP Reguler",
+  };
+}
 
 export default function DialogUpdateMenu({
   refetch,
@@ -23,13 +92,26 @@ export default function DialogUpdateMenu({
   const [state, action, isPending] = useActionState(updateMenu, INITIAL_STATE_MENU);
 
   const onSubmit = form.handleSubmit((data) => {
+    // Generate namaTagihan otomatis dari pilihan user
+    const { namaTagihan, dbJenisTagihan } = generateNamaTagihan({
+      jenisTagihan: data.jenisTagihan,
+      tipeSPP: data.tipeSPP,
+      semesterDaftarUlang: data.semesterDaftarUlang,
+      tahunDaftarUlang: data.tahunDaftarUlang,
+      bulanSPP: data.bulanSPP,
+      tahunSPP: data.tahunSPP,
+      semesterSPP: data.semesterSPP,
+      jenjang: data.jenjang,
+    });
+
     const formData = new FormData();
     formData.append("id", currentData!.id_masterTagihan!.toString());
-    formData.append("namaTagihan", data.namaTagihan);
+    formData.append("namaTagihan", namaTagihan);
     formData.append("jenjang", data.jenjang);
-    formData.append("jenisTagihan", data.jenisTagihan);
+    formData.append("jenisTagihan", dbJenisTagihan);
     formData.append("nominal", data.nominal);
     formData.append("description", data.description || "");
+    formData.append("jenisTagihanDisplay", data.jenisTagihan);
     startTransition(() => { action(formData); });
   });
 
@@ -47,11 +129,24 @@ export default function DialogUpdateMenu({
 
   useEffect(() => {
     if (currentData) {
-      form.setValue("namaTagihan", currentData.namaTagihan || "");
-      form.setValue("jenjang", currentData.jenjang || "");
-      form.setValue("jenisTagihan", currentData.jenisTagihan || "");
-      form.setValue("nominal", currentData.nominal?.toString() || "");
-      form.setValue("description", currentData.description || "");
+      // Parse namatagihan yang tersimpan ke field-field form
+      const parsed = parseNamaTagihanToFormValues(
+        currentData.namaTagihan || "",
+        currentData.jenisTagihan || ""
+      );
+
+      form.reset({
+        jenisTagihan: parsed.jenisTagihan || "",
+        semesterDaftarUlang: parsed.semesterDaftarUlang || "",
+        tahunDaftarUlang: parsed.tahunDaftarUlang || "",
+        tipeSPP: parsed.tipeSPP || "",
+        bulanSPP: parsed.bulanSPP || "",
+        tahunSPP: parsed.tahunSPP || "",
+        semesterSPP: parsed.semesterSPP || "",
+        jenjang: currentData.jenjang || "",
+        nominal: currentData.nominal?.toString() || "",
+        description: currentData.description || "",
+      });
     }
   }, [currentData]);
 

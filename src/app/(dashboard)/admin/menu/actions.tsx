@@ -1,6 +1,6 @@
 "use server";
 
-// src/app/(dashboard)/admin/master-tagihan/actions.ts
+// src/app/(dashboard)/admin/menu/actions.ts
 
 import { createClient } from "@/lib/supabase/server";
 import { writeChangelog } from "@/lib/changelog";
@@ -24,13 +24,12 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
     };
   }
 
-  // Gunakan isAdmin: true agar tidak terkena RLS policy
   const supabase = await createClient({ isAdmin: true });
 
   const { error } = await supabase.from("master_tagihan").insert({
     namatagihan: validatedFields.data.namaTagihan,
     jenjang: validatedFields.data.jenjang,
-    jenistagihan: validatedFields.data.jenisTagihan,
+    jenistagihan: validatedFields.data.jenisTagihan, // "Reguler" | "Subsidi"
     nominal: validatedFields.data.nominal,
     description: validatedFields.data.description,
   });
@@ -39,11 +38,14 @@ export async function createMenu(prevState: MenuFormState, formData: FormData) {
     return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
 
+  // Gunakan jenisTagihanDisplay (e.g. "SPP Reguler") untuk deskripsi changelog yang lebih jelas
+  const jenisTagihanDisplay = (formData.get("jenisTagihanDisplay") as string) || validatedFields.data.jenisTagihan;
+
   await writeChangelog({
     supabase,
     namamenu: "Master Tagihan",
     jenisaksi: "TAMBAH",
-    deskripsi: `Menambahkan master tagihan "${validatedFields.data.namaTagihan}" (${validatedFields.data.jenjang} - ${validatedFields.data.jenisTagihan})`,
+    deskripsi: `Menambahkan master tagihan "${validatedFields.data.namaTagihan}" (${validatedFields.data.jenjang} - ${jenisTagihanDisplay})`,
   });
 
   revalidatePath("/admin/menu");
@@ -67,7 +69,6 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
     };
   }
 
-  // Gunakan isAdmin: true agar tidak terkena RLS policy
   const supabase = await createClient({ isAdmin: true });
 
   const { error } = await supabase
@@ -86,11 +87,13 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
     return { status: "error", errors: { ...prevState.errors, _form: [error.message] } };
   }
 
+  const jenisTagihanDisplay = (formData.get("jenisTagihanDisplay") as string) || validatedFields.data.jenisTagihan;
+
   await writeChangelog({
     supabase,
     namamenu: "Master Tagihan",
     jenisaksi: "UBAH",
-    deskripsi: `Mengubah master tagihan "${validatedFields.data.namaTagihan}" (${validatedFields.data.jenjang} - ${validatedFields.data.jenisTagihan})`,
+    deskripsi: `Mengubah master tagihan "${validatedFields.data.namaTagihan}" (${validatedFields.data.jenjang} - ${jenisTagihanDisplay})`,
   });
 
   revalidatePath("/admin/menu");
@@ -98,7 +101,6 @@ export async function updateMenu(prevState: MenuFormState, formData: FormData) {
 }
 
 export async function deleteMenu(prevState: MenuFormState, formData: FormData) {
-  // Gunakan isAdmin: true agar tidak terkena RLS policy
   const supabase = await createClient({ isAdmin: true });
   const id = parseInt(formData.get("id") as string);
 

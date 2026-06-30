@@ -30,11 +30,10 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
   const { angkatan } = useAngkatanFilterStore();
 
-  // ← state untuk buka/tutup popup tunggakan
   const [showTunggakanDialog, setShowTunggakanDialog] = useState(false);
   const [searchTunggakan, setSearchTunggakan] = useState("");
 
-  // Daftar siswa sesuai filter angkatan
+  // ─── Siswa sesuai filter angkatan ─────────────────────────────────────────
   const { data: siswaFiltered } = useQuery({
     queryKey: ["siswa-by-angkatan", angkatan],
     queryFn: async () => {
@@ -64,16 +63,13 @@ export default function Dashboard() {
           s.jeniskelamin === "perempuan" ||
           s.jeniskelamin === "P"
       ).length;
-      return {
-        total: aktif.length,
-        lakiLaki,
-        perempuan,
-      };
+      return { total: aktif.length, lakiLaki, perempuan };
     },
   });
 
+  // ─── Statistik tagihan MENYELURUH (semua periode) ─────────────────────────
   const { data: tagihanStats } = useQuery({
-    queryKey: ["tagihan-stats", currentMonth, currentYear, angkatan, idList],
+    queryKey: ["tagihan-stats-all", angkatan, idList],
     enabled: !!siswaFiltered,
     queryFn: async () => {
       if (angkatan !== "semua" && idList.length === 0) {
@@ -83,9 +79,7 @@ export default function Dashboard() {
       const base = () => {
         let q = supabase
           .from("tagihan_siswa")
-          .select("*", { count: "exact", head: true })
-          .eq("bulan", currentMonth)
-          .eq("tahun", currentYear);
+          .select("*", { count: "exact", head: true });
         if (angkatan !== "semua") q = q.in("idsiswa", idList);
         return q;
       };
@@ -98,6 +92,7 @@ export default function Dashboard() {
     },
   });
 
+  // ─── Ringkasan keuangan BULAN INI (tetap per bulan) ──────────────────────
   const { data: pemasukanStats } = useQuery({
     queryKey: ["pemasukan-stats", currentMonth, currentYear, angkatan, idList],
     enabled: !!siswaFiltered,
@@ -140,10 +135,10 @@ export default function Dashboard() {
     },
   });
 
-  // ─── Query daftar tunggakan untuk isi popup (sama persis seperti rekapan-tunggakan.tsx) ──
+  // ─── Daftar tunggakan MENYELURUH untuk popup ──────────────────────────────
   const { data: daftarTunggakan, isLoading: isLoadingTunggakan } = useQuery({
-    queryKey: ["dashboard-daftar-tunggakan", currentMonth, currentYear, angkatan, idList],
-    enabled: showTunggakanDialog, // hanya fetch saat dialog dibuka, hemat request
+    queryKey: ["dashboard-daftar-tunggakan-all", angkatan, idList],
+    enabled: showTunggakanDialog,
     queryFn: async () => {
       if (angkatan !== "semua" && idList.length === 0) return [];
 
@@ -155,12 +150,11 @@ export default function Dashboard() {
           statuspembayaran,
           bulan,
           tahun,
+          createdat,
           siswa:siswa!idsiswa(id, namasiswa, kelas, nowa, nis),
           master_tagihan:master_tagihan!idmastertagihan(namatagihan, jenjang, jenistagihan)
         `)
         .eq("statuspembayaran", "BELUM BAYAR")
-        .eq("bulan", currentMonth)
-        .eq("tahun", currentYear)
         .order("createdat", { ascending: false });
 
       if (angkatan !== "semua") query = query.in("idsiswa", idList);
@@ -179,14 +173,14 @@ export default function Dashboard() {
     0
   );
 
-  // ← Filter daftar tunggakan berdasarkan pencarian nama/kelas di dalam popup
   const filteredTunggakan = useMemo(() => {
     if (!searchTunggakan.trim()) return daftarTunggakan || [];
     const q = searchTunggakan.toLowerCase();
     return (daftarTunggakan || []).filter((item: any) => {
       const nama = item.siswa?.namasiswa?.toLowerCase() || "";
       const kelas = item.siswa?.kelas?.toLowerCase() || "";
-      return nama.includes(q) || kelas.includes(q);
+      const tagihan = item.master_tagihan?.namatagihan?.toLowerCase() || "";
+      return nama.includes(q) || kelas.includes(q) || tagihan.includes(q);
     });
   }, [daftarTunggakan, searchTunggakan]);
 
@@ -204,7 +198,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Sensus Siswa */}
+      {/* ─── Sensus Siswa ────────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Sensus Siswa</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -235,49 +229,48 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">
-                {siswaStats?.total ?? 0}
-              </div>
+              <div className="text-3xl font-bold">{siswaStats?.total ?? 0}</div>
               <p className="text-xs text-muted-foreground mt-1">siswa aktif</p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Tagihan Bulan Ini */}
+      {/* ─── Ringkasan Tagihan (MENYELURUH) ──────────────────────────────────── */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Tagihan — {bulanNama}</h2>
+        <h2 className="text-lg font-semibold mb-3">Ringkasan Tagihan</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Tagihan Terbit Bulan Ini</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Tagihan</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{tagihanStats?.total || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">tagihan</p>
+              <p className="text-xs text-muted-foreground mt-1">dari semua periode</p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Tagihan Sudah Terbayar</CardTitle>
+              <CardTitle className="text-sm font-medium">Sudah Terbayar</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">
                 {tagihanStats?.lunas || 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">tagihan</p>
+              <p className="text-xs text-muted-foreground mt-1">dari semua periode</p>
             </CardContent>
           </Card>
 
-          {/* ← CARD INI YANG SEKARANG BISA DIKLIK */}
+          {/* Card ini bisa diklik → buka popup daftar tunggakan menyeluruh */}
           <Card
             onClick={() => setShowTunggakanDialog(true)}
             className="cursor-pointer transition-shadow hover:shadow-md hover:border-red-300"
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Tagihan Belum Terbayar</CardTitle>
+              <CardTitle className="text-sm font-medium">Belum Terbayar</CardTitle>
               <AlertCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
@@ -285,16 +278,16 @@ export default function Dashboard() {
                 {tagihanStats?.belumBayar || 0}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                tagihan 
+                dari semua periode · klik untuk detail
               </p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Ringkasan Keuangan Bulan Ini */}
+      {/* ─── Ringkasan Keuangan Bulan Ini (tetap per bulan) ─────────────────── */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Ringkasan Keuangan Bulan Ini</h2>
+        <h2 className="text-lg font-semibold mb-3">Ringkasan Keuangan — {bulanNama}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -306,7 +299,7 @@ export default function Dashboard() {
                 {convertIDR(pemasukanStats?.bulanIni || 0)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Total tagihan yang sudah lunas
+                Total tagihan yang sudah lunas bulan ini
               </p>
             </CardContent>
           </Card>
@@ -320,30 +313,36 @@ export default function Dashboard() {
                 {convertIDR(pemasukanStats?.tunggakanBulanIni || 0)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Total tagihan yang belum dibayar
+                Total tagihan yang belum dibayar bulan ini
               </p>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* ─── POPUP: Daftar Tunggakan Bulan Ini ──────────────────────────────── */}
-      <Dialog open={showTunggakanDialog} onOpenChange={setShowTunggakanDialog}>
+      {/* ─── POPUP: Daftar Tunggakan Menyeluruh ───────────────────────────────── */}
+      <Dialog
+        open={showTunggakanDialog}
+        onOpenChange={(open) => {
+          setShowTunggakanDialog(open);
+          if (!open) setSearchTunggakan("");
+        }}
+      >
         <DialogContent className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
           <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
-            <DialogTitle>Daftar Tagihan Belum Terbayar — {bulanNama}</DialogTitle>
+            <DialogTitle>Daftar Tagihan Belum Terbayar</DialogTitle>
             <DialogDescription>
-              {daftarTunggakan?.length || 0} siswa belum melunasi tagihan pada periode ini
+              {daftarTunggakan?.length || 0} tagihan belum lunas dari semua periode
             </DialogDescription>
           </DialogHeader>
 
-          {/* ← Search box, sticky di atas, tidak ikut scroll */}
+          {/* Search */}
           {!isLoadingTunggakan && (daftarTunggakan?.length || 0) > 0 && (
             <div className="px-6 py-3 border-b shrink-0">
               <div className="relative max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Cari nama siswa atau kelas..."
+                  placeholder="Cari nama siswa, kelas, atau tagihan..."
                   value={searchTunggakan}
                   onChange={(e) => setSearchTunggakan(e.target.value)}
                   className="pl-8"
@@ -352,17 +351,17 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ← Area scroll, hanya bagian tabel yang scroll, header & search tetap diam */}
+          {/* Tabel */}
           <div className="flex-1 overflow-y-auto px-6">
             {isLoadingTunggakan ? (
               <div className="text-center py-12 text-muted-foreground">Memuat data...</div>
             ) : !daftarTunggakan?.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                Tidak ada tunggakan untuk periode ini 🎉
+                Tidak ada tagihan yang belum terbayar 🎉
               </div>
             ) : filteredTunggakan.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                Tidak ditemukan siswa dengan kata kunci "{searchTunggakan}"
+                Tidak ditemukan dengan kata kunci &quot;{searchTunggakan}&quot;
               </div>
             ) : (
               <table className="w-full border-collapse text-sm">
@@ -400,7 +399,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* ← Footer total, sticky di bawah, tidak ikut scroll */}
+          {/* Footer total */}
           {!isLoadingTunggakan && (daftarTunggakan?.length || 0) > 0 && (
             <div className="px-6 py-3 border-t shrink-0 flex items-center justify-between bg-muted/30">
               <span className="text-sm text-muted-foreground">

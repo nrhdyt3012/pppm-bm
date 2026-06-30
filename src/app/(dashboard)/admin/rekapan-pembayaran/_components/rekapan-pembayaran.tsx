@@ -32,17 +32,14 @@ const BULAN_SINGKAT = [
   "Jul", "Agt", "Sep", "Okt", "Nov", "Des",
 ];
 
-// Warna highlight untuk bar aktif vs tidak aktif
 const COLOR_ACTIVE = "#16a34a";
 const COLOR_INACTIVE = "#86efac";
 
 // ─── Custom Tooltip ────────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-
   const data = payload[0]?.payload;
   if (!data) return null;
-
   const breakdown: Record<string, number> = data.breakdown || {};
   const breakdownEntries = Object.entries(breakdown).filter(([, v]) => v > 0);
 
@@ -92,7 +89,6 @@ const MonthYearPicker = ({
 
   return (
     <div className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-4 w-72">
-      {/* Navigasi tahun */}
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => setPickerYear((y) => y - 1)}
@@ -109,8 +105,6 @@ const MonthYearPicker = ({
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-
-      {/* Grid bulan */}
       <div className="grid grid-cols-3 gap-2">
         {BULAN_SINGKAT.slice(1).map((nama, idx) => {
           const bulanIdx = idx + 1;
@@ -118,10 +112,7 @@ const MonthYearPicker = ({
           return (
             <button
               key={bulanIdx}
-              onClick={() => {
-                onChange(bulanIdx, pickerYear);
-                onClose();
-              }}
+              onClick={() => { onChange(bulanIdx, pickerYear); onClose(); }}
               className={`py-2 rounded-lg text-xs font-medium transition-all ${
                 isActive
                   ? "bg-green-600 text-white shadow-sm"
@@ -145,7 +136,6 @@ export default function RekapanPembayaran() {
   const [showPicker, setShowPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // Tutup picker ketika klik di luar
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
@@ -185,7 +175,7 @@ export default function RekapanPembayaran() {
     },
   });
 
-  // ─── Data grafik 6 bulan terakhir dengan breakdown ────────────────────────
+  // ─── Data grafik 6 bulan terakhir ────────────────────────────────────────
   const { data: chartData } = useQuery({
     queryKey: ["chart-pembayaran"],
     queryFn: async () => {
@@ -206,7 +196,6 @@ export default function RekapanPembayaran() {
           .eq("bulan", m)
           .eq("tahun", y);
 
-        // Breakdown per jenjang+jenis
         const breakdown: Record<string, number> = {};
         (data || []).forEach((item: any) => {
           const jenjang = item.master_tagihan?.jenjang || "Lainnya";
@@ -237,24 +226,17 @@ export default function RekapanPembayaran() {
   );
 
   const handlePrevMonth = () => {
-    if (selectedMonth === 1) {
-      setSelectedMonth(12);
-      setSelectedYear((y) => y - 1);
-    } else setSelectedMonth((m) => m - 1);
+    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear((y) => y - 1); }
+    else setSelectedMonth((m) => m - 1);
   };
 
   const handleNextMonth = () => {
-    if (selectedMonth === 12) {
-      setSelectedMonth(1);
-      setSelectedYear((y) => y + 1);
-    } else setSelectedMonth((m) => m + 1);
+    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear((y) => y + 1); }
+    else setSelectedMonth((m) => m + 1);
   };
 
   const handleExport = () => {
-    if (!pembayaranData?.length) {
-      toast.error("Tidak ada data");
-      return;
-    }
+    if (!pembayaranData?.length) { toast.error("Tidak ada data"); return; }
     const rows = pembayaranData.map((item: any, i: number) => ({
       No: i + 1,
       "ID Tagihan": item.idtagihansiswa,
@@ -288,23 +270,10 @@ export default function RekapanPembayaran() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 12 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 12 }}
-                axisLine={false}
-                tickLine={false}
-              />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-              <Legend
-                formatter={() => "Jumlah Tagihan Lunas"}
-                wrapperStyle={{ fontSize: 12 }}
-              />
+              <Legend formatter={() => "Jumlah Tagihan Lunas"} wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="total" name="Jumlah Tagihan Lunas" radius={[6, 6, 0, 0]}>
                 {(chartData || []).map((entry, index) => (
                   <Cell
@@ -323,48 +292,30 @@ export default function RekapanPembayaran() {
       </Card>
 
       {/* ─── Navigasi periode ───────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <div className="relative" ref={pickerRef}>
+          <Button
+            variant="outline"
+            className="gap-2 min-w-[160px] font-semibold"
+            onClick={() => setShowPicker((v) => !v)}
+          >
+            <Calendar className="h-4 w-4 text-green-600" />
+            {BULAN_NAMA[selectedMonth]} {selectedYear}
           </Button>
-
-          {/* Tombol periode — klik buka picker */}
-          <div className="relative" ref={pickerRef}>
-            <Button
-              variant="outline"
-              className="gap-2 min-w-[160px] font-semibold"
-              onClick={() => setShowPicker((v) => !v)}
-            >
-              <Calendar className="h-4 w-4 text-green-600" />
-              {BULAN_NAMA[selectedMonth]} {selectedYear}
-            </Button>
-
-            {showPicker && (
-              <MonthYearPicker
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                onChange={(m, y) => {
-                  setSelectedMonth(m);
-                  setSelectedYear(y);
-                }}
-                onClose={() => setShowPicker(false)}
-              />
-            )}
-          </div>
-
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          {showPicker && (
+            <MonthYearPicker
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y); }}
+              onClose={() => setShowPicker(false)}
+            />
+          )}
         </div>
-
-        <Button
-          onClick={handleExport}
-          disabled={!pembayaranData?.length}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export Excel
+        <Button variant="outline" size="icon" onClick={handleNextMonth}>
+          <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
@@ -388,10 +339,24 @@ export default function RekapanPembayaran() {
         </Card>
       </div>
 
-      {/* ─── Tabel ──────────────────────────────────────────────────────────── */}
+      {/* ─── Tabel — Export Excel masuk ke CardHeader ────────────────────────── */}
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Pembayaran Lunas</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>
+            Daftar Pembayaran Lunas
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              {BULAN_NAMA[selectedMonth]} {selectedYear}
+            </span>
+          </CardTitle>
+          <Button
+            onClick={handleExport}
+            disabled={!pembayaranData?.length}
+            variant="outline"
+            size="sm"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export Excel
+          </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
