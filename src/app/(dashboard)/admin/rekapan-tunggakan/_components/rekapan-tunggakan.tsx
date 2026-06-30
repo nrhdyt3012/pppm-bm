@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import DialogTagihMassal from "./dialog-tagih-massal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
   Download,
   Calendar,
+  MessageSquare,
 } from "lucide-react";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
@@ -142,9 +144,11 @@ const MonthYearPicker = ({
 // ─── Komponen Utama ────────────────────────────────────────────────────────────
 export default function RekapanTunggakan() {
   const supabase = createClient();
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showPicker, setShowPicker] = useState(false);
+  const [showTagihMassal, setShowTagihMassal] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   // Tutup picker ketika klik di luar
@@ -272,6 +276,11 @@ export default function RekapanTunggakan() {
     toast.success("Data berhasil diekspor");
   };
 
+  // ← refetch list tunggakan setelah kirim WA massal selesai
+  const refetchTunggakan = () => {
+    queryClient.invalidateQueries({ queryKey: ["rekapan-tunggakan", selectedMonth, selectedYear] });
+  };
+
   return (
     <div className="w-full space-y-6">
       <h1 className="text-2xl font-bold">Rekapan Tunggakan</h1>
@@ -389,8 +398,17 @@ export default function RekapanTunggakan() {
 
       {/* ─── Tabel tunggakan ────────────────────────────────────────────────── */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Daftar Siswa Belum Bayar</CardTitle>
+          <Button
+            onClick={() => setShowTagihMassal(true)}
+            disabled={!tunggakanData?.length}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Tagih via WhatsApp
+          </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -444,6 +462,14 @@ export default function RekapanTunggakan() {
           )}
         </CardContent>
       </Card>
+
+      {/* ─── Dialog Tagih Massal via WhatsApp ──────────────────────────────── */}
+      <DialogTagihMassal
+        open={showTagihMassal}
+        onOpenChange={setShowTagihMassal}
+        data={tunggakanData || []}
+        onSelesai={refetchTunggakan}
+      />
     </div>
   );
 }

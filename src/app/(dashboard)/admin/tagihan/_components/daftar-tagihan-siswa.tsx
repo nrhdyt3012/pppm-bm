@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import useDataTable from "@/hooks/use-data-table";
 import { createClient } from "@/lib/supabase/client";
 import { convertIDR, cn } from "@/lib/utils";
@@ -25,6 +32,20 @@ import DialogCreateTagihan from "./dialog-create-tagihan";
 import DialogDeleteTagihanSiswa from "./dialog-delete-tagihan-siswa";
 import DialogBayarManual from "./dialog-bayar-manual";
 
+// ← Daftar opsi filter kelas — sesuaikan kalau ada kelas lain di data kamu
+const KELAS_OPTIONS = [
+  { value: "semua", label: "Semua Kelas" },
+  { value: "KB", label: "KB" },
+  { value: "TK A", label: "TK A" },
+  { value: "TK B", label: "TK B" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "semua", label: "Semua Status" },
+  { value: "BELUM BAYAR", label: "Belum Bayar" },
+  { value: "LUNAS", label: "Sudah Bayar" },
+];
+
 function getTagihanPermissions(item: any) {
   const pembayaran: any[] = item.pembayaran ?? [];
 
@@ -42,7 +63,7 @@ function getTagihanPermissions(item: any) {
 
 export default function DaftarTagihanSiswa() {
   const supabase = createClient();
-  const queryClient = useQueryClient(); // ← tambahkan ini
+  const queryClient = useQueryClient();
   const {
     currentPage,
     currentLimit,
@@ -51,6 +72,10 @@ export default function DaftarTagihanSiswa() {
     handleChangeLimit,
     handleChangeSearch,
   } = useDataTable();
+
+  // ← State filter kelas & status
+  const [filterKelas, setFilterKelas] = useState("semua");
+  const [filterStatus, setFilterStatus] = useState("semua");
 
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["tagihan-admin-stats"],
@@ -78,9 +103,17 @@ export default function DaftarTagihanSiswa() {
   });
 
   const { data: tagihanList, isLoading, refetch } = useQuery({
-    queryKey: ["tagihan-siswa-list", currentPage, currentLimit, currentSearch],
+    // ← masukkan filter ke queryKey supaya react-query auto refetch saat filter berubah
+    queryKey: [
+      "tagihan-siswa-list",
+      currentPage,
+      currentLimit,
+      currentSearch,
+      filterKelas,
+      filterStatus,
+    ],
     queryFn: async () => {
-      const { data, count, error } = await supabase
+      let query = supabase
         .from("tagihan_siswa")
         .select(
           `*,
@@ -88,7 +121,19 @@ export default function DaftarTagihanSiswa() {
           master_tagihan!idmastertagihan(id_mastertagihan, namatagihan, jenjang),
           pembayaran(idpembayaran, statuspembayaran, metodepembayaran)`,
           { count: "exact" }
-        )
+        );
+
+      // ← Filter status pembayaran
+      if (filterStatus !== "semua") {
+        query = query.eq("statuspembayaran", filterStatus);
+      }
+
+      // ← Filter kelas — karena kelas ada di tabel relasi siswa, pakai filter via foreign table
+      if (filterKelas !== "semua") {
+        query = query.eq("siswa.kelas", filterKelas);
+      }
+
+      const { data, count, error } = await query
         .range(
           (currentPage - 1) * currentLimit,
           currentPage * currentLimit - 1
@@ -98,7 +143,15 @@ export default function DaftarTagihanSiswa() {
       if (error) {
         toast.error("Gagal memuat tagihan", { description: error.message });
       }
-      return { data: data || [], count: count || 0 };
+
+      // ← Filter kelas via inner join Supabase kadang tidak strict-filter baris induk,
+      // jadi double-check di sisi client untuk memastikan akurat
+      let result = data || [];
+      if (filterKelas !== "semua") {
+        result = result.filter((item: any) => item.siswa?.kelas === filterKelas);
+      }
+
+      return { data: result, count: count || 0 };
     },
   });
 
@@ -111,7 +164,6 @@ export default function DaftarTagihanSiswa() {
     if (!open) setSelectedAction(null);
   };
 
-  // ← Fungsi invalidate semua query tagihan sekaligus
   const invalidateTagihanQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["tagihan-siswa-list"] });
     queryClient.invalidateQueries({ queryKey: ["tagihan-admin-stats"] });
@@ -272,12 +324,41 @@ export default function DaftarTagihanSiswa() {
             Kelola tagihan pembayaran siswa
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
             placeholder="Cari siswa atau periode..."
             onChange={(e) => handleChangeSearch(e.target.value)}
             className="max-w-sm"
           />
+
+          {/* ← FILTER KELAS */}
+          <Select value={filterKelas} onValueChange={setFilterKelas}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Kelas" />
+            </SelectTrigger>
+            <SelectContent>
+              {KELAS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* ← FILTER STATUS */}
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Dialog>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">
