@@ -340,34 +340,40 @@ export default function Dashboard() {
           }
         }}
       >
+        {/*
+          FIX: DialogContent bawaan (di components/ui/dialog.tsx) punya class
+          default "sm:max-w-lg". Karena itu pakai variant "sm:" dan sebelumnya
+          kita cuma override "max-w-[1500px]" (tanpa variant), tailwind-merge
+          tidak menganggapnya konflik sehingga "sm:max-w-lg" tetap menang di
+          layar >= 640px. Solusinya: override variant yang sama persis, yaitu
+          tambahkan "sm:max-w-[1500px]" juga.
+        */}
         <DialogContent
-  className="
-    w-[96vw]
-    max-w-[1500px]
-    h-[92vh]
-    p-0
-    gap-0
-    flex
-    flex-col
-    overflow-hidden
-  "
->
+          className="
+            w-[96vw]
+            max-w-[1500px]
+            sm:max-w-[1500px]
+            h-[92vh]
+            p-0
+            gap-0
+            flex
+            flex-col
+            overflow-hidden
+          "
+        >
           {/* Header */}
-<DialogHeader className="px-8 py-5 border-b shrink-0 bg-background">            <div className="flex items-start justify-between gap-4">
-              <div>
-                <DialogTitle className="text-2xl font-bold">Daftar Tagihan Belum Terbayar</DialogTitle>
-                <DialogDescription
-    className="mt-2 text-base"
->
-                  {daftarTunggakan?.length || 0} tagihan belum lunas dari semua periode
-                </DialogDescription>
-              </div>
+          <DialogHeader className="px-8 py-5 border-b shrink-0 bg-background">
+            <div className="flex flex-col items-center text-center gap-1">
+              <DialogTitle className="text-2xl font-bold">Daftar Tagihan Belum Terbayar</DialogTitle>
+              <DialogDescription className="mt-1 text-base">
+                {daftarTunggakan?.length || 0} tagihan belum lunas dari semua periode
+              </DialogDescription>
             </div>
           </DialogHeader>
 
           {/* Search */}
           {!isLoadingTunggakan && (daftarTunggakan?.length || 0) > 0 && (
-            <div className="px-6 py-3 border-b shrink-0">
+            <div className="px-6 py-3 border-b shrink-0 flex justify-end">
               <div className="relative w-full max-w-lg">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -398,30 +404,30 @@ export default function Dashboard() {
             ) : (
               <table className="w-full table-fixed border-collapse text-sm">
                 <thead className="sticky top-0 bg-background z-20">
-    <tr className="border-b bg-muted">
-        <th className="w-16 p-3 text-left">No</th>
+                  <tr className="border-b bg-muted">
+                    <th className="w-16 p-3 text-left">No</th>
 
-        <th className="w-72 p-3 text-left">
-            Nama Siswa
-        </th>
+                    <th className="w-72 p-3 text-left">
+                      Nama Siswa
+                    </th>
 
-        <th className="w-24 p-3 text-left">
-            Kelas
-        </th>
+                    <th className="w-24 p-3 text-left">
+                      Kelas
+                    </th>
 
-        <th className="w-48 p-3 text-left">
-            No. WA Wali
-        </th>
+                    <th className="w-48 p-3 text-left">
+                      No. WA Wali
+                    </th>
 
-        <th className="p-3 text-left">
-            Tagihan
-        </th>
+                    <th className="p-3 text-left">
+                      Tagihan
+                    </th>
 
-        <th className="w-44 p-3 text-right">
-            Nominal
-        </th>
-    </tr>
-</thead>
+                    <th className="w-44 p-3 text-right">
+                      Nominal
+                    </th>
+                  </tr>
+                </thead>
                 <tbody>
                   {paginatedTunggakan.map((item: any, i: number) => (
                     <tr key={item.idtagihansiswa} className="border-b hover:bg-muted/50">
@@ -444,8 +450,9 @@ export default function Dashboard() {
 
           {/* Footer: info + pagination */}
           {!isLoadingTunggakan && filteredTunggakan.length > 0 && (
-            <div className="px-8 py-4 border-t shrink-0 flex items-center justify-between bg-muted/30">
-              <span className="text-sm text-muted-foreground shrink-0">
+            <div className="px-8 py-4 border-t shrink-0 grid grid-cols-3 items-center bg-muted/30">
+              <span />
+              <span className="text-sm text-muted-foreground text-center">
                 Menampilkan{" "}
                 {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
                 {Math.min(currentPage * ITEMS_PER_PAGE, filteredTunggakan.length)}{" "}
@@ -453,8 +460,8 @@ export default function Dashboard() {
               </span>
 
               {/* Pagination — hanya tampil jika lebih dari 1 halaman */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
+              {totalPages > 1 ? (
+                <div className="flex items-center gap-1 justify-self-end">
                   <Button
                     variant="outline"
                     size="sm"
@@ -521,6 +528,8 @@ export default function Dashboard() {
                     »
                   </Button>
                 </div>
+              ) : (
+                <span />
               )}
             </div>
           )}
