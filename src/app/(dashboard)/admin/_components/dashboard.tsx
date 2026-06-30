@@ -20,9 +20,10 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  Search,
+  Search
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const supabase = createClient();
@@ -32,6 +33,8 @@ export default function Dashboard() {
 
   const [showTunggakanDialog, setShowTunggakanDialog] = useState(false);
   const [searchTunggakan, setSearchTunggakan] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // ─── Siswa sesuai filter angkatan ─────────────────────────────────────────
   const { data: siswaFiltered } = useQuery({
@@ -184,6 +187,12 @@ export default function Dashboard() {
     });
   }, [daftarTunggakan, searchTunggakan]);
 
+  const totalPages = Math.ceil((filteredTunggakan.length || 0) / ITEMS_PER_PAGE);
+  const paginatedTunggakan = filteredTunggakan.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const bulanNama = new Date().toLocaleDateString("id-ID", {
     month: "long",
     year: "numeric",
@@ -325,34 +334,57 @@ export default function Dashboard() {
         open={showTunggakanDialog}
         onOpenChange={(open) => {
           setShowTunggakanDialog(open);
-          if (!open) setSearchTunggakan("");
+          if (!open) {
+            setSearchTunggakan("");
+            setCurrentPage(1);
+          }
         }}
       >
-        <DialogContent className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
-            <DialogTitle>Daftar Tagihan Belum Terbayar</DialogTitle>
-            <DialogDescription>
-              {daftarTunggakan?.length || 0} tagihan belum lunas dari semua periode
-            </DialogDescription>
+        <DialogContent
+  className="
+    w-[96vw]
+    max-w-[1500px]
+    h-[92vh]
+    p-0
+    gap-0
+    flex
+    flex-col
+    overflow-hidden
+  "
+>
+          {/* Header */}
+<DialogHeader className="px-8 py-5 border-b shrink-0 bg-background">            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-2xl font-bold">Daftar Tagihan Belum Terbayar</DialogTitle>
+                <DialogDescription
+    className="mt-2 text-base"
+>
+                  {daftarTunggakan?.length || 0} tagihan belum lunas dari semua periode
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
           {/* Search */}
           {!isLoadingTunggakan && (daftarTunggakan?.length || 0) > 0 && (
             <div className="px-6 py-3 border-b shrink-0">
-              <div className="relative max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <div className="relative w-full max-w-lg">
+                <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                 <Input
                   placeholder="Cari nama siswa, kelas, atau tagihan..."
                   value={searchTunggakan}
-                  onChange={(e) => setSearchTunggakan(e.target.value)}
-                  className="pl-8"
+                  onChange={(e) => {
+                    setSearchTunggakan(e.target.value);
+                    setCurrentPage(1); // reset ke halaman 1 saat search
+                  }}
+                  className="pl-10 h-11 text-base"
                 />
               </div>
             </div>
           )}
 
           {/* Tabel */}
-          <div className="flex-1 overflow-y-auto px-6">
+          <div className="flex-1 overflow-y-auto px-8 py-4">
             {isLoadingTunggakan ? (
               <div className="text-center py-12 text-muted-foreground">Memuat data...</div>
             ) : !daftarTunggakan?.length ? (
@@ -364,33 +396,44 @@ export default function Dashboard() {
                 Tidak ditemukan dengan kata kunci &quot;{searchTunggakan}&quot;
               </div>
             ) : (
-              <table className="w-full border-collapse text-sm">
-                <thead className="sticky top-0 bg-background z-10">
-                  <tr className="border-b bg-muted/80 backdrop-blur-sm">
-                    <th className="text-left p-3">No</th>
-                    <th className="text-left p-3">Nama Siswa</th>
-                    <th className="text-left p-3">Kelas</th>
-                    <th className="text-left p-3">No. WA Wali</th>
-                    <th className="text-left p-3">Tagihan</th>
-                    <th className="text-right p-3">Nominal</th>
-                    <th className="text-center p-3">Status</th>
-                  </tr>
-                </thead>
+              <table className="w-full table-fixed border-collapse text-sm">
+                <thead className="sticky top-0 bg-background z-20">
+    <tr className="border-b bg-muted">
+        <th className="w-16 p-3 text-left">No</th>
+
+        <th className="w-72 p-3 text-left">
+            Nama Siswa
+        </th>
+
+        <th className="w-24 p-3 text-left">
+            Kelas
+        </th>
+
+        <th className="w-48 p-3 text-left">
+            No. WA Wali
+        </th>
+
+        <th className="p-3 text-left">
+            Tagihan
+        </th>
+
+        <th className="w-44 p-3 text-right">
+            Nominal
+        </th>
+    </tr>
+</thead>
                 <tbody>
-                  {filteredTunggakan.map((item: any, i: number) => (
+                  {paginatedTunggakan.map((item: any, i: number) => (
                     <tr key={item.idtagihansiswa} className="border-b hover:bg-muted/50">
-                      <td className="p-3">{i + 1}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {(currentPage - 1) * ITEMS_PER_PAGE + i + 1}
+                      </td>
                       <td className="p-3 font-medium">{item.siswa?.namasiswa || "-"}</td>
                       <td className="p-3">{item.siswa?.kelas || "-"}</td>
                       <td className="p-3">{item.siswa?.nowa || "-"}</td>
                       <td className="p-3">{item.master_tagihan?.namatagihan || "-"}</td>
-                      <td className="p-3 text-right font-semibold">
+                      <td className="p-3 text-right font-semibold text-red-600">
                         {convertIDR(parseFloat(item.jumlahtagihan || 0))}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
-                          Belum Bayar
-                        </span>
                       </td>
                     </tr>
                   ))}
@@ -399,15 +442,86 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Footer total */}
-          {!isLoadingTunggakan && (daftarTunggakan?.length || 0) > 0 && (
-            <div className="px-6 py-3 border-t shrink-0 flex items-center justify-between bg-muted/30">
-              <span className="text-sm text-muted-foreground">
-                Menampilkan {filteredTunggakan.length} dari {daftarTunggakan?.length} tagihan
+          {/* Footer: info + pagination */}
+          {!isLoadingTunggakan && filteredTunggakan.length > 0 && (
+            <div className="px-8 py-4 border-t shrink-0 flex items-center justify-between bg-muted/30">
+              <span className="text-sm text-muted-foreground shrink-0">
+                Menampilkan{" "}
+                {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredTunggakan.length)}{" "}
+                dari {filteredTunggakan.length} tagihan
               </span>
-              <span className="font-bold text-red-600">
-                Total: {convertIDR(totalNominalTunggakan)}
-              </span>
+
+              {/* Pagination — hanya tampil jika lebih dari 1 halaman */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-10 p-0"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    «
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-10 p-0"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    ‹
+                  </Button>
+
+                  {/* Nomor halaman */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) =>
+                      p === 1 ||
+                      p === totalPages ||
+                      Math.abs(p - currentPage) <= 1
+                    )
+                    .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === "..." ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-sm">…</span>
+                      ) : (
+                        <Button
+                          key={p}
+                          variant={currentPage === p ? "default" : "outline"}
+                          size="sm"
+                          className={`h-8 w-8 p-0 ${currentPage === p ? "bg-red-600 hover:bg-red-700 border-red-600" : ""}`}
+                          onClick={() => setCurrentPage(p as number)}
+                        >
+                          {p}
+                        </Button>
+                      )
+                    )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                  >
+                    ›
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                  >
+                    »
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

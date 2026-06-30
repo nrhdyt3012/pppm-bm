@@ -8,6 +8,7 @@ import AuthStoreProvider from "@/providers/auth-store-provider";
 import { cookies } from "next/headers";
 import ReactQueryProvider from "@/providers/react-query-provider";
 import type { Metadata } from "next";
+import SessionGuard from "@/components/common/session-guard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -97,7 +98,7 @@ export default async function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        {/* Paksa hapus class dark dari localStorage sebelum render — 
+        {/* Paksa hapus class dark dari localStorage sebelum render —
             mencegah next-themes membaca preferensi dark mode lama */}
         <script
           dangerouslySetInnerHTML={{
@@ -124,6 +125,11 @@ export default async function RootLayout({
               forcedTheme="light"
             >
               {children}
+              {/* SessionGuard: memantau event Supabase Auth secara global.
+                  Jika session expired dan refresh token gagal, otomatis
+                  membersihkan cookie stale dan redirect ke /login.
+                  Tidak merender apapun ke UI. */}
+              <SessionGuard />
               <Toaster />
             </ThemeProvider>
           </AuthStoreProvider>

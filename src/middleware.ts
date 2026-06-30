@@ -20,12 +20,10 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // ✅ Bypass semua API route yang dipanggil server-to-server (tanpa cookie user)
-  // Midtrans webhook, email kwitansi, dan notifikasi WA semuanya dipanggil
-  // dari server action / webhook eksternal — tidak punya session user
   const isPublicApiRoute =
     pathname.startsWith("/api/payment/") ||
     pathname.startsWith("/api/send-receipt") ||
-    pathname.startsWith("/api/notifications/"); // ← TAMBAHAN FIX
+    pathname.startsWith("/api/notifications/");
 
   if (isPublicApiRoute) {
     return NextResponse.next();
@@ -91,13 +89,45 @@ export async function middleware(request: NextRequest) {
       (page) => pathname === page || pathname.startsWith(page + "/")
     );
 
-  // API routes privat selain yang sudah di-bypass → wajib login
+  // ── FIX UTAMA: Jika session Supabase expired/null → bersihkan user_profile ──
+  // Ini mencegah user stuck di beranda karena user_profile cookie masih ada
+  // padahal session Supabase sudah mati.
+  if (!user) {
+    const hasProfileCookie = request.cookies.has("user_profile");
+
+    if (hasProfileCookie) {
+      // Tentukan response dulu (redirect ke login atau lanjut ke public page)
+      let response: NextResponse;
+
+      if (isPublicPage || isAuthPage) {
+        // Tetap biarkan akses ke halaman publik, tapi hapus cookie stale
+        response = NextResponse.next({ request });
+      } else {
+        // Redirect ke login untuk halaman protected
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        response = NextResponse.redirect(url);
+      }
+
+      // Hapus user_profile yang sudah tidak valid
+      response.cookies.delete("user_profile");
+
+      // Hapus juga semua cookie Supabase auth yang expired
+      // (nama cookie Supabase mengandung "-auth-token")
+      request.cookies.getAll().forEach(({ name }) => {
+        if (name.includes("-auth-token") || name.includes("sb-")) {
+          response.cookies.delete(name);
+        }
+      });
+
+      return response;
+    }
+  }
+
+  // API routes privat → wajib login
   if (isApiRoute) {
     if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return supabaseResponse;
   }

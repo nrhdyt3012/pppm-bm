@@ -1,6 +1,8 @@
 "use client";
+
+// src/app/(auth)/login/_components/login.tsx
+
 import Image from "next/image";
-import Link from "next/link";
 import FormInput from "@/components/common/form-input";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,11 +24,12 @@ import { useForm } from "react-hook-form";
 import { login } from "../actions";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { DarkmodeToggle } from "@/components/common/darkmode-toggle";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchemaForm),
     defaultValues: INITIAL_LOGIN_FORM,
@@ -37,15 +40,25 @@ export default function Login() {
     INITIAL_STATE_LOGIN_FORM
   );
 
+  // ── Tampilkan toast jika diredirect karena session expired ──────────────
+  useEffect(() => {
+    const reason = searchParams.get("reason");
+    if (reason === "session_expired") {
+      toast.warning("Sesi Anda telah berakhir", {
+        description: "Silakan login kembali untuk melanjutkan.",
+        duration: 5000,
+      });
+      // Hapus query param dari URL agar tidak muncul lagi jika refresh
+      router.replace("/login");
+    }
+  }, []);
+
   const onSubmit = form.handleSubmit(async (data) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
-
-    startTransition(() => {
-      loginAction(formData);
-    });
+    startTransition(() => { loginAction(formData); });
   });
 
   useEffect(() => {
@@ -55,13 +68,10 @@ export default function Login() {
           loginState.errors?._form?.[0] || "Terjadi kesalahan saat login",
       });
     }
-
     if (loginState?.status === "success") {
       toast.success("Login Berhasil", {
         description: "Anda akan dialihkan...",
       });
-
-      // Hard refresh untuk memastikan cookie dan layout ter-reload
       setTimeout(() => {
         window.location.href = loginState.data?.redirectUrl || "/";
       }, 500);
@@ -70,10 +80,6 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-b from-white via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-blue-950 p-6">
-      {/* <div className="absolute top-4 right-4 z-50">
-        <DarkmodeToggle />
-      </div> */}
-
       <div className="mb-8">
         <Image
           src="/logo.jpg"
@@ -121,18 +127,6 @@ export default function Login() {
                 placeholder="••••••••"
                 type="password"
               />
-
-              {/* Link lupa password — uncomment jika fitur sudah diaktifkan
-              <div className="text-right">
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Lupa password?
-                </Link>
-              </div>
-              */}
-
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
